@@ -66,6 +66,28 @@ python scripts/build_dependency_graph.py --model all --require-onnx --verbose
 
 ## Milestone 4: Proposed Next Step
 
+Status: complete.
+
+Implemented:
+
+- Dry-run pruning action schema
+- Propagation step and pruning plan schema
+- Conservative propagation engine over dependency graphs
+- Edge-specific semantics for QKV, MLP, residual, normalization, embedding, feeds, shape, and propagation-only edges
+- Candidate action generation
+- Manual and candidate-action CLI scripts
+- Markdown and JSON pruning plan reports
+- Tests for action serialization, propagation, candidate generation, and reporting
+
+Primary commands:
+
+```bash
+python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
+python scripts/simulate_pruning_action.py --model bert-base-uncased --target-unit <unit_id> --dim out_features --indices 0,1,2,3 --verbose
+```
+
+## Milestone 5: Proposed Next Step
+
 Recommended focus:
 
 - PyTorch-to-ONNX node correspondence
@@ -73,4 +95,4 @@ Recommended focus:
 - Candidate pruning plan generation
 - Validation checks before any weight mutation
 
-Milestone 4 should still avoid actually pruning weights unless the generated plan can be traced, explained, and validated.
+Milestone 5 should still avoid broad weight mutation until generated plans can be traced, explained, and validated. A narrow executable transform for one well-understood layer type can be introduced only after correspondence and shape constraints are reliable.

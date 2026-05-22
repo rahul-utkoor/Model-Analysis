@@ -19,6 +19,12 @@ reports/dependency_graphs/*
 !reports/dependency_graphs/.gitkeep
 reports/dependency_summaries/*
 !reports/dependency_summaries/.gitkeep
+reports/pruning_plans/*
+!reports/pruning_plans/.gitkeep
+reports/propagation_traces/*
+!reports/propagation_traces/.gitkeep
+reports/pruning_action_checks/*
+!reports/pruning_action_checks/.gitkeep
 
 *.onnx
 .DS_Store

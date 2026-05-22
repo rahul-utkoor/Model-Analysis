@@ -126,6 +126,31 @@ reports/dependency_summaries/<model>.md     Human-readable dependency summary
 
 The dependency graph is a conservative static pruning-dependency IR. It is not an executable pruning transform yet and does not prove that a pruning decision is safe.
 
+## Pruning Action Simulation
+
+Generate and simulate small candidate pruning actions:
+
+```bash
+python scripts/download_models.py --model bert-base-uncased
+python scripts/export_to_onnx.py --model bert-base-uncased
+python scripts/generate_structural_inventory.py --model bert-base-uncased
+python scripts/build_dependency_graph.py --model bert-base-uncased
+python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
+```
+
+Simulate one manual action:
+
+```bash
+python scripts/simulate_pruning_action.py \
+  --model bert-base-uncased \
+  --target-unit <unit_id> \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --verbose
+```
+
+This does not prune weights, rewrite PyTorch modules, or rewrite ONNX. It only simulates dependency propagation and emits candidate plans, propagation traces, and validation diagnostics. Ambiguous results are expected for complex transformer structures until later milestones add stronger PyTorch/ONNX correspondence and executable pruning transforms.
+
 ## First Push
 
 ```bash

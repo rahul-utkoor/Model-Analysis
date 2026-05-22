@@ -159,6 +159,7 @@ python scripts/download_models.py --model bert-base-uncased
 python scripts/export_to_onnx.py --model bert-base-uncased
 python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
+python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
 ```
 
 ## Recommended All-Model Flow
@@ -168,6 +169,64 @@ python scripts/download_models.py --model all
 python scripts/export_to_onnx.py --model all
 python scripts/generate_structural_inventory.py --model all --require-onnx
 python scripts/build_dependency_graph.py --model all --require-onnx --verbose
+python scripts/generate_candidate_actions.py --model all --simulate --limit 5
+```
+
+## Pruning Action Simulation
+
+Milestone 4 adds a dry-run pruning planner. It does not modify weights, PyTorch modules, or ONNX graphs. It simulates how a proposed pruning action propagates through the dependency graph and writes diagnostics.
+
+Generate candidate actions:
+
+```bash
+python scripts/generate_candidate_actions.py --model bert-base-uncased
+```
+
+Generate and simulate the first five candidates:
+
+```bash
+python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
+```
+
+Simulate a manual pruning action:
+
+```bash
+python scripts/simulate_pruning_action.py \
+  --model bert-base-uncased \
+  --target-unit <unit_id> \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --verbose
+```
+
+Use an action JSON file:
+
+```bash
+python scripts/simulate_pruning_action.py \
+  --model bert-base-uncased \
+  --action-json path/to/action.json
+```
+
+Ambiguous plans usually indicate missing shape mapping, residual coupling, embedding tying uncertainty, or PyTorch-to-ONNX correspondence gaps. To allow ambiguous plans in automation:
+
+```bash
+python scripts/simulate_pruning_action.py \
+  --model bert-base-uncased \
+  --target-unit <unit_id> \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --allow-ambiguous
+```
+
+Generated outputs:
+
+```text
+reports/pruning_plans/<model>__<action>.json
+reports/pruning_plans/<model>__<action>.md
+reports/propagation_traces/<model>__<action>.json
+reports/pruning_action_checks/<model>__<action>.json
+reports/pruning_action_checks/<model>__candidate_actions.json
+reports/pruning_action_checks/<model>__candidate_actions.md
 ```
 
 ## Validation

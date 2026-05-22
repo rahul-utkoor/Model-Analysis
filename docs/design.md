@@ -14,6 +14,8 @@ The pipeline is staged:
 6. Conservative pruning hints
 7. Dependency graph construction
 8. Dependency graph analysis
+9. Pruning action simulation
+10. Propagation trace and validation diagnostics
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -45,6 +47,18 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 
 `dependency_analyzer.py`
 : Summarizes dependency graphs into high-value pruning targets, manual review items, forward propagation paths, and backward constraints.
+
+`pruning_action.py`
+: Defines dry-run pruning action, propagation step, and pruning plan schemas.
+
+`propagation_engine.py`
+: Simulates pruning actions over the dependency graph. It validates target dimensions and indices, traverses dependency edges, records propagation steps, and assigns conservative plan status.
+
+`action_generation.py`
+: Generates small deterministic candidate dry-run actions from dependency graph units.
+
+`pruning_plan_reporting.py`
+: Renders pruning plans and candidate actions as Markdown reports.
 
 ## Dependency Graph IR
 
@@ -126,6 +140,7 @@ reports/dependency_summaries/
 - No weights are modified.
 - No pruning masks or executable pruning plans are emitted yet.
 - No post-pruning validation is implemented yet.
+- Pruning plans are dry-run diagnostics only. They do not transform PyTorch modules or ONNX graphs.
 
 ## Suggested Milestone 4
 
@@ -136,3 +151,26 @@ Milestone 4 should add PyTorch-to-ONNX correspondence and stronger shape propaga
 - Track tensor producers and consumers explicitly.
 - Convert dependency graph evidence into candidate pruning plans.
 - Still avoid modifying weights until candidate plans can be validated.
+
+## Pruning Action Simulation
+
+Milestone 4 introduces a conservative dataflow simulation layer. A `PruningAction` specifies a target unit, prune dimension, indices, strategy, and rationale. The propagation engine checks local validity and traverses dependency edges according to edge-specific semantics:
+
+- `qkv_coupling` propagates matching attention indices across Q/K/V candidates.
+- `head_dimension_coupling` records attention-output constraints and is usually ambiguous until head-index mapping exists.
+- `mlp_hidden_coupling` propagates intermediate-channel constraints between expansion and projection layers.
+- `residual_coupling` is ambiguous and requires manual branch-shape review.
+- `normalization_dependency` records LayerNorm hidden-dimension constraints.
+- `embedding_tying` is ambiguous unless tied output heads are proven.
+- `propagation_only`, `feeds`, and `shape_dependency` are traced conservatively.
+
+Plan status values:
+
+```text
+valid_local   The target action is locally valid and no required coupling was found.
+valid_global  Required propagation was resolved with no ambiguity or conflicts.
+ambiguous     The action may be plausible but needs better shape/mapping evidence.
+rejected      The action is malformed or conflicts with known graph evidence.
+```
+
+Ambiguity is expected for nontrivial transformer pruning until correspondence and shape propagation improve.
