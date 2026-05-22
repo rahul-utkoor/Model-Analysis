@@ -28,6 +28,9 @@ reports/onnx_graphs/      Generated ONNX graph reports (ignored by git)
 reports/pruning_hints/    Generated pruning hint reports (ignored by git)
 reports/dependency_graphs/  Generated dependency graph reports (ignored by git)
 reports/dependency_summaries/  Generated dependency analyzer summaries (ignored by git)
+reports/correspondence/  Generated PyTorch-to-ONNX correspondence reports (ignored by git)
+reports/shape_evidence/  Generated static shape evidence reports (ignored by git)
+reports/validated_dependency_graphs/  Dependency graph validation reports (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -150,6 +153,32 @@ python scripts/simulate_pruning_action.py \
 ```
 
 This does not prune weights, rewrite PyTorch modules, or rewrite ONNX. It only simulates dependency propagation and emits candidate plans, propagation traces, and validation diagnostics. Ambiguous results are expected for complex transformer structures until later milestones add stronger PyTorch/ONNX correspondence and executable pruning transforms.
+
+## PyTorch-to-ONNX Correspondence and Shape Evidence
+
+Build static correspondence and shape evidence after structural inventory and dependency graph reports exist:
+
+```bash
+python scripts/download_models.py --model bert-base-uncased
+python scripts/export_to_onnx.py --model bert-base-uncased
+python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
+python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
+python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
+```
+
+Use evidence during pruning simulation:
+
+```bash
+python scripts/simulate_pruning_action.py \
+  --model bert-base-uncased \
+  --target-unit <unit_id> \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --use-evidence \
+  --verbose
+```
+
+Correspondence is heuristic and conservative. Shape evidence is static ONNX metadata. This still does not perform pruning.
 
 ## First Push
 

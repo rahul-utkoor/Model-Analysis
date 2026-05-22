@@ -159,6 +159,7 @@ python scripts/download_models.py --model bert-base-uncased
 python scripts/export_to_onnx.py --model bert-base-uncased
 python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
+python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
 python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
 ```
 
@@ -169,8 +170,48 @@ python scripts/download_models.py --model all
 python scripts/export_to_onnx.py --model all
 python scripts/generate_structural_inventory.py --model all --require-onnx
 python scripts/build_dependency_graph.py --model all --require-onnx --verbose
+python scripts/build_correspondence.py --model all --require-dependency-graph --verbose
 python scripts/generate_candidate_actions.py --model all --simulate --limit 5
 ```
+
+## PyTorch-to-ONNX Correspondence and Shape Evidence
+
+Build static correspondence and shape evidence for one model:
+
+```bash
+python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
+```
+
+Build reports for all models:
+
+```bash
+python scripts/build_correspondence.py --model all --require-dependency-graph --verbose
+```
+
+Generated outputs:
+
+```text
+reports/correspondence/<model>.json
+reports/correspondence/<model>.md
+reports/shape_evidence/<model>.json
+reports/shape_evidence/<model>.md
+reports/validated_dependency_graphs/<model>.json
+reports/validated_dependency_graphs/<model>.md
+```
+
+Use evidence during manual pruning action simulation:
+
+```bash
+python scripts/simulate_pruning_action.py \
+  --model bert-base-uncased \
+  --target-unit <unit_id> \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --use-evidence \
+  --verbose
+```
+
+Correspondence is heuristic and conservative. Shape evidence is static and derived from ONNX graph metadata. This still does not prune weights, rewrite PyTorch modules, or rewrite ONNX.
 
 ## Pruning Action Simulation
 
@@ -196,6 +237,7 @@ python scripts/simulate_pruning_action.py \
   --target-unit <unit_id> \
   --dim out_features \
   --indices 0,1,2,3 \
+  --use-evidence \
   --verbose
 ```
 

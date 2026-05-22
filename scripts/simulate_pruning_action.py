@@ -8,6 +8,7 @@ import json
 import sys
 from pathlib import Path
 
+from model_analysis.correspondence import load_correspondence_json
 from model_analysis.dependency_graph import DependencyGraph
 from model_analysis.paths import get_project_root, safe_model_name
 from model_analysis.propagation_engine import simulate_pruning_action
@@ -21,6 +22,7 @@ from model_analysis.pruning_action import (
 from model_analysis.pruning_plan_reporting import pruning_plan_to_markdown
 from model_analysis.registry import get_model_config
 from model_analysis.reporting import write_json, write_markdown
+from model_analysis.shape_evidence import load_shape_evidence_json
 
 
 def _load_graph(path: Path) -> DependencyGraph:
@@ -73,6 +75,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--verbose", action="store_true", help="Print plan summary.")
     parser.add_argument("--allow-ambiguous", action="store_true", help="Exit 0 for ambiguous plans.")
     parser.add_argument("--fail-on-ambiguous", action="store_true", help="Exit nonzero if status is ambiguous.")
+    parser.add_argument("--use-evidence", action="store_true", help="Load correspondence, shape, and validation evidence reports.")
     return parser.parse_args()
 
 
@@ -97,7 +100,24 @@ def main() -> int:
     try:
         graph = _load_graph(graph_path)
         action = _construct_action(args, graph)
-        plan = simulate_pruning_action(graph, action)
+        correspondence_report = None
+        shape_report = None
+        validation_report = None
+        if args.use_evidence:
+            correspondence_path = root / "reports" / "correspondence" / f"{safe_name}.json"
+            shape_path = root / "reports" / "shape_evidence" / f"{safe_name}.json"
+            validation_path = root / "reports" / "validated_dependency_graphs" / f"{safe_name}.json"
+            if not correspondence_path.exists() or not shape_path.exists():
+                print(
+                    f"[missing] Evidence reports missing. Run: python scripts/build_correspondence.py --model {config['name']}",
+                    file=sys.stderr,
+                )
+                return 1
+            correspondence_report = load_correspondence_json(correspondence_path)
+            shape_report = load_shape_evidence_json(shape_path)
+            if validation_path.exists():
+                validation_report = json.loads(validation_path.read_text(encoding="utf-8"))
+        plan = simulate_pruning_action(graph, action, correspondence_report, shape_report, validation_report)
     except Exception as exc:
         print(f"[error] {exc}", file=sys.stderr)
         return 1

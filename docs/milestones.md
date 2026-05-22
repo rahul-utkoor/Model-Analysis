@@ -64,7 +64,7 @@ python scripts/build_dependency_graph.py --model bert-base-uncased
 python scripts/build_dependency_graph.py --model all --require-onnx --verbose
 ```
 
-## Milestone 4: Proposed Next Step
+## Milestone 4: Pruning Action Simulation and Dimension Propagation
 
 Status: complete.
 
@@ -86,13 +86,34 @@ python scripts/generate_candidate_actions.py --model bert-base-uncased --simulat
 python scripts/simulate_pruning_action.py --model bert-base-uncased --target-unit <unit_id> --dim out_features --indices 0,1,2,3 --verbose
 ```
 
-## Milestone 5: Proposed Next Step
+## Milestone 5: PyTorch-to-ONNX Correspondence and Shape Evidence
+
+Status: complete.
+
+Implemented:
+
+- Parameter-to-initializer evidence
+- Module-to-node correspondence reports
+- Static ONNX tensor and node shape evidence
+- Dependency graph validation with correspondence/shape support
+- Evidence-enriched pruning action simulation
+- Correspondence CLI and docs
+
+Primary commands:
+
+```bash
+python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
+python scripts/simulate_pruning_action.py --model bert-base-uncased --target-unit <unit_id> --dim out_features --indices 0,1,2,3 --use-evidence --verbose
+```
+
+## Milestone 6: Proposed Next Step
 
 Recommended focus:
 
-- PyTorch-to-ONNX node correspondence
-- Tensor producer/consumer graph with shape propagation
-- Candidate pruning plan generation
-- Validation checks before any weight mutation
+- Executable but reversible pruning transforms for a small subset first
+- Linear `out_features` and `in_features` pruning in PyTorch
+- Before/after structural checks
+- Rollback-safe artifacts
+- No broad ONNX graph rewrite until PyTorch behavior is validated
 
-Milestone 5 should still avoid broad weight mutation until generated plans can be traced, explained, and validated. A narrow executable transform for one well-understood layer type can be introduced only after correspondence and shape constraints are reliable.
+Milestone 6 should introduce executable pruning only for a very small, well-understood layer type first.

@@ -54,6 +54,34 @@ def _empty_plan(graph: DependencyGraph, action: PruningAction) -> PruningPlan:
     )
 
 
+def _validation_edge_lookup(validation_report: dict | None) -> dict[tuple[str, str, str], dict[str, Any]]:
+    if not validation_report:
+        return {}
+    lookup = {}
+    for section in ("validated_edges", "shape_supported_edges", "correspondence_supported_edges"):
+        for edge in validation_report.get(section, []):
+            key = (edge.get("src"), edge.get("dst"), edge.get("edge_type"))
+            lookup[key] = edge
+    return lookup
+
+
+def _add_evidence_metadata(
+    plan: PruningPlan,
+    correspondence_report: Any | None,
+    shape_report: Any | None,
+    validation_report: dict | None,
+) -> None:
+    evidence = {}
+    if correspondence_report:
+        evidence["correspondence"] = getattr(correspondence_report, "summary", {})
+    if shape_report:
+        evidence["shape_evidence"] = getattr(shape_report, "summary", {})
+    if validation_report:
+        evidence["dependency_validation"] = validation_report.get("summary", {})
+    if evidence:
+        plan.metadata["evidence"] = evidence
+
+
 def _add_affected(plan: PruningPlan, unit: PrunableUnit, dim: str, indices: list[int], reason: str) -> None:
     existing = {item["unit_id"] for item in plan.affected_units}
     if unit.unit_id not in existing:
@@ -260,9 +288,17 @@ def _finalize_status(plan: PruningPlan, locally_valid: bool, traversed_required_
     }
 
 
-def simulate_pruning_action(graph: DependencyGraph, action: PruningAction) -> PruningPlan:
+def simulate_pruning_action(
+    graph: DependencyGraph,
+    action: PruningAction,
+    correspondence_report: Any | None = None,
+    shape_report: Any | None = None,
+    validation_report: dict | None = None,
+) -> PruningPlan:
     """Simulate a pruning action through a dependency graph without mutating model artifacts."""
     plan = _empty_plan(graph, action)
+    _add_evidence_metadata(plan, correspondence_report, shape_report, validation_report)
+    validated_edges = _validation_edge_lookup(validation_report)
     target = _find_unit(graph, action.target_unit_id)
     normalized_indices = _normalize_indices(action.indices)
     action.indices = normalized_indices
@@ -371,6 +407,18 @@ def simulate_pruning_action(graph: DependencyGraph, action: PruningAction) -> Pr
             plan.propagation_steps.append(step)
             plan.constraints.extend(constraints)
             plan.manual_review_items.extend(manual_review)
+            evidence_edge = validated_edges.get((edge.src, edge.dst, edge.edge_type)) or validated_edges.get((edge.dst, edge.src, edge.edge_type))
+            if evidence_edge:
+                plan.constraints.append(
+                    {
+                        "type": "evidence_supported_propagation",
+                        "edge_type": edge.edge_type,
+                        "src": edge.src,
+                        "dst": edge.dst,
+                        "confidence": evidence_edge.get("confidence", "medium"),
+                        "reason": evidence_edge.get("reason", "Dependency edge has correspondence or shape evidence."),
+                    }
+                )
 
             if dst_unit and status in {"propagated", "ambiguous"}:
                 propagated_dim = affected_dims[0] if affected_dims else current_dim

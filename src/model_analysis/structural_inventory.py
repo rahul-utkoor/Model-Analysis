@@ -72,6 +72,10 @@ def _linear_layer_entry(name: str, module: torch.nn.Linear) -> dict[str, Any]:
         "out_features": module.out_features,
         "bias": module.bias is not None,
         "parameters": _module_parameter_count(module),
+        "weight_name": f"{name}.weight",
+        "bias_name": f"{name}.bias" if module.bias is not None else None,
+        "weight_shape": list(module.weight.shape),
+        "bias_shape": list(module.bias.shape) if module.bias is not None else None,
     }
 
 
@@ -81,14 +85,24 @@ def _embedding_layer_entry(name: str, module: torch.nn.Embedding) -> dict[str, A
         "num_embeddings": module.num_embeddings,
         "embedding_dim": module.embedding_dim,
         "parameters": _module_parameter_count(module),
+        "weight_name": f"{name}.weight",
+        "bias_name": None,
+        "weight_shape": list(module.weight.shape),
+        "bias_shape": None,
     }
 
 
 def _normalization_layer_entry(name: str, module: torch.nn.Module) -> dict[str, Any]:
+    weight = getattr(module, "weight", None)
+    bias = getattr(module, "bias", None)
     return {
         "name": name,
         "type": module.__class__.__name__,
         "parameters": _module_parameter_count(module),
+        "weight_name": f"{name}.weight" if weight is not None else None,
+        "bias_name": f"{name}.bias" if bias is not None else None,
+        "weight_shape": list(weight.shape) if weight is not None else None,
+        "bias_shape": list(bias.shape) if bias is not None else None,
     }
 
 

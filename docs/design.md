@@ -16,6 +16,8 @@ The pipeline is staged:
 8. Dependency graph analysis
 9. Pruning action simulation
 10. Propagation trace and validation diagnostics
+11. PyTorch-to-ONNX correspondence
+12. Static shape evidence and dependency validation
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -59,6 +61,15 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 
 `pruning_plan_reporting.py`
 : Renders pruning plans and candidate actions as Markdown reports.
+
+`correspondence.py`
+: Builds conservative parameter-to-initializer and module-to-node correspondence evidence from structural inventory and ONNX graph summaries.
+
+`shape_evidence.py`
+: Collects tensor and node shape evidence from ONNX graph metadata without running inference.
+
+`dependency_validation.py`
+: Uses correspondence and shape evidence to identify validated units, supported dependency edges, and remaining manual-review items.
 
 ## Dependency Graph IR
 
@@ -130,6 +141,9 @@ reports/onnx_graphs/
 reports/pruning_hints/
 reports/dependency_graphs/
 reports/dependency_summaries/
+reports/correspondence/
+reports/shape_evidence/
+reports/validated_dependency_graphs/
 ```
 
 ## Current Limitations
@@ -141,16 +155,7 @@ reports/dependency_summaries/
 - No pruning masks or executable pruning plans are emitted yet.
 - No post-pruning validation is implemented yet.
 - Pruning plans are dry-run diagnostics only. They do not transform PyTorch modules or ONNX graphs.
-
-## Suggested Milestone 4
-
-Milestone 4 should add PyTorch-to-ONNX correspondence and stronger shape propagation:
-
-- Map PyTorch module names to ONNX nodes where possible.
-- Run or integrate ONNX shape inference more deeply.
-- Track tensor producers and consumers explicitly.
-- Convert dependency graph evidence into candidate pruning plans.
-- Still avoid modifying weights until candidate plans can be validated.
+- PyTorch-to-ONNX correspondence is heuristic and incomplete for models exported through fused or rewritten graph patterns.
 
 ## Pruning Action Simulation
 
@@ -174,3 +179,30 @@ rejected      The action is malformed or conflicts with known graph evidence.
 ```
 
 Ambiguity is expected for nontrivial transformer pruning until correspondence and shape propagation improve.
+
+## Correspondence and Shape Evidence
+
+Milestone 5 adds an evidence bridge between PyTorch structural summaries and ONNX graph summaries.
+
+The correspondence layer uses deterministic heuristics:
+
+- normalized exact name matches
+- suffix/name containment matches
+- module-name plus weight/bias token matches
+- shape-only fallback when unique enough to be useful
+
+The shape layer uses ONNX metadata only:
+
+- graph inputs and outputs
+- value_info shapes
+- initializer dimensions
+- node input/output tensor names
+
+Dependency validation is conservative:
+
+- Units are validated only with medium/high correspondence evidence.
+- Edges are shape-supported only when source and destination evidence has compatible shapes.
+- Q/K/V and MLP couplings gain confidence when corresponding projection nodes and dimensions line up.
+- Residual, embedding tying, and unmapped ONNX operations remain manual-review surfaces.
+
+This evidence can enrich pruning plans, but it does not make pruning executable by itself.

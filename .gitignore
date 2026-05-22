@@ -27,6 +27,12 @@ reports/propagation_traces/*
 !reports/propagation_traces/.gitkeep
 reports/pruning_action_checks/*
 !reports/pruning_action_checks/.gitkeep
+reports/correspondence/*
+!reports/correspondence/.gitkeep
+reports/shape_evidence/*
+!reports/shape_evidence/.gitkeep
+reports/validated_dependency_graphs/*
+!reports/validated_dependency_graphs/.gitkeep
 
 *.onnx
 .DS_Store

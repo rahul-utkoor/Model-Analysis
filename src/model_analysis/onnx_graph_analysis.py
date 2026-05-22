@@ -149,6 +149,10 @@ def summarize_onnx_graph(onnx_path: Path, model_name: str, model_config: dict) -
         }
         for index, node in enumerate(model.graph.node)
     ]
+    value_info_shapes = infer_value_info_shapes(model)
+    initializer_shapes = infer_initializer_shapes(model)
+    tensor_shape_map = dict(value_info_shapes)
+    tensor_shape_map.update(initializer_shapes)
 
     return {
         "model_name": model_name,
@@ -163,10 +167,11 @@ def summarize_onnx_graph(onnx_path: Path, model_name: str, model_config: dict) -
             "op_type_counts": dict(op_counts),
         },
         "edge_summary": edge_summary(model),
-        "initializer_shapes": infer_initializer_shapes(model),
+        "initializer_shapes": initializer_shapes,
         "inputs": inputs,
         "outputs": outputs,
-        "value_info_shapes": infer_value_info_shapes(model),
+        "value_info_shapes": value_info_shapes,
+        "tensor_shape_map": tensor_shape_map,
         "initializers": initializers,
         "nodes": nodes,
         "pruning_relevant_nodes": find_pruning_relevant_onnx_nodes(model),
