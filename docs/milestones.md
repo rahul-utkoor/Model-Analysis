@@ -194,13 +194,37 @@ python scripts/build_pruning_map.py --model all --verbose
 python scripts/compare_pruning_maps.py --models all
 ```
 
-## Milestone 10: Proposed Next Step
+## Milestone 10: Dimension Variable IR and Symbolic Propagation Constraints
+
+Status: complete.
+
+Implemented:
+
+- Symbolic Dimension IR data model
+- Dimension variables from model pruning maps
+- Pruning-index variables for symbolic pruning selections
+- Constraint equations for MLP, QKV, residual, LayerNorm, tied-parameter, reshape, and unknown mappings
+- Union-find equivalence classes for equality, same-index, and tied dimensions
+- Blocked-dimension and unresolved-constraint tracking
+- MLIR-like `.pir` textual dump
+- Dimension IR build and comparison CLIs
+- Tests for Dimension IR construction, text dumps, and cross-model comparison
+
+Primary commands:
+
+```bash
+python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/build_dimension_ir.py --model all --verbose
+python scripts/compare_dimension_irs.py --models all
+```
+
+## Milestone 11: Proposed Next Step
 
 Recommended focus:
 
-- Improve dimension and constraint precision
-- Better tensor-shape extraction
-- Explicit dimension-variable IR
-- Symbolic equality classes for dimensions
-- Propagation equations
-- MLIR-like textual dump of pruning IR
+- Propagation analysis over the Dimension IR
+- Constraint solving
+- Legality checks for symbolic pruning actions
+- Blocked-region explanation
+- Forward/backward slice extraction
+- Minimal repair set computation

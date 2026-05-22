@@ -22,6 +22,7 @@ The pipeline is staged:
 14. Paired Linear structural repair and forward smoke validation
 15. BERT MLP block-level executable pruning
 16. Compiler-style pruning opportunity maps
+17. Dimension-variable IR and symbolic propagation constraints
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -111,6 +112,15 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 `pruning_map_compare.py`
 : Aggregates and compares pruning map summaries across configured models.
 
+`dimension_ir.py`
+: Converts pruning maps into symbolic dimension variables, pruning-index variables, constraint equations, equivalence classes, blocked dimensions, and unresolved constraints.
+
+`pruning_ir_text.py`
+: Renders a deterministic MLIR-like `.pir` textual dump of the pruning Dimension IR.
+
+`dimension_ir_compare.py`
+: Compares Dimension IR summaries across configured models.
+
 ## Dependency Graph IR
 
 The dependency graph is the current compiler-like IR for pruning analysis.
@@ -198,6 +208,10 @@ reports/model_pruning_maps/
 reports/pruning_opportunities/
 reports/propagation_constraints/
 reports/structural_risk_maps/
+reports/dimension_ir/
+reports/constraint_equations/
+reports/dimension_equivalence/
+reports/pruning_ir_dumps/
 ```
 
 ## Current Limitations
@@ -314,3 +328,27 @@ The pruning opportunity IR contains:
 - `ModelPruningMap`: a model-level artifact that groups dimensions, constraints, opportunities, risks, independent regions, coupled regions, and blocked regions
 
 The pruning map is the primary research artifact. It is intended to support later symbolic dimension analysis and legal pruning-space reasoning before any weight transformation is attempted.
+
+## Dimension Variable IR
+
+Milestone 10 turns descriptive pruning maps into a more analyzable symbolic IR.
+
+The Dimension IR contains:
+
+- `DimensionVariable`: a stable compiler-style variable for a model dimension such as `out_features`, `intermediate_dim`, `num_heads`, or `embedding_dim`
+- `PruningIndexVariable`: a symbolic set of indices selected for pruning along a dimension
+- `ConstraintEquation`: symbolic propagation rules such as `same_indices`, `eq`, `tied`, `reshape`, or `unknown`
+- `DimensionEquivalenceClass`: groups of dimensions connected by equality, same-index, or tied-parameter constraints
+- blocked dimensions and unresolved constraints for regions that cannot be legally transformed without stronger evidence
+
+The `.pir` dump is inspired by MLIR:
+
+```text
+pruning.module @bert-base-uncased {
+  pruning.dim %d0 owner("bert.encoder.layer.0.intermediate.dense") ...
+  pruning.constraint %c0 same_indices(%d0, %d1) ...
+  pruning.eq_class %e0 members(%d0, %d1) ...
+}
+```
+
+This is a textual research artifact, not executable MLIR. It exists to make pruning legality, symbolic propagation, and blocked-region analysis easier to inspect and reason about.

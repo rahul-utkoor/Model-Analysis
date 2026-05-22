@@ -447,6 +447,48 @@ reports/model_pruning_maps/comparison.md
 
 The goal is to reason about legal pruning spaces and pruning-information propagation before transforming weights. The pruning map is static evidence, not a correctness proof and not an executable pruning transform.
 
+## Dimension Variable IR
+
+Dimension variables are the compiler-style representation of prunable model dimensions. Index variables represent symbolic pruning selections. Constraint equations encode propagation rules such as MLP same-index coupling, QKV consistency, residual hidden equality, tied parameters, reshape preservation, and unknown mappings. Equivalence classes group dimensions that must be kept equal or pruned with the same symbolic index set.
+
+The `.pir` dump is a research textual IR inspired by MLIR. It is deterministic and human-readable, but it is not executable MLIR and does not require MLIR tooling.
+
+Build a Dimension IR for one model:
+
+```bash
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
+```
+
+Build Dimension IRs for all configured models:
+
+```bash
+python scripts/build_pruning_map.py --model all --verbose
+python scripts/build_dimension_ir.py --model all --verbose
+```
+
+Compare existing Dimension IR reports:
+
+```bash
+python scripts/compare_dimension_irs.py --models all
+```
+
+Generated outputs:
+
+```text
+reports/dimension_ir/<model>.json
+reports/dimension_ir/<model>.md
+reports/pruning_ir_dumps/<model>.pir
+reports/constraint_equations/<model>.json
+reports/constraint_equations/<model>.md
+reports/dimension_equivalence/<model>.json
+reports/dimension_equivalence/<model>.md
+reports/dimension_ir/comparison.json
+reports/dimension_ir/comparison.md
+```
+
+Dimension IR and pruning maps are the primary research artifacts. Executable pruning remains experimental backend support only.
+
 ## Pruning Action Simulation
 
 Milestone 4 adds a dry-run pruning planner. It does not modify weights, PyTorch modules, or ONNX graphs. It simulates how a proposed pruning action propagates through the dependency graph and writes diagnostics.

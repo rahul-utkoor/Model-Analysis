@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+"""Build symbolic Dimension IR from model pruning maps."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from model_analysis.dimension_ir import build_pruning_ir, pruning_ir_to_dict, pruning_ir_to_markdown, write_pruning_ir_json
+from model_analysis.paths import get_project_root, safe_model_name
+from model_analysis.pruning_ir_text import write_pruning_ir_text
+from model_analysis.registry import get_model_config, list_models
+from model_analysis.reporting import write_json, write_markdown
+
+
+def _load_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Build symbolic pruning Dimension IR.")
+    parser.add_argument("--model", required=True, help="Configured model name/HF ID or 'all'.")
+    parser.add_argument("--format", choices=["json", "md", "text", "all"], default="all")
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--fail-on-unresolved", action="store_true")
+    return parser.parse_args()
+
+
+def _selected_models(value: str) -> list[dict]:
+    if value == "all":
+        return [get_model_config(name) for name in list_models()]
+    return [get_model_config(value)]
+
+
+def _table(rows: list[dict], columns: list[str], limit: int = 250) -> str:
+    if not rows:
+        return "_None._"
+    selected = rows[:limit]
+    lines = ["| " + " | ".join(columns) + " |", "| " + " | ".join("---" for _ in columns) + " |"]
+    for row in selected:
+        lines.append("| " + " | ".join(str(row.get(column, "")) for column in columns) + " |")
+    return "\n".join(lines)
+
+
+def _constraints_markdown(model_name: str, equations: list[dict]) -> str:
+    return "\n".join(
+        [
+            f"# Constraint Equations: {model_name}",
+            "",
+            _table(equations, ["constraint_id", "lhs", "relation", "rhs", "constraint_type", "direction", "blocking", "confidence", "expression"]),
+            "",
+        ]
+    )
+
+
+def _equivalence_markdown(model_name: str, classes: list[dict]) -> str:
+    return "\n".join(
+        [
+            f"# Dimension Equivalence Classes: {model_name}",
+            "",
+            _table(classes, ["class_id", "class_type", "representative", "members", "size", "confidence", "constraints"]),
+            "",
+        ]
+    )
+
+
+def _write_outputs(root: Path, safe_name: str, ir, output_format: str) -> None:
+    data = pruning_ir_to_dict(ir)
+    if output_format in {"json", "all"}:
+        write_pruning_ir_json(ir, root / "reports" / "dimension_ir" / f"{safe_name}.json")
+        write_json({"model_name": ir.model_name, "constraint_equations": data["constraint_equations"]}, root / "reports" / "constraint_equations" / f"{safe_name}.json")
+        write_json({"model_name": ir.model_name, "equivalence_classes": data["equivalence_classes"]}, root / "reports" / "dimension_equivalence" / f"{safe_name}.json")
+    if output_format in {"md", "all"}:
+        write_markdown(pruning_ir_to_markdown(ir), root / "reports" / "dimension_ir" / f"{safe_name}.md")
+        write_markdown(_constraints_markdown(ir.model_name, data["constraint_equations"]), root / "reports" / "constraint_equations" / f"{safe_name}.md")
+        write_markdown(_equivalence_markdown(ir.model_name, data["equivalence_classes"]), root / "reports" / "dimension_equivalence" / f"{safe_name}.md")
+    if output_format in {"text", "all"}:
+        write_pruning_ir_text(ir, root / "reports" / "pruning_ir_dumps" / f"{safe_name}.pir")
+
+
+def main() -> int:
+    args = parse_args()
+    root = get_project_root()
+    try:
+        configs = _selected_models(args.model)
+    except Exception as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
+
+    failed = False
+    for config in configs:
+        safe_name = safe_model_name(config["hf_id"])
+        pruning_map_path = root / "reports" / "model_pruning_maps" / f"{safe_name}.json"
+        if not pruning_map_path.exists():
+            print(f"[missing] Model pruning map missing. Run: python scripts/build_pruning_map.py --model {config['name']}", file=sys.stderr)
+            failed = True
+            continue
+        ir = build_pruning_ir(_load_json(pruning_map_path))
+        _write_outputs(root, safe_name, ir, args.format)
+        if args.verbose:
+            summary = ir.summary
+            print(f"[dimension-ir] {config['name']}")
+            print(f"  dimensions: {summary['num_dimension_variables']}")
+            print(f"  equations: {summary['num_constraint_equations']}")
+            print(f"  equivalence_classes: {summary['num_equivalence_classes']}")
+            print(f"  unresolved: {summary['num_unresolved_constraints']}")
+            print(f"  blocked_dimensions: {summary['num_blocked_dimensions']}")
+        if args.fail_on_unresolved and ir.unresolved_constraints:
+            failed = True
+
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

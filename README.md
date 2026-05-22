@@ -45,6 +45,10 @@ reports/model_pruning_maps/  Compiler-style pruning opportunity maps (ignored by
 reports/pruning_opportunities/  Focused opportunity reports (ignored by git)
 reports/propagation_constraints/  Focused constraint reports (ignored by git)
 reports/structural_risk_maps/  Focused structural risk reports (ignored by git)
+reports/dimension_ir/  Symbolic Dimension IR reports (ignored by git)
+reports/constraint_equations/  Focused symbolic constraint equations (ignored by git)
+reports/dimension_equivalence/  Dimension equivalence class reports (ignored by git)
+reports/pruning_ir_dumps/  MLIR-like pruning IR text dumps (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -319,6 +323,27 @@ python scripts/compare_pruning_maps.py --models all
 ```
 
 Executable pruning modules are experimental validation backends. The main artifact is the model pruning map: a static IR for legal pruning spaces and propagation constraints.
+
+## Dimension Variable IR
+
+Dimension variables are the compiler-style representation of prunable model dimensions. Index variables represent symbolic pruning selections, constraint equations encode propagation rules, and equivalence classes capture dimensions that must be pruned consistently. The `.pir` dump is a research textual IR inspired by MLIR; it does not require MLIR tooling.
+
+Build one model’s Dimension IR:
+
+```bash
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
+```
+
+Build and compare Dimension IRs for all configured models:
+
+```bash
+python scripts/build_pruning_map.py --model all --verbose
+python scripts/build_dimension_ir.py --model all --verbose
+python scripts/compare_dimension_irs.py --models all
+```
+
+Dimension IR and pruning maps are the main research artifacts. Executable pruning remains experimental backend support only.
 
 ## First Push
 

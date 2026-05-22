@@ -61,6 +61,14 @@ reports/model_pruning_maps/*
 !reports/model_pruning_maps/.gitkeep
 reports/structural_risk_maps/*
 !reports/structural_risk_maps/.gitkeep
+reports/dimension_ir/*
+!reports/dimension_ir/.gitkeep
+reports/constraint_equations/*
+!reports/constraint_equations/.gitkeep
+reports/dimension_equivalence/*
+!reports/dimension_equivalence/.gitkeep
+reports/pruning_ir_dumps/*
+!reports/pruning_ir_dumps/.gitkeep
 
 *.onnx
 .DS_Store
