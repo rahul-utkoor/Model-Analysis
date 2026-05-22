@@ -242,7 +242,30 @@ python scripts/check_pruning_legality.py --model bert-base-uncased --dimension-v
 python scripts/explain_blocked_regions.py --model bert-base-uncased
 ```
 
-## Milestone 12: Proposed Next Step
+## Milestone 12: Demo Track and Research Walkthrough
+
+Status: complete.
+
+Implemented:
+
+- Guided demo documentation under `demos/`
+- Milestone-by-milestone walkthroughs for Milestones 1 through 11
+- Full research pipeline walkthrough
+- Research glossary for pruning/compiler terms
+- Demo shell scripts for the main analysis path
+- Formal demo-track documentation under `docs/demo_track.md`
+- Lightweight tests that verify demo documentation entry points
+
+Primary commands:
+
+```bash
+bash demo_scripts/run_demo_01_setup_check.sh
+PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
+```
+
+The demo track makes pruning maps and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
+
+## Milestone 13: Proposed Next Step
 
 Recommended focus:
 

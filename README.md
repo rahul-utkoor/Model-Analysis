@@ -4,6 +4,16 @@ Model Analysis is a research scaffold for structural analysis of neural networks
 
 The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
 
+## Guided Demo Track
+
+The best way to understand the repository is the guided demo track:
+
+- [Model-Analysis Demo Track](demos/README.md)
+- [Full Research Pipeline](demos/full_research_pipeline.md)
+- `demo_scripts/run_full_analysis_pipeline.sh`
+
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps and Dimension IR. Executable pruning support is optional and experimental backend work.
+
 ## Initial Supported Models
 
 | Name | Hugging Face ID | Task |
@@ -19,6 +29,8 @@ The first milestone is infrastructure: a clean repository structure, reproducibl
 ```text
 configs/                  Model registry configuration
 scripts/                  CLI utilities for downloads, ONNX export, and inspection
+demo_scripts/             Guided demo shell wrappers
+demos/                    Milestone-by-milestone learning walkthroughs
 src/model_analysis/       Reusable Python package code
 data/models/hf/           Local Hugging Face model snapshots (ignored by git)
 data/models/onnx/         Exported ONNX models (ignored by git)
@@ -64,6 +76,7 @@ Detailed project documentation lives in:
 - [Usage Guide](docs/usage.md)
 - [Design Notes](docs/design.md)
 - [Milestones](docs/milestones.md)
+- [Demo Track](docs/demo_track.md)
 
 ## Setup
 

@@ -1,0 +1,70 @@
+# Full Research Pipeline
+
+This is the coherent mainline demo for the repository. It intentionally skips executable pruning backends by default because the primary artifacts are analysis reports.
+
+## Single-model mainline
+
+```bash
+python scripts/download_models.py --model bert-base-uncased
+python scripts/export_to_onnx.py --model bert-base-uncased
+python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
+python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
+python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/list_pruning_dimensions.py --model bert-base-uncased --contains intermediate.dense --limit 10
+python scripts/check_pruning_legality.py \
+  --model bert-base-uncased \
+  --dimension-var <dimension_var_id> \
+  --count 4 \
+  --verbose
+python scripts/explain_blocked_regions.py --model bert-base-uncased
+```
+
+You can run the same mainline with:
+
+```bash
+bash demo_scripts/run_full_analysis_pipeline.sh
+```
+
+## Artifact ladder
+
+```text
+Model checkpoint
+  -> ONNX graph
+  -> Structural inventory
+  -> Dependency graph
+  -> Correspondence and shape evidence
+  -> Pruning opportunity map
+  -> Dimension IR
+  -> Legality check
+```
+
+Optional backend ladder:
+
+```text
+Executable backend dry run
+  -> Paired repair
+  -> BERT MLP pruning prototype
+```
+
+## What to inspect
+
+Read these reports in order:
+
+1. `reports/structural_inventory/bert-base-uncased.md`
+2. `reports/dependency_graphs/bert-base-uncased.md`
+3. `reports/correspondence/bert-base-uncased.md`
+4. `reports/model_pruning_maps/bert-base-uncased.md`
+5. `reports/dimension_ir/bert-base-uncased.md`
+6. `reports/pruning_ir_dumps/bert-base-uncased.pir`
+7. `reports/legality_checks/`
+
+## Mainline vs backend
+
+Milestones 6-8 are experimental lowering/backend demos. They are useful for validating structural hypotheses, but they are not required for the main analysis path.
+
+## Expected interpretation
+
+The pipeline should make pruning look less like "remove small weights" and more like a legality problem over dimensions, constraints, equivalence classes, and blocked regions.
+

@@ -2,6 +2,22 @@
 
 This repository is organized around a staged analysis pipeline. Each stage writes durable artifacts under `reports/` so later stages can run without reloading or re-exporting models.
 
+## Guided Demo Track
+
+For a learning-oriented path, start with:
+
+```bash
+bash demo_scripts/run_demo_01_setup_check.sh
+```
+
+Then follow [the demo track](../demos/README.md) or run the full single-model research pipeline:
+
+```bash
+PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
+```
+
+The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
+
 ## Environment Setup
 
 ```bash

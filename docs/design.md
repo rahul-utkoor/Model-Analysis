@@ -24,8 +24,28 @@ The pipeline is staged:
 16. Compiler-style pruning opportunity maps
 17. Dimension-variable IR and symbolic propagation constraints
 18. Dimension-IR propagation analysis and legality checking
+19. Demo track and research walkthrough
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
+
+## Demo Track
+
+Milestone 12 adds a guided learning layer over the existing pipeline. It does not add pruning functionality or analysis algorithms. Instead, it explains how to run and interpret the existing artifacts.
+
+The mainline demo ladder is:
+
+```text
+Model checkpoint
+  -> ONNX graph
+  -> Structural inventory
+  -> Dependency graph
+  -> Correspondence and shape evidence
+  -> Pruning opportunity map
+  -> Dimension IR
+  -> Legality check
+```
+
+Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but pruning maps and Dimension IR remain the primary research artifacts.
 
 ## Core Modules
 
