@@ -274,6 +274,72 @@ Caveats:
 - Ambiguous plans require `--allow-ambiguous`.
 - Use `--only-target` for the safest first experiments.
 
+## Paired Linear Repair and Forward Smoke Tests
+
+Milestone 7 adds the first structural consistency repair pattern: MLP expansion/projection paired Linear pruning. An expansion layer `out_features` prune can induce a matching projection layer `in_features` prune when the pruning plan explicitly contains `mlp_hidden_coupling`.
+
+Repair-plan-only flow:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --repair-pairs \
+  --write-repair-plan-only \
+  --allow-ambiguous \
+  --verbose
+```
+
+Dry-run with repair detection:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --repair-pairs \
+  --dry-run \
+  --allow-ambiguous \
+  --verbose
+```
+
+Execution with before/after smoke tests:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --repair-pairs \
+  --allow-ambiguous \
+  --smoke-test-before \
+  --smoke-test-after \
+  --verbose
+```
+
+Standalone forward smoke test:
+
+```bash
+python scripts/run_forward_smoke_test.py --model bert-base-uncased --device cpu --verbose
+```
+
+Generated outputs:
+
+```text
+reports/repair_plans/<model>__<execution-id>.json
+reports/repair_plans/<model>__<execution-id>.md
+reports/repair_transactions/<model>__<execution-id>.json
+reports/repair_transactions/<model>__<execution-id>.md
+reports/forward_smoke_tests/<model>__<execution-id>__before.json
+reports/forward_smoke_tests/<model>__<execution-id>__after.json
+```
+
+MLP paired repair is the first supported consistency repair. Attention-head pruning is still not executable by default. Residual and LayerNorm repairs remain manual review. Forward smoke tests only check executable shape consistency, not model quality.
+
 ## Pruning Action Simulation
 
 Milestone 4 adds a dry-run pruning planner. It does not modify weights, PyTorch modules, or ONNX graphs. It simulates how a proposed pruning action propagates through the dependency graph and writes diagnostics.

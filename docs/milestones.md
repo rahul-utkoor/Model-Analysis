@@ -128,14 +128,35 @@ python scripts/execute_pruning_plan.py --model bert-base-uncased --target-unit t
 python scripts/execute_pruning_plan.py --model bert-base-uncased --target-unit torch:linear:bert.encoder.layer.0.attention.self.query --dim out_features --indices 0,1,2,3 --only-target --allow-ambiguous --verbose
 ```
 
-## Milestone 7: Proposed Next Step
+## Milestone 7: Paired Linear Structural Repair and Forward Smoke Validation
+
+Status: complete.
+
+Implemented:
+
+- Paired Linear repair plan data model
+- MLP expansion/projection repair detection from explicit `mlp_hidden_coupling`
+- Atomic source `out_features` plus target `in_features` Linear repair
+- Repair plan and repair transaction reports
+- Forward smoke validation module and standalone CLI
+- Optional before/after smoke validation during pruning execution
+- Tests for repair detection, paired pruning atomicity, and smoke validation
+
+Primary commands:
+
+```bash
+python scripts/execute_pruning_plan.py --model bert-base-uncased --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense --dim out_features --indices 0,1,2,3 --repair-pairs --write-repair-plan-only --allow-ambiguous --verbose
+python scripts/execute_pruning_plan.py --model bert-base-uncased --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense --dim out_features --indices 0,1,2,3 --repair-pairs --dry-run --allow-ambiguous --verbose
+python scripts/run_forward_smoke_test.py --model bert-base-uncased --device cpu --verbose
+```
+
+## Milestone 8: Proposed Next Step
 
 Recommended focus:
 
-- Structural consistency repair for paired Linear layers
-- MLP `fc1` out_features with `fc2` in_features
-- Attention projection output with downstream input dimension
-- Forward-pass smoke tests on tiny models first
-- Very cautious transformer block-level tests near the end
-
-Milestone 7 should repair coordinated structural dependencies before attempting broader transformer pruning.
+- Transformer MLP block-level executable pruning
+- BERT `intermediate.dense` `out_features`
+- BERT `output.dense` `in_features`
+- Optional LayerNorm/residual validation without editing hidden size
+- Before/after forward smoke on one block, then full model
+- Explicit rejection for attention-head pruning until head-index mapping is proven

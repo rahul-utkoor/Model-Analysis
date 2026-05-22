@@ -19,6 +19,7 @@ The pipeline is staged:
 11. PyTorch-to-ONNX correspondence
 12. Static shape evidence and dependency validation
 13. Reversible Linear-only pruning execution
+14. Paired Linear structural repair and forward smoke validation
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -86,6 +87,18 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 
 `rollback.py`
 : Generates rollback manifests that describe created files and how to return to the original model directory.
+
+`repair_plan.py`
+: Defines paired Linear repair plans and transaction records.
+
+`repair_detection.py`
+: Detects explicit MLP and Linear hidden-dimension pair repairs from pruning plans and dependency edges.
+
+`paired_linear_pruning.py`
+: Applies atomic source `out_features` plus target `in_features` Linear repairs.
+
+`forward_validation.py`
+: Runs minimal forward smoke tests and summarizes output tensor structure.
 
 ## Dependency Graph IR
 
@@ -164,6 +177,9 @@ artifacts/pruned_models/
 reports/pruning_execution/
 reports/pruning_diffs/
 reports/rollback_manifests/
+reports/repair_plans/
+reports/repair_transactions/
+reports/forward_smoke_tests/
 ```
 
 ## Current Limitations
@@ -177,6 +193,7 @@ reports/rollback_manifests/
 - Pruning plans are dry-run diagnostics only. They do not transform PyTorch modules or ONNX graphs.
 - PyTorch-to-ONNX correspondence is heuristic and incomplete for models exported through fused or rewritten graph patterns.
 - Linear-only execution can create structurally edited checkpoints, but transformer-wide correctness is not guaranteed.
+- Paired Linear repair is limited to explicit MLP/hidden-dimension pairs; attention-head, residual, LayerNorm, and embedding repairs are not automatic.
 
 ## Pruning Action Simulation
 
@@ -239,3 +256,14 @@ Milestone 6 introduces a deliberately narrow executable transform:
 - Dry-run mode validates extraction and records skipped records without modifying the model.
 
 This prototype is useful for validating structural surgery mechanics. It is not yet a full transformer pruning system because adjacent layers, residual paths, LayerNorm parameters, configs, and ONNX graphs may still need coordinated repair.
+
+## Paired Linear Repair and Forward Smoke Validation
+
+Milestone 7 adds atomic paired Linear repair for the first safe structural pattern:
+
+- MLP expansion/intermediate `out_features` pruning
+- matching MLP projection/output `in_features` pruning
+
+The repair detector only emits executable repairs when the pruning plan or dependency graph explicitly represents the coupling. Attention output, residual, normalization, and embedding edges are recorded for manual review rather than rewritten.
+
+Forward smoke tests run minimal synthetic inputs through a model before or after pruning. A passing smoke test means the forward call executed and produced summarizable outputs. It does not prove task accuracy, calibration, or semantic equivalence.

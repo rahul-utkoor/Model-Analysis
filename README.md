@@ -35,6 +35,9 @@ artifacts/pruned_models/  Generated pruned model checkpoints (ignored by git)
 reports/pruning_execution/  Generated pruning execution reports (ignored by git)
 reports/pruning_diffs/  Generated pruning structural diffs (ignored by git)
 reports/rollback_manifests/  Generated rollback manifests (ignored by git)
+reports/repair_plans/  Generated paired Linear repair plans (ignored by git)
+reports/repair_transactions/  Generated paired repair transaction logs (ignored by git)
+reports/forward_smoke_tests/  Generated forward smoke validation reports (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -213,6 +216,44 @@ python scripts/execute_pruning_plan.py \
 ```
 
 This creates a new checkpoint under `artifacts/pruned_models/`. The original model directory remains untouched. This is not full transformer-valid pruning yet; it is a controlled prototype for module-level `nn.Linear` structural surgery.
+
+## Paired Linear Repair and Forward Smoke Tests
+
+Write a repair plan for an MLP expansion/projection pair:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --repair-pairs \
+  --write-repair-plan-only \
+  --allow-ambiguous \
+  --verbose
+```
+
+Dry-run paired repair detection:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --repair-pairs \
+  --dry-run \
+  --allow-ambiguous \
+  --verbose
+```
+
+Run a standalone forward smoke test:
+
+```bash
+python scripts/run_forward_smoke_test.py --model bert-base-uncased --device cpu --verbose
+```
+
+MLP paired repair is the first supported consistency repair. Attention-head pruning, residual repair, and LayerNorm repair remain manual-review items. Forward smoke tests only check executable shape consistency; they do not prove model quality.
 
 ## First Push
 

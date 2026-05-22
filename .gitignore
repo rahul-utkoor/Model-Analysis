@@ -41,6 +41,12 @@ reports/pruning_diffs/*
 !reports/pruning_diffs/.gitkeep
 reports/rollback_manifests/*
 !reports/rollback_manifests/.gitkeep
+reports/forward_smoke_tests/*
+!reports/forward_smoke_tests/.gitkeep
+reports/repair_plans/*
+!reports/repair_plans/.gitkeep
+reports/repair_transactions/*
+!reports/repair_transactions/.gitkeep
 
 *.onnx
 .DS_Store

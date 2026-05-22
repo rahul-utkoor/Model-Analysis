@@ -76,6 +76,10 @@ def pruning_execution_report_to_markdown(report: PruningExecutionReport) -> str:
     before_params = data.get("before_summary", {}).get("parameter_summary", {}).get("total_parameters")
     after_params = data.get("after_summary", {}).get("parameter_summary", {}).get("total_parameters")
     diff = data.get("diff_summary", {})
+    metadata = data.get("metadata", {})
+    repair_plan = metadata.get("repair_plan")
+    repair_transactions = metadata.get("repair_transactions", [])
+    smoke_tests = metadata.get("forward_smoke_tests", {})
     lines = [
         f"# Pruning Execution Report: {report.execution_id}",
         "",
@@ -122,6 +126,34 @@ def pruning_execution_report_to_markdown(report: PruningExecutionReport) -> str:
         "",
         f"- Manifest: `{report.rollback_manifest_path}`",
         "- Rollback means deleting the generated output directory and using the original source model directory.",
+        "",
+        "## Repair Plan",
+        "",
+        f"- Status: `{repair_plan.get('status') if isinstance(repair_plan, dict) else None}`",
+        f"- Repairs: `{len(repair_plan.get('repair_specs', [])) if isinstance(repair_plan, dict) else 0}`",
+        "",
+        "## Repair Transactions",
+        "",
+        _markdown_table(
+            repair_transactions,
+            ["repair_id", "source_module", "target_module", "source_old_shape", "source_new_shape", "target_old_shape", "target_new_shape", "status", "reason"],
+        ),
+        "",
+        "## Forward Smoke Validation",
+        "",
+        _markdown_table(
+            [
+                {"phase": phase, **result}
+                for phase, result in smoke_tests.items()
+                if isinstance(result, dict)
+            ],
+            ["phase", "status", "input_kind", "error_type", "error_message"],
+        ),
+        "",
+        "## Structural Consistency Notes",
+        "",
+        "- Paired repair metadata, when present, records source and target Linear dimension changes applied as repair transactions.",
+        "- Forward smoke validation only checks that a minimal forward pass executes and returns summarizable outputs.",
         "",
         "## Caveats",
         "",
