@@ -53,6 +53,14 @@ reports/block_validation/*
 !reports/block_validation/.gitkeep
 reports/block_pruning_diffs/*
 !reports/block_pruning_diffs/.gitkeep
+reports/pruning_opportunities/*
+!reports/pruning_opportunities/.gitkeep
+reports/propagation_constraints/*
+!reports/propagation_constraints/.gitkeep
+reports/model_pruning_maps/*
+!reports/model_pruning_maps/.gitkeep
+reports/structural_risk_maps/*
+!reports/structural_risk_maps/.gitkeep
 
 *.onnx
 .DS_Store

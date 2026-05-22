@@ -41,6 +41,10 @@ reports/forward_smoke_tests/  Generated forward smoke validation reports (ignore
 reports/block_pruning/  Generated BERT MLP block pruning reports (ignored by git)
 reports/block_validation/  Generated block-level forward smoke reports (ignored by git)
 reports/block_pruning_diffs/  Generated block-level structural diffs (ignored by git)
+reports/model_pruning_maps/  Compiler-style pruning opportunity maps (ignored by git)
+reports/pruning_opportunities/  Focused opportunity reports (ignored by git)
+reports/propagation_constraints/  Focused constraint reports (ignored by git)
+reports/structural_risk_maps/  Focused structural risk reports (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -290,7 +294,31 @@ python scripts/prune_bert_mlp_block.py \
   --verbose
 ```
 
-This is the first architecture-specific executable pruning path. It only reduces the BERT MLP intermediate dimension by pruning `intermediate.dense` `out_features` and `output.dense` `in_features` with the same indices. It preserves hidden size, does not prune attention heads, does not rewrite ONNX, and still requires downstream evaluation or fine-tuning for quality. Single-layer BERT MLP pruning creates non-uniform intermediate sizes, so standard Hugging Face reload paths may need custom metadata support in a later milestone.
+This is an experimental execution backend. It only reduces the BERT MLP intermediate dimension by pruning `intermediate.dense` `out_features` and `output.dense` `in_features` with the same indices. It preserves hidden size, does not prune attention heads, does not rewrite ONNX, and still requires downstream evaluation or fine-tuning for quality. Single-layer BERT MLP pruning creates non-uniform intermediate sizes, so standard Hugging Face reload paths may need custom metadata support in a later milestone.
+
+## Compiler-Style Pruning Opportunity Maps
+
+The primary research path of this repository is compiler-style structural analysis: identify pruning dimensions, propagation constraints, coupled regions, blocked regions, and structural risks before transforming weights.
+
+Full one-model analysis flow:
+
+```bash
+python scripts/download_models.py --model bert-base-uncased
+python scripts/export_to_onnx.py --model bert-base-uncased
+python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
+python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
+python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+```
+
+Build and compare maps for all configured models:
+
+```bash
+python scripts/build_pruning_map.py --model all --verbose
+python scripts/compare_pruning_maps.py --models all
+```
+
+Executable pruning modules are experimental validation backends. The main artifact is the model pruning map: a static IR for legal pruning spaces and propagation constraints.
 
 ## First Push
 

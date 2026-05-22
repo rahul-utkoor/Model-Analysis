@@ -394,6 +394,59 @@ reports/rollback_manifests/<model>__bert_mlp_layer_<L>__<execution-id>.json
 
 This path should preserve model hidden size, so residual and LayerNorm dimensions remain unchanged. It does not prune attention heads, rewrite ONNX, or prove accuracy preservation. Downstream evaluation and fine-tuning are still required for quality. Single-layer BERT MLP pruning creates non-uniform intermediate sizes, so standard Hugging Face reload paths may need custom metadata support in a later milestone.
 
+The executable pruning commands are experimental validation backends. They are useful for testing whether a structural hypothesis can be executed, but they are not the main research artifact.
+
+## Compiler-Style Pruning Opportunity Maps
+
+The main research path is compiler-style pruning opportunity analysis. It treats the model as a structural IR and emits:
+
+- pruning dimensions
+- propagation constraints
+- pruning opportunities
+- independent and coupled opportunity regions
+- blocked regions
+- structural risks
+
+Full one-model analysis flow:
+
+```bash
+python scripts/download_models.py --model bert-base-uncased
+python scripts/export_to_onnx.py --model bert-base-uncased
+python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
+python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
+python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+```
+
+Build maps for all configured models:
+
+```bash
+python scripts/build_pruning_map.py --model all --verbose
+```
+
+Compare existing maps across models:
+
+```bash
+python scripts/compare_pruning_maps.py --models all
+```
+
+Generated outputs:
+
+```text
+reports/model_pruning_maps/<model>.json
+reports/model_pruning_maps/<model>.md
+reports/pruning_opportunities/<model>.json
+reports/pruning_opportunities/<model>.md
+reports/propagation_constraints/<model>.json
+reports/propagation_constraints/<model>.md
+reports/structural_risk_maps/<model>.json
+reports/structural_risk_maps/<model>.md
+reports/model_pruning_maps/comparison.json
+reports/model_pruning_maps/comparison.md
+```
+
+The goal is to reason about legal pruning spaces and pruning-information propagation before transforming weights. The pruning map is static evidence, not a correctness proof and not an executable pruning transform.
+
 ## Pruning Action Simulation
 
 Milestone 4 adds a dry-run pruning planner. It does not modify weights, PyTorch modules, or ONNX graphs. It simulates how a proposed pruning action propagates through the dependency graph and writes diagnostics.

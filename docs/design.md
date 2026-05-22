@@ -21,6 +21,7 @@ The pipeline is staged:
 13. Reversible Linear-only pruning execution
 14. Paired Linear structural repair and forward smoke validation
 15. BERT MLP block-level executable pruning
+16. Compiler-style pruning opportunity maps
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -103,6 +104,12 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 
 `bert_mlp_pruning.py`
 : Detects and executes the BERT-specific MLP pruning pattern where `intermediate.dense` output channels and `output.dense` input channels are pruned together.
+
+`pruning_opportunity.py`
+: Defines the compiler-style pruning opportunity IR: pruning dimensions, propagation constraints, opportunities, structural risks, and model pruning maps.
+
+`pruning_map_compare.py`
+: Aggregates and compares pruning map summaries across configured models.
 
 ## Dependency Graph IR
 
@@ -187,6 +194,10 @@ reports/forward_smoke_tests/
 reports/block_pruning/
 reports/block_validation/
 reports/block_pruning_diffs/
+reports/model_pruning_maps/
+reports/pruning_opportunities/
+reports/propagation_constraints/
+reports/structural_risk_maps/
 ```
 
 ## Current Limitations
@@ -288,3 +299,18 @@ bert.encoder.layer.<L>.output.dense
 The executable transform prunes `intermediate.dense` `out_features` and applies the same indices to `output.dense` `in_features`. This reduces the feed-forward intermediate dimension while keeping the hidden dimension unchanged. Residual and LayerNorm dimensions should therefore remain unchanged, and attention modules are untouched.
 
 This path is intentionally separate from the generic dependency graph executor. It relies on a known BERT MLP block structure rather than broad graph heuristics. It still does not rewrite ONNX, evaluate task quality, fine-tune, or support attention-head pruning. Because standard BERT config stores one global `intermediate_size`, single-layer pruning creates non-uniform MLP sizes that may require custom reload metadata in a later milestone.
+
+Executable pruning modules are now treated as experimental validation backends. They help test whether a structural hypothesis can be carried into a concrete artifact, but they are not the main research direction.
+
+## Compiler-Style Pruning Opportunity Maps
+
+Milestone 9 returns the project to its core research objective: compiler-style structural analysis for pruning opportunities and pruning-information propagation.
+
+The pruning opportunity IR contains:
+
+- `PruningDimension`: a dimension variable attached to a unit, such as `out_features`, `intermediate_dim`, `num_heads`, or `embedding_dim`
+- `PropagationConstraint`: an equality, same-index, reshape-preserving, residual, QKV, MLP, tied-parameter, or unknown-mapping relation between dimensions
+- `PruningOpportunity`: a candidate pruning region with required constraints, affected units, propagation paths, risk level, and executability label
+- `ModelPruningMap`: a model-level artifact that groups dimensions, constraints, opportunities, risks, independent regions, coupled regions, and blocked regions
+
+The pruning map is the primary research artifact. It is intended to support later symbolic dimension analysis and legal pruning-space reasoning before any weight transformation is attempted.

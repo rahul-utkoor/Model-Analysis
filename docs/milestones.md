@@ -171,13 +171,36 @@ python scripts/prune_bert_mlp_block.py --model bert-base-uncased --layer 0 --ind
 python scripts/prune_bert_mlp_block.py --model bert-base-uncased --layer 0 --indices 0,1,2,3 --smoke-test-before --smoke-test-after --verbose
 ```
 
-## Milestone 9: Proposed Next Step
+## Milestone 9: Compiler-Style Pruning Opportunity Analysis
+
+Status: complete.
+
+Implemented:
+
+- Pruning opportunity IR for dimensions, propagation constraints, opportunities, and model pruning maps
+- Dimension extraction from dependency graphs
+- Constraint extraction from dependency edges and optional validation evidence
+- Opportunity inference for local Linear outputs, MLP intermediate dimensions, attention QKV structures, embeddings, ONNX MatMul/Gemm candidates, and blocked residual hidden-size regions
+- Structural risk maps
+- Per-model pruning map CLI
+- Cross-model pruning map comparison CLI
+- Tests for opportunity extraction, constraint typing, risk detection, and comparison matrices
+
+Primary commands:
+
+```bash
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+python scripts/build_pruning_map.py --model all --verbose
+python scripts/compare_pruning_maps.py --models all
+```
+
+## Milestone 10: Proposed Next Step
 
 Recommended focus:
 
-- Quality-aware pruning candidate selection
-- Rank BERT MLP intermediate neurons by simple weight norms
-- Generate prune indices by L1/L2 norm
-- Compare random vs norm-based candidate sets
-- Run forward smoke and structural diffs
-- Still avoid attention pruning
+- Improve dimension and constraint precision
+- Better tensor-shape extraction
+- Explicit dimension-variable IR
+- Symbolic equality classes for dimensions
+- Propagation equations
+- MLIR-like textual dump of pruning IR
