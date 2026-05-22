@@ -33,6 +33,14 @@ reports/shape_evidence/*
 !reports/shape_evidence/.gitkeep
 reports/validated_dependency_graphs/*
 !reports/validated_dependency_graphs/.gitkeep
+artifacts/pruned_models/*
+!artifacts/pruned_models/.gitkeep
+reports/pruning_execution/*
+!reports/pruning_execution/.gitkeep
+reports/pruning_diffs/*
+!reports/pruning_diffs/.gitkeep
+reports/rollback_manifests/*
+!reports/rollback_manifests/.gitkeep
 
 *.onnx
 .DS_Store

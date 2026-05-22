@@ -18,6 +18,7 @@ The pipeline is staged:
 10. Propagation trace and validation diagnostics
 11. PyTorch-to-ONNX correspondence
 12. Static shape evidence and dependency validation
+13. Reversible Linear-only pruning execution
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -70,6 +71,21 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 
 `dependency_validation.py`
 : Uses correspondence and shape evidence to identify validated units, supported dependency edges, and remaining manual-review items.
+
+`linear_pruning.py`
+: Performs validated row/column surgery on `torch.nn.Linear` modules while preserving dtype, device, bias presence, and `requires_grad`.
+
+`pruning_plan_executor.py`
+: Converts pruning plans into executable Linear prune specs and applies them to an in-memory model.
+
+`pruning_execution.py`
+: Defines execution report data structures and Markdown rendering.
+
+`pruning_diff.py`
+: Compares before/after structural summaries and reports changed Linear layers.
+
+`rollback.py`
+: Generates rollback manifests that describe created files and how to return to the original model directory.
 
 ## Dependency Graph IR
 
@@ -144,6 +160,10 @@ reports/dependency_summaries/
 reports/correspondence/
 reports/shape_evidence/
 reports/validated_dependency_graphs/
+artifacts/pruned_models/
+reports/pruning_execution/
+reports/pruning_diffs/
+reports/rollback_manifests/
 ```
 
 ## Current Limitations
@@ -156,6 +176,7 @@ reports/validated_dependency_graphs/
 - No post-pruning validation is implemented yet.
 - Pruning plans are dry-run diagnostics only. They do not transform PyTorch modules or ONNX graphs.
 - PyTorch-to-ONNX correspondence is heuristic and incomplete for models exported through fused or rewritten graph patterns.
+- Linear-only execution can create structurally edited checkpoints, but transformer-wide correctness is not guaranteed.
 
 ## Pruning Action Simulation
 
@@ -206,3 +227,15 @@ Dependency validation is conservative:
 - Residual, embedding tying, and unmapped ONNX operations remain manual-review surfaces.
 
 This evidence can enrich pruning plans, but it does not make pruning executable by itself.
+
+## Reversible Linear Pruning Prototype
+
+Milestone 6 introduces a deliberately narrow executable transform:
+
+- `nn.Linear` `out_features` pruning removes weight rows and matching bias entries.
+- `nn.Linear` `in_features` pruning removes weight columns and leaves bias unchanged.
+- The source model directory is never modified.
+- Execution writes a new artifact directory and rollback manifest.
+- Dry-run mode validates extraction and records skipped records without modifying the model.
+
+This prototype is useful for validating structural surgery mechanics. It is not yet a full transformer pruning system because adjacent layers, residual paths, LayerNorm parameters, configs, and ONNX graphs may still need coordinated repair.

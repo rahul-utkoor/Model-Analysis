@@ -31,6 +31,10 @@ reports/dependency_summaries/  Generated dependency analyzer summaries (ignored 
 reports/correspondence/  Generated PyTorch-to-ONNX correspondence reports (ignored by git)
 reports/shape_evidence/  Generated static shape evidence reports (ignored by git)
 reports/validated_dependency_graphs/  Dependency graph validation reports (ignored by git)
+artifacts/pruned_models/  Generated pruned model checkpoints (ignored by git)
+reports/pruning_execution/  Generated pruning execution reports (ignored by git)
+reports/pruning_diffs/  Generated pruning structural diffs (ignored by git)
+reports/rollback_manifests/  Generated rollback manifests (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -179,6 +183,36 @@ python scripts/simulate_pruning_action.py \
 ```
 
 Correspondence is heuristic and conservative. Shape evidence is static ONNX metadata. This still does not perform pruning.
+
+## Reversible PyTorch Linear Pruning
+
+Dry-run a Linear-only pruning action:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.attention.self.query \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --only-target \
+  --dry-run \
+  --verbose
+```
+
+Execute the same Linear-only structural surgery into a new artifact directory:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.attention.self.query \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --only-target \
+  --allow-ambiguous \
+  --verbose
+```
+
+This creates a new checkpoint under `artifacts/pruned_models/`. The original model directory remains untouched. This is not full transformer-valid pruning yet; it is a controlled prototype for module-level `nn.Linear` structural surgery.
 
 ## First Push
 

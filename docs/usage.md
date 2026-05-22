@@ -213,6 +213,67 @@ python scripts/simulate_pruning_action.py \
 
 Correspondence is heuristic and conservative. Shape evidence is static and derived from ONNX graph metadata. This still does not prune weights, rewrite PyTorch modules, or rewrite ONNX.
 
+## Reversible PyTorch Linear Pruning
+
+Milestone 6 adds the first executable transform, restricted to PyTorch `nn.Linear` `out_features` and `in_features` pruning. The output is a new local artifact; the source model is not modified.
+
+Dry run:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.attention.self.query \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --only-target \
+  --dry-run \
+  --verbose
+```
+
+Actual Linear-only execution:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --target-unit torch:linear:bert.encoder.layer.0.attention.self.query \
+  --dim out_features \
+  --indices 0,1,2,3 \
+  --only-target \
+  --allow-ambiguous \
+  --verbose
+```
+
+Execute from an existing plan JSON:
+
+```bash
+python scripts/execute_pruning_plan.py \
+  --model bert-base-uncased \
+  --plan-json reports/pruning_plans/<plan>.json \
+  --only-target \
+  --allow-ambiguous \
+  --verbose
+```
+
+Generated outputs:
+
+```text
+artifacts/pruned_models/<model>/<execution-id>/
+reports/pruning_execution/<model>__<execution-id>.json
+reports/pruning_execution/<model>__<execution-id>.md
+reports/pruning_diffs/<model>__<execution-id>.json
+reports/pruning_diffs/<model>__<execution-id>.md
+reports/rollback_manifests/<model>__<execution-id>.json
+reports/rollback_manifests/<model>__<execution-id>.md
+```
+
+Caveats:
+
+- Only `nn.Linear` surgery is supported.
+- ONNX is not rewritten.
+- End-to-end transformer correctness is not proven.
+- Ambiguous plans require `--allow-ambiguous`.
+- Use `--only-target` for the safest first experiments.
+
 ## Pruning Action Simulation
 
 Milestone 4 adds a dry-run pruning planner. It does not modify weights, PyTorch modules, or ONNX graphs. It simulates how a proposed pruning action propagates through the dependency graph and writes diagnostics.

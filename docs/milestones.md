@@ -108,12 +108,34 @@ python scripts/simulate_pruning_action.py --model bert-base-uncased --target-uni
 
 ## Milestone 6: Proposed Next Step
 
+Status: complete.
+
+Implemented:
+
+- Reversible PyTorch `nn.Linear` out_features pruning
+- Reversible PyTorch `nn.Linear` in_features pruning
+- Linear-only pruning plan executor
+- Dry-run and only-target execution modes
+- Pruning execution reports
+- Structural pruning diffs
+- Rollback manifests
+- Tests for Linear surgery, execution, diffs, and rollback
+
+Primary commands:
+
+```bash
+python scripts/execute_pruning_plan.py --model bert-base-uncased --target-unit torch:linear:bert.encoder.layer.0.attention.self.query --dim out_features --indices 0,1,2,3 --only-target --dry-run --verbose
+python scripts/execute_pruning_plan.py --model bert-base-uncased --target-unit torch:linear:bert.encoder.layer.0.attention.self.query --dim out_features --indices 0,1,2,3 --only-target --allow-ambiguous --verbose
+```
+
+## Milestone 7: Proposed Next Step
+
 Recommended focus:
 
-- Executable but reversible pruning transforms for a small subset first
-- Linear `out_features` and `in_features` pruning in PyTorch
-- Before/after structural checks
-- Rollback-safe artifacts
-- No broad ONNX graph rewrite until PyTorch behavior is validated
+- Structural consistency repair for paired Linear layers
+- MLP `fc1` out_features with `fc2` in_features
+- Attention projection output with downstream input dimension
+- Forward-pass smoke tests on tiny models first
+- Very cautious transformer block-level tests near the end
 
-Milestone 6 should introduce executable pruning only for a very small, well-understood layer type first.
+Milestone 7 should repair coordinated structural dependencies before attempting broader transformer pruning.
