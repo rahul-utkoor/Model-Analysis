@@ -1,0 +1,52 @@
+models:
+  - name: bert-base-uncased
+    hf_id: bert-base-uncased
+    task: masked-lm
+    local_dir: data/models/hf/bert-base-uncased
+    onnx_dir: data/models/onnx/bert-base-uncased
+    default_input_shape:
+      batch_size: 1
+      sequence_length: 16
+    notes: Baseline BERT encoder with masked language modeling head.
+
+  - name: distilbert-base-uncased
+    hf_id: distilbert-base-uncased
+    task: masked-lm
+    local_dir: data/models/hf/distilbert-base-uncased
+    onnx_dir: data/models/onnx/distilbert-base-uncased
+    default_input_shape:
+      batch_size: 1
+      sequence_length: 16
+    notes: Compact BERT-style encoder useful for comparing distilled transformer structure.
+
+  - name: gpt2
+    hf_id: gpt2
+    task: causal-lm
+    local_dir: data/models/hf/gpt2
+    onnx_dir: data/models/onnx/gpt2
+    default_input_shape:
+      batch_size: 1
+      sequence_length: 16
+    notes: Small decoder-only transformer for causal language modeling structure.
+
+  - name: opt-125m
+    hf_id: facebook/opt-125m
+    task: causal-lm
+    local_dir: data/models/hf/facebook__opt-125m
+    onnx_dir: data/models/onnx/facebook__opt-125m
+    default_input_shape:
+      batch_size: 1
+      sequence_length: 16
+    notes: Small OPT decoder-only model for pruning analysis in modern LLM-style blocks.
+
+  - name: vit-base-patch16-224
+    hf_id: google/vit-base-patch16-224
+    task: image-classification
+    local_dir: data/models/hf/google__vit-base-patch16-224
+    onnx_dir: data/models/onnx/google__vit-base-patch16-224
+    default_input_shape:
+      batch_size: 1
+      channels: 3
+      height: 224
+      width: 224
+    notes: Vision Transformer baseline with patch embeddings and encoder blocks.

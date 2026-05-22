@@ -1,0 +1,12 @@
+torch
+torchvision
+transformers
+datasets
+onnx
+onnxruntime
+pyyaml
+numpy
+networkx
+tabulate
+tqdm
+pytest
