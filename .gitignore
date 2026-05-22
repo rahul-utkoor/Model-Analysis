@@ -9,6 +9,16 @@ data/models/onnx/*
 !data/models/onnx/.gitkeep
 reports/model_summaries/*
 !reports/model_summaries/.gitkeep
+reports/structural_inventory/*
+!reports/structural_inventory/.gitkeep
+reports/onnx_graphs/*
+!reports/onnx_graphs/.gitkeep
+reports/pruning_hints/*
+!reports/pruning_hints/.gitkeep
+reports/dependency_graphs/*
+!reports/dependency_graphs/.gitkeep
+reports/dependency_summaries/*
+!reports/dependency_summaries/.gitkeep
 
 *.onnx
 .DS_Store

@@ -23,8 +23,22 @@ src/model_analysis/       Reusable Python package code
 data/models/hf/           Local Hugging Face model snapshots (ignored by git)
 data/models/onnx/         Exported ONNX models (ignored by git)
 reports/model_summaries/  Generated Markdown summaries (ignored by git)
+reports/structural_inventory/  Generated PyTorch inventory reports (ignored by git)
+reports/onnx_graphs/      Generated ONNX graph reports (ignored by git)
+reports/pruning_hints/    Generated pruning hint reports (ignored by git)
+reports/dependency_graphs/  Generated dependency graph reports (ignored by git)
+reports/dependency_summaries/  Generated dependency analyzer summaries (ignored by git)
+docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
+
+## Documentation
+
+Detailed project documentation lives in:
+
+- [Usage Guide](docs/usage.md)
+- [Design Notes](docs/design.md)
+- [Milestones](docs/milestones.md)
 
 ## Setup
 
@@ -54,6 +68,63 @@ Inspect one local model:
 ```bash
 python scripts/inspect_model.py --model bert-base-uncased
 ```
+
+## Structural Inventory
+
+Generate structural inventory reports for one downloaded model:
+
+```bash
+python scripts/generate_structural_inventory.py --model bert-base-uncased
+```
+
+Suggested first flow:
+
+```bash
+python scripts/download_models.py --model bert-base-uncased
+python scripts/export_to_onnx.py --model bert-base-uncased
+python scripts/generate_structural_inventory.py --model bert-base-uncased
+```
+
+Generated outputs:
+
+```text
+reports/structural_inventory/<model>.json  PyTorch module, parameter, layer, and pruning-group inventory
+reports/structural_inventory/<model>.md    Human-readable PyTorch structural inventory
+reports/onnx_graphs/<model>.json           ONNX graph node, initializer, IO, and pruning-relevant node inventory
+reports/onnx_graphs/<model>.md             Human-readable ONNX graph summary
+reports/pruning_hints/<model>.md           Conservative structural pruning hints and dependency caveats
+```
+
+Use `--require-onnx` when an ONNX report must exist, and `--format json|md|both` to control generated structural and ONNX report formats.
+
+## Dependency Graph Construction
+
+Build a conservative pruning-dependency graph from existing structural inventory reports:
+
+```bash
+python scripts/generate_structural_inventory.py --model bert-base-uncased
+python scripts/build_dependency_graph.py --model bert-base-uncased
+```
+
+Full single-model flow:
+
+```bash
+python scripts/download_models.py --model bert-base-uncased
+python scripts/export_to_onnx.py --model bert-base-uncased
+python scripts/generate_structural_inventory.py --model bert-base-uncased
+python scripts/build_dependency_graph.py --model bert-base-uncased
+```
+
+Generated dependency outputs:
+
+```text
+reports/dependency_graphs/<model>.json      Dependency graph IR with prunable units and dependency edges
+reports/dependency_graphs/<model>.md        Human-readable dependency graph report
+reports/dependency_summaries/<model>.json   Analyzer summary for targets, paths, constraints, and review items
+reports/dependency_summaries/<model>.md     Human-readable dependency summary
+```
+
+The dependency graph is a conservative static pruning-dependency IR. It is not an executable pruning transform yet and does not prove that a pruning decision is safe.
 
 ## First Push
 
