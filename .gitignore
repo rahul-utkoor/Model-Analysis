@@ -69,6 +69,14 @@ reports/dimension_equivalence/*
 !reports/dimension_equivalence/.gitkeep
 reports/pruning_ir_dumps/*
 !reports/pruning_ir_dumps/.gitkeep
+reports/legality_checks/*
+!reports/legality_checks/.gitkeep
+reports/propagation_slices/*
+!reports/propagation_slices/.gitkeep
+reports/repair_sets/*
+!reports/repair_sets/.gitkeep
+reports/ir_analysis/*
+!reports/ir_analysis/.gitkeep
 
 *.onnx
 .DS_Store

@@ -23,6 +23,7 @@ The pipeline is staged:
 15. BERT MLP block-level executable pruning
 16. Compiler-style pruning opportunity maps
 17. Dimension-variable IR and symbolic propagation constraints
+18. Dimension-IR propagation analysis and legality checking
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -121,6 +122,12 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 `dimension_ir_compare.py`
 : Compares Dimension IR summaries across configured models.
 
+`ir_graph.py`
+: Builds adjacency over Dimension IR constraints and extracts forward/backward propagation slices.
+
+`ir_analysis.py`
+: Performs static legality checks for symbolic pruning requests, computes minimal structural repair sets, and explains blocked pruning regions.
+
 ## Dependency Graph IR
 
 The dependency graph is the current compiler-like IR for pruning analysis.
@@ -212,6 +219,10 @@ reports/dimension_ir/
 reports/constraint_equations/
 reports/dimension_equivalence/
 reports/pruning_ir_dumps/
+reports/legality_checks/
+reports/propagation_slices/
+reports/repair_sets/
+reports/ir_analysis/
 ```
 
 ## Current Limitations
@@ -352,3 +363,18 @@ pruning.module @bert-base-uncased {
 ```
 
 This is a textual research artifact, not executable MLIR. It exists to make pruning legality, symbolic propagation, and blocked-region analysis easier to inspect and reason about.
+
+## Dimension-IR Legality Analysis
+
+Milestone 11 adds static analysis over the Dimension IR. Given a root dimension and symbolic or concrete pruning request, the analyzer determines whether the request is locally legal, legal with structural repairs, ambiguous, or rejected.
+
+The legality layer derives:
+
+- equivalent dimensions that must share pruning decisions
+- forward propagation slices
+- backward constraint slices
+- constraint satisfaction states
+- minimal structural repair sets
+- blocking reasons and unresolved mappings
+
+This layer does not modify weights or execute pruning. It is intended to support future constraint solving and pruning-legality proofs over the symbolic IR.

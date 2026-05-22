@@ -489,6 +489,39 @@ reports/dimension_ir/comparison.md
 
 Dimension IR and pruning maps are the primary research artifacts. Executable pruning remains experimental backend support only.
 
+## Dimension-IR Legality Analysis
+
+Milestone 11 adds a static compiler-analysis layer over Dimension IR. It checks symbolic pruning legality without touching model weights, extracts forward and backward propagation slices, reports minimal structural repair sets, and explains blocked regions.
+
+Example flow:
+
+```bash
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/list_pruning_dimensions.py --model bert-base-uncased --contains intermediate.dense
+python scripts/check_pruning_legality.py \
+  --model bert-base-uncased \
+  --dimension-var <dimension_var_id> \
+  --count 4 \
+  --verbose
+python scripts/explain_blocked_regions.py --model bert-base-uncased
+```
+
+Generated outputs:
+
+```text
+reports/legality_checks/<model>__<request>.json
+reports/legality_checks/<model>__<request>.md
+reports/propagation_slices/<model>__<request>__forward.json
+reports/propagation_slices/<model>__<request>__backward.json
+reports/repair_sets/<model>__<request>.json
+reports/repair_sets/<model>__<request>.md
+reports/ir_analysis/<model>__blocked_regions.json
+reports/ir_analysis/<model>__dimension_list.json
+```
+
+Legality analysis is static and conservative. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy. Pruning maps and Dimension IR remain the primary research artifacts; executable pruning remains experimental backend support only.
+
 ## Pruning Action Simulation
 
 Milestone 4 adds a dry-run pruning planner. It does not modify weights, PyTorch modules, or ONNX graphs. It simulates how a proposed pruning action propagates through the dependency graph and writes diagnostics.

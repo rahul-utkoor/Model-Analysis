@@ -49,6 +49,10 @@ reports/dimension_ir/  Symbolic Dimension IR reports (ignored by git)
 reports/constraint_equations/  Focused symbolic constraint equations (ignored by git)
 reports/dimension_equivalence/  Dimension equivalence class reports (ignored by git)
 reports/pruning_ir_dumps/  MLIR-like pruning IR text dumps (ignored by git)
+reports/legality_checks/  Static Dimension-IR legality reports (ignored by git)
+reports/propagation_slices/  Forward/backward propagation slice reports (ignored by git)
+reports/repair_sets/  Minimal structural repair-set reports (ignored by git)
+reports/ir_analysis/  Dimension IR helper analysis reports (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -344,6 +348,26 @@ python scripts/compare_dimension_irs.py --models all
 ```
 
 Dimension IR and pruning maps are the main research artifacts. Executable pruning remains experimental backend support only.
+
+## Dimension-IR Legality Analysis
+
+Legality analysis checks symbolic pruning requests against the Dimension IR without touching weights. It reports required same-index propagation, forward/backward slices, blocking constraints, unresolved mappings, and minimal structural repair sets.
+
+Example flow:
+
+```bash
+python scripts/build_pruning_map.py --model bert-base-uncased --verbose
+python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/list_pruning_dimensions.py --model bert-base-uncased --contains intermediate.dense
+python scripts/check_pruning_legality.py \
+  --model bert-base-uncased \
+  --dimension-var <dimension_var_id> \
+  --count 4 \
+  --verbose
+python scripts/explain_blocked_regions.py --model bert-base-uncased
+```
+
+This performs static legality analysis only. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy.
 
 ## First Push
 

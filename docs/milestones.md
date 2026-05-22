@@ -220,11 +220,34 @@ python scripts/compare_dimension_irs.py --models all
 
 ## Milestone 11: Proposed Next Step
 
+Status: complete.
+
+Implemented:
+
+- Symbolic pruning request model
+- Constraint adjacency and slicing helpers over Dimension IR
+- Static legality checker for symbolic/concrete pruning requests
+- Constraint satisfaction classification
+- Forward and backward propagation slices
+- Minimal structural repair-set computation
+- Blocked-region explanations
+- Dimension listing, legality check, and blocked-region CLIs
+- Tests for graph traversal, legality statuses, repair sets, invalid requests, and blocked-region mitigation
+
+Primary commands:
+
+```bash
+python scripts/list_pruning_dimensions.py --model bert-base-uncased --contains intermediate.dense
+python scripts/check_pruning_legality.py --model bert-base-uncased --dimension-var <dimension_var_id> --count 4 --verbose
+python scripts/explain_blocked_regions.py --model bert-base-uncased
+```
+
+## Milestone 12: Proposed Next Step
+
 Recommended focus:
 
-- Propagation analysis over the Dimension IR
-- Constraint solving
-- Legality checks for symbolic pruning actions
-- Blocked-region explanation
-- Forward/backward slice extraction
-- Minimal repair set computation
+- Improve precision of the Dimension IR
+- Better extraction of tensor axis semantics
+- Map ONNX reshape/transpose axes into symbolic dimension equations
+- Distinguish batch, sequence, hidden, intermediate, and head axes
+- Richer textual IR diagnostics
