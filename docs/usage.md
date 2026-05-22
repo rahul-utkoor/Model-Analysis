@@ -340,6 +340,60 @@ reports/forward_smoke_tests/<model>__<execution-id>__after.json
 
 MLP paired repair is the first supported consistency repair. Attention-head pruning is still not executable by default. Residual and LayerNorm repairs remain manual review. Forward smoke tests only check executable shape consistency, not model quality.
 
+## BERT MLP Block-Level Pruning
+
+Milestone 8 adds the first architecture-specific executable pruning path. It is narrower and safer than arbitrary dependency-graph execution because it only reduces the BERT MLP intermediate dimension:
+
+```text
+bert.encoder.layer.<L>.intermediate.dense out_features
+bert.encoder.layer.<L>.output.dense in_features
+```
+
+List detected targets:
+
+```bash
+python scripts/list_bert_mlp_targets.py --model bert-base-uncased
+```
+
+Dry run:
+
+```bash
+python scripts/prune_bert_mlp_block.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --indices 0,1,2,3 \
+  --dry-run \
+  --smoke-test-before \
+  --verbose
+```
+
+Actual execution:
+
+```bash
+python scripts/prune_bert_mlp_block.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --indices 0,1,2,3 \
+  --smoke-test-before \
+  --smoke-test-after \
+  --verbose
+```
+
+Generated outputs:
+
+```text
+artifacts/pruned_models/<model>/bert_mlp_layer_<L>_<execution-id>/
+reports/block_pruning/<model>__layer_<L>__<execution-id>.json
+reports/block_pruning/<model>__layer_<L>__<execution-id>.md
+reports/block_pruning_diffs/<model>__layer_<L>__<execution-id>.json
+reports/block_pruning_diffs/<model>__layer_<L>__<execution-id>.md
+reports/block_validation/<model>__layer_<L>__<execution-id>__before.json
+reports/block_validation/<model>__layer_<L>__<execution-id>__after.json
+reports/rollback_manifests/<model>__bert_mlp_layer_<L>__<execution-id>.json
+```
+
+This path should preserve model hidden size, so residual and LayerNorm dimensions remain unchanged. It does not prune attention heads, rewrite ONNX, or prove accuracy preservation. Downstream evaluation and fine-tuning are still required for quality. Single-layer BERT MLP pruning creates non-uniform intermediate sizes, so standard Hugging Face reload paths may need custom metadata support in a later milestone.
+
 ## Pruning Action Simulation
 
 Milestone 4 adds a dry-run pruning planner. It does not modify weights, PyTorch modules, or ONNX graphs. It simulates how a proposed pruning action propagates through the dependency graph and writes diagnostics.

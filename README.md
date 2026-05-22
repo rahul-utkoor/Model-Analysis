@@ -38,6 +38,9 @@ reports/rollback_manifests/  Generated rollback manifests (ignored by git)
 reports/repair_plans/  Generated paired Linear repair plans (ignored by git)
 reports/repair_transactions/  Generated paired repair transaction logs (ignored by git)
 reports/forward_smoke_tests/  Generated forward smoke validation reports (ignored by git)
+reports/block_pruning/  Generated BERT MLP block pruning reports (ignored by git)
+reports/block_validation/  Generated block-level forward smoke reports (ignored by git)
+reports/block_pruning_diffs/  Generated block-level structural diffs (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -254,6 +257,40 @@ python scripts/run_forward_smoke_test.py --model bert-base-uncased --device cpu 
 ```
 
 MLP paired repair is the first supported consistency repair. Attention-head pruning, residual repair, and LayerNorm repair remain manual-review items. Forward smoke tests only check executable shape consistency; they do not prove model quality.
+
+## BERT MLP Block-Level Pruning
+
+List executable BERT MLP targets:
+
+```bash
+python scripts/list_bert_mlp_targets.py --model bert-base-uncased
+```
+
+Dry-run layer 0 intermediate pruning:
+
+```bash
+python scripts/prune_bert_mlp_block.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --indices 0,1,2,3 \
+  --dry-run \
+  --smoke-test-before \
+  --verbose
+```
+
+Execute the same architecture-specific pruning path:
+
+```bash
+python scripts/prune_bert_mlp_block.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --indices 0,1,2,3 \
+  --smoke-test-before \
+  --smoke-test-after \
+  --verbose
+```
+
+This is the first architecture-specific executable pruning path. It only reduces the BERT MLP intermediate dimension by pruning `intermediate.dense` `out_features` and `output.dense` `in_features` with the same indices. It preserves hidden size, does not prune attention heads, does not rewrite ONNX, and still requires downstream evaluation or fine-tuning for quality. Single-layer BERT MLP pruning creates non-uniform intermediate sizes, so standard Hugging Face reload paths may need custom metadata support in a later milestone.
 
 ## First Push
 

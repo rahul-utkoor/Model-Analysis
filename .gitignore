@@ -47,6 +47,12 @@ reports/repair_plans/*
 !reports/repair_plans/.gitkeep
 reports/repair_transactions/*
 !reports/repair_transactions/.gitkeep
+reports/block_pruning/*
+!reports/block_pruning/.gitkeep
+reports/block_validation/*
+!reports/block_validation/.gitkeep
+reports/block_pruning_diffs/*
+!reports/block_pruning_diffs/.gitkeep
 
 *.onnx
 .DS_Store

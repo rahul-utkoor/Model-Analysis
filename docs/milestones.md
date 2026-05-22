@@ -150,13 +150,34 @@ python scripts/execute_pruning_plan.py --model bert-base-uncased --target-unit t
 python scripts/run_forward_smoke_test.py --model bert-base-uncased --device cpu --verbose
 ```
 
-## Milestone 8: Proposed Next Step
+## Milestone 8: BERT MLP Block-Level Executable Pruning
+
+Status: complete.
+
+Implemented:
+
+- BERT-style MLP block target detection
+- Architecture-specific prune specs for intermediate-dimension pruning
+- Executable `intermediate.dense` `out_features` plus `output.dense` `in_features` pruning
+- Block-level reports, diffs, validation reports, and rollback manifests
+- Target-list CLI and BERT MLP pruning CLI
+- Tiny BERT-like tests for detection, dry-run, execution, forward pass, and rejection cases
+
+Primary commands:
+
+```bash
+python scripts/list_bert_mlp_targets.py --model bert-base-uncased
+python scripts/prune_bert_mlp_block.py --model bert-base-uncased --layer 0 --indices 0,1,2,3 --dry-run --smoke-test-before --verbose
+python scripts/prune_bert_mlp_block.py --model bert-base-uncased --layer 0 --indices 0,1,2,3 --smoke-test-before --smoke-test-after --verbose
+```
+
+## Milestone 9: Proposed Next Step
 
 Recommended focus:
 
-- Transformer MLP block-level executable pruning
-- BERT `intermediate.dense` `out_features`
-- BERT `output.dense` `in_features`
-- Optional LayerNorm/residual validation without editing hidden size
-- Before/after forward smoke on one block, then full model
-- Explicit rejection for attention-head pruning until head-index mapping is proven
+- Quality-aware pruning candidate selection
+- Rank BERT MLP intermediate neurons by simple weight norms
+- Generate prune indices by L1/L2 norm
+- Compare random vs norm-based candidate sets
+- Run forward smoke and structural diffs
+- Still avoid attention pruning

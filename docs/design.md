@@ -20,6 +20,7 @@ The pipeline is staged:
 12. Static shape evidence and dependency validation
 13. Reversible Linear-only pruning execution
 14. Paired Linear structural repair and forward smoke validation
+15. BERT MLP block-level executable pruning
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -99,6 +100,9 @@ Each stage writes JSON and/or Markdown artifacts. JSON files are intended as mac
 
 `forward_validation.py`
 : Runs minimal forward smoke tests and summarizes output tensor structure.
+
+`bert_mlp_pruning.py`
+: Detects and executes the BERT-specific MLP pruning pattern where `intermediate.dense` output channels and `output.dense` input channels are pruned together.
 
 ## Dependency Graph IR
 
@@ -180,6 +184,9 @@ reports/rollback_manifests/
 reports/repair_plans/
 reports/repair_transactions/
 reports/forward_smoke_tests/
+reports/block_pruning/
+reports/block_validation/
+reports/block_pruning_diffs/
 ```
 
 ## Current Limitations
@@ -194,6 +201,7 @@ reports/forward_smoke_tests/
 - PyTorch-to-ONNX correspondence is heuristic and incomplete for models exported through fused or rewritten graph patterns.
 - Linear-only execution can create structurally edited checkpoints, but transformer-wide correctness is not guaranteed.
 - Paired Linear repair is limited to explicit MLP/hidden-dimension pairs; attention-head, residual, LayerNorm, and embedding repairs are not automatic.
+- BERT MLP block pruning reduces only the intermediate dimension; hidden-size and attention pruning are intentionally unsupported.
 
 ## Pruning Action Simulation
 
@@ -267,3 +275,16 @@ Milestone 7 adds atomic paired Linear repair for the first safe structural patte
 The repair detector only emits executable repairs when the pruning plan or dependency graph explicitly represents the coupling. Attention output, residual, normalization, and embedding edges are recorded for manual review rather than rewritten.
 
 Forward smoke tests run minimal synthetic inputs through a model before or after pruning. A passing smoke test means the forward call executed and produced summarizable outputs. It does not prove task accuracy, calibration, or semantic equivalence.
+
+## BERT MLP Block-Level Pruning
+
+Milestone 8 adds a direct architecture-specific pruning path for BERT encoder MLP blocks:
+
+```text
+bert.encoder.layer.<L>.intermediate.dense
+bert.encoder.layer.<L>.output.dense
+```
+
+The executable transform prunes `intermediate.dense` `out_features` and applies the same indices to `output.dense` `in_features`. This reduces the feed-forward intermediate dimension while keeping the hidden dimension unchanged. Residual and LayerNorm dimensions should therefore remain unchanged, and attention modules are untouched.
+
+This path is intentionally separate from the generic dependency graph executor. It relies on a known BERT MLP block structure rather than broad graph heuristics. It still does not rewrite ONNX, evaluate task quality, fine-tune, or support attention-head pruning. Because standard BERT config stores one global `intermediate_size`, single-layer pruning creates non-uniform MLP sizes that may require custom reload metadata in a later milestone.
