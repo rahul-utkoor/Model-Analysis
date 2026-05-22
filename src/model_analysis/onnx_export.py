@@ -85,6 +85,7 @@ def export_model_to_onnx(config: dict[str, Any], opset: int = 17) -> Path:
         input_names, inputs, dynamic_axes = _text_dummy_inputs(config, model, source_dir)
 
     wrapper = LogitsOnlyWrapper(model, input_names)
+    wrapper.eval()
     output_names = ["logits"]
 
     with torch.no_grad():
@@ -97,6 +98,7 @@ def export_model_to_onnx(config: dict[str, Any], opset: int = 17) -> Path:
             dynamic_axes=dynamic_axes,
             opset_version=opset,
             do_constant_folding=True,
+            dynamo=False,
         )
 
     onnx_model = onnx.load(output_path)

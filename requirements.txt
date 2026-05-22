@@ -3,6 +3,7 @@ torchvision
 transformers
 datasets
 onnx
+onnxscript
 onnxruntime
 pyyaml
 numpy

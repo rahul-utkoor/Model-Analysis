@@ -1,7 +1,9 @@
 .venv/
+conda-env/
 __pycache__/
 *.pyc
 .pytest_cache/
+*.egg-info/
 
 data/models/hf/*
 !data/models/hf/.gitkeep
