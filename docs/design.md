@@ -1,6 +1,6 @@
 # Design Notes
 
-Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is now the frontend-independent substrate intended for structural decomposition and future Structural Region Tree construction. The current analysis path intentionally stops before modifying weights.
+Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate and Structural Region Tree is its compiler-inspired semantic hierarchy. The current analysis path intentionally stops before modifying weights.
 
 ## Pipeline Design
 
@@ -29,6 +29,7 @@ The pipeline is staged:
 21. DAG motif and multi-join region structural analysis
 22. Netron-visualizable ONNX subgraph extraction
 23. Frontend-independent Tensor Graph IR import and reporting
+24. Structural Region Tree construction over Tensor IR
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -43,6 +44,7 @@ Model checkpoint
   -> ONNX frontend graph
   -> Structural inventory
   -> Tensor Graph IR
+  -> Structural Region Tree
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
@@ -53,7 +55,7 @@ Model checkpoint
   -> Legality check
 ```
 
-Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but Tensor IR, pruning maps, and Dimension IR remain the primary research artifacts.
+Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but Tensor IR, Structural Region Tree, pruning maps, and Dimension IR remain the primary research artifacts.
 
 ## Core Modules
 
@@ -86,6 +88,18 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 
 `tensor_ir_compare.py`
 : Compares canonical operations, semantic roles, region hints, forks, and joins across Tensor IR graphs.
+
+`structural_region_tree.py`
+: Defines hierarchical semantic regions and preliminary region interfaces over Tensor IR.
+
+`structural_region_detection.py`
+: Detects conservative bounded region candidates, resolves overlap into a hierarchy, preserves primitive leaves, and infers structural interfaces.
+
+`structural_region_tree_text.py`
+: Renders readable `.srtree` compiler-style hierarchy dumps.
+
+`structural_region_tree_compare.py`
+: Compares semantic region types and pruning roles across constructed trees.
 
 `reporting.py`
 : Writes JSON, Markdown, CSV, and renders human-readable inventory and pruning-hint reports.

@@ -1,6 +1,6 @@
 # Model Analysis
 
-Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR is the intended substrate for structural region-tree and pruning-propagation research.
+Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR and its Structural Region Tree are the intended substrate for pruning-propagation research.
 
 The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
 
@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -80,6 +80,10 @@ reports/netron_subgraph_index/  Netron command indexes for fragments (ignored by
 reports/tensor_ir/  Frontend-independent Tensor Graph IR reports (ignored by git)
 reports/tensor_ir_dumps/  Readable tensor dataflow IR dumps (ignored by git)
 reports/tensor_ir_stats/  Canonical op/fork/join statistics (ignored by git)
+reports/structural_region_trees/  Compiler-inspired Tensor IR region trees (ignored by git)
+reports/structural_region_dumps/  Readable structural tree dumps (ignored by git)
+reports/structural_region_interfaces/  Preliminary region propagation interfaces (ignored by git)
+reports/structural_region_patterns/  Region type summaries (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -165,7 +169,24 @@ python scripts/build_tensor_ir.py --model all --verbose
 python scripts/compare_tensor_ir.py --models all
 ```
 
-Outputs include `reports/tensor_ir/<model>.json`, `reports/tensor_ir/<model>.md`, and `reports/tensor_ir_dumps/<model>.tir`. Tensor IR records canonical operations, tensor values, producer/consumer links, forks, joins, semantic roles, and region hints. ONNX supplies the current frontend input; future Structural Region Tree analysis should operate over Tensor IR rather than depend directly on ONNX.
+Outputs include `reports/tensor_ir/<model>.json`, `reports/tensor_ir/<model>.md`, and `reports/tensor_ir_dumps/<model>.tir`. Tensor IR records canonical operations, tensor values, producer/consumer links, forks, joins, semantic roles, and region hints. ONNX supplies the current frontend input; Structural Region Tree analysis operates over Tensor IR rather than depending directly on ONNX.
+
+## Structural Region Tree over Tensor IR
+
+Organize Tensor IR operations into compiler-inspired semantic regions:
+
+```bash
+python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
+```
+
+For all available Tensor IR graphs and comparison:
+
+```bash
+python scripts/build_structural_region_tree.py --model all --verbose
+python scripts/compare_structural_region_trees.py --models all
+```
+
+Outputs include `reports/structural_region_trees/<model>.md`, `reports/structural_region_dumps/<model>.srtree`, and preliminary interfaces in `reports/structural_region_interfaces/`. Primitive TensorOps remain leaves; internal regions capture projections, joins, forks, axis transforms, residual merges, and bounded attention skeletons for future propagation analysis.
 
 ## Dependency Graph Construction
 
@@ -485,7 +506,7 @@ python scripts/build_dimension_ir.py --model all --verbose
 python scripts/compare_dimension_irs.py --models all
 ```
 
-Tensor IR, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
+Tensor IR, Structural Region Tree, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
 
 ## Dimension-IR Legality Analysis
 

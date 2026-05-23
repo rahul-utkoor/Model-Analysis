@@ -20,3 +20,6 @@ echo "  reports/tensor_ir_dumps/${SAFE_MODEL}.tir"
 echo "  reports/tensor_ir_stats/${SAFE_MODEL}.md"
 echo
 echo "Tensor IR is frontend-independent; ONNX is the currently implemented importer."
+echo
+echo "Next region-hierarchy demo:"
+echo "  bash demo_scripts/run_demo_17_structural_region_tree.sh"

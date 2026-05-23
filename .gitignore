@@ -111,6 +111,14 @@ reports/tensor_ir_dumps/*
 !reports/tensor_ir_dumps/.gitkeep
 reports/tensor_ir_stats/*
 !reports/tensor_ir_stats/.gitkeep
+reports/structural_region_trees/*
+!reports/structural_region_trees/.gitkeep
+reports/structural_region_dumps/*
+!reports/structural_region_dumps/.gitkeep
+reports/structural_region_interfaces/*
+!reports/structural_region_interfaces/.gitkeep
+reports/structural_region_patterns/*
+!reports/structural_region_patterns/.gitkeep
 
 *.onnx
 .DS_Store

@@ -263,7 +263,7 @@ bash demo_scripts/run_demo_01_setup_check.sh
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track makes Tensor IR, pruning maps, and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
+The demo track makes Tensor IR, Structural Region Tree, pruning maps, and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
 
 ## Milestone 13: k-Node and Join-Aware ONNX Subgraph Structural Analysis
 
@@ -367,13 +367,38 @@ python scripts/build_tensor_ir.py --model all --verbose
 python scripts/compare_tensor_ir.py --models all
 ```
 
-ONNX is only one frontend representation. Tensor IR is the frontend-independent substrate intended for future Structural Region Tree and pruning-propagation analysis.
+ONNX is only one frontend representation. Tensor IR is the frontend-independent substrate intended for Structural Region Tree and pruning-propagation analysis.
 
-## Milestone 17: Proposed Next Step
+## Milestone 17: Structural Region Tree over Tensor IR
+
+Status: complete.
+
+Implemented:
+
+- `StructuralRegion`, `StructuralRegionInterface`, and `StructuralRegionTree` data model
+- Tensor IR adjacency and region-boundary computation
+- Primitive leaf construction and conservative semantic region detection
+- Projection, activation, normalization, axis-transform, residual-merge, feed-forward, attention-skeleton, fork, and join candidates
+- Priority-based overlap resolution with primitive leaves retained
+- Preliminary pruning/propagation region interfaces
+- Readable `.srtree` textual dumps and cross-model tree comparison
+- Guided demo and synthetic tests
+
+Primary commands:
+
+```bash
+python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
+python scripts/build_structural_region_tree.py --model all --verbose
+python scripts/compare_structural_region_trees.py --models all
+```
+
+This builds a compiler-inspired structural hierarchy over Tensor IR. It does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
+
+## Milestone 18: Proposed Next Step
 
 Recommended focus:
 
-- Construct a Structural Region Tree over Tensor IR
-- Detect reducible linear, join, fork, diamond, and nested regions over canonical operations
-- Collapse recognized regions into abstract nodes
-- Retain value-boundary and pruning-propagation annotations at each region level
+- Connect Structural Region Interfaces to Dimension IR constraints
+- Lower region boundaries into symbolic forward/backward propagation equations
+- Expose region-aware legality slices and blocked-region explanations
+- Refine decomposed feed-forward and attention structural matching conservatively

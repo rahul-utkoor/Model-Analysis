@@ -14,7 +14,11 @@ A frontend-independent tensor-dataflow representation of operations and tensor v
 
 ## Structural Region Tree
 
-A planned hierarchy that collapses recognized Tensor IR regions, such as sequential projections, forks, joins, and reconvergent motifs, into nested structural nodes for propagation analysis.
+A compiler-inspired hierarchy over Tensor IR that retains primitive TensorOps as leaves and summarizes recognized projections, transforms, forks, joins, and residual merges as semantic regions for propagation analysis.
+
+## Structural region interface
+
+A preliminary symbolic description of a region's pruning role, protected dimensions, propagated dimensions, blocked dimensions, and required structural constraints.
 
 ## Prunable unit
 
@@ -82,4 +86,4 @@ The smallest conservative set of structural updates implied by the legality anal
 
 ## Executable backend
 
-An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to Tensor IR, pruning maps, and Dimension IR.
+An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to Tensor IR, Structural Region Tree, pruning maps, and Dimension IR.

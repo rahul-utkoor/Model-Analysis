@@ -55,4 +55,4 @@ It does not build the Structural Region Tree yet, infer pruning legality by itse
 
 ## Connection to next milestone
 
-Future work should construct a Structural Region Tree over Tensor IR, collapsing linear, join, fork, diamond, and recurrently nested tensor-dataflow regions into a hierarchy used by pruning-propagation analysis.
+Milestone 17 constructs a Structural Region Tree over Tensor IR, collapsing recognized projections, joins, forks, axis transforms, and residual merge structure into a hierarchy used by future pruning-propagation analysis.
