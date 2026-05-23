@@ -119,10 +119,11 @@ def main() -> int:
     )
     print(f"[demo-export] successful: {report.summary['num_successful_exports']}")
     print(f"[demo-export] failed: {report.summary['num_failed_exports']}")
+    print(f"[baseline] Original ONNX model: {source_path}")
+    print(f"[baseline] Netron command: netron {source_path}")
     print(f"[index] reports/netron_subgraph_index/{report_name}.md")
     return 1 if report.failed_exports else 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

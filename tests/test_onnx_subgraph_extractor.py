@@ -9,8 +9,11 @@ from onnx import TensorProto, helper
 
 from model_analysis.onnx_subgraph_extractor import (
     extract_onnx_subgraph_model,
+    make_subgraph_export_report,
     make_fallback_value_info,
+    netron_index_to_markdown,
     select_subgraphs_for_export,
+    subgraph_export_report_to_markdown,
 )
 
 
@@ -99,3 +102,22 @@ def test_missing_selected_node_returns_failed_export(tmp_path: Path) -> None:
     assert result.status == "failed"
     assert "not found" in result.reason
     assert not (tmp_path / "bad.onnx").exists()
+
+
+def test_netron_reports_include_original_model_comparison_baseline(tmp_path: Path) -> None:
+    source_path = tmp_path / "source" / "model.onnx"
+    result = extract_onnx_subgraph_model(
+        tiny_dag_model(),
+        dag_record(),
+        tmp_path / "fragment.onnx",
+        "tiny",
+    )
+    report = make_subgraph_export_report("tiny", source_path, tmp_path, [result])
+
+    index = netron_index_to_markdown(report)
+    export_report = subgraph_export_report_to_markdown(report)
+
+    assert "Original Full Model (Comparison Baseline)" in index
+    assert f"netron {source_path}" in index
+    assert "Original Full Model Baseline" in export_report
+    assert f"netron {source_path}" in export_report

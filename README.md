@@ -288,7 +288,7 @@ python scripts/export_subgraph_onnx.py \
   --verbose
 ```
 
-Open an exported fragment using a command listed in `reports/netron_subgraph_index/bert-base-uncased__demo.md`. The fragments preserve selected nodes, boundary tensors, required initializers, available value/shape information, and provenance metadata. They are visualization artifacts with artificial boundaries, not semantically complete standalone models, and the source ONNX model is not modified.
+Open the original full graph and an exported fragment using the commands listed in `reports/netron_subgraph_index/bert-base-uncased__demo.md`. The index identifies `data/models/onnx/bert-base-uncased/model.onnx` as the comparison baseline. The fragments preserve selected nodes, boundary tensors, required initializers, available value/shape information, and provenance metadata. They are visualization artifacts with artificial boundaries, not semantically complete standalone models, and the source ONNX model is not modified.
 
 ## Reversible PyTorch Linear Pruning
 

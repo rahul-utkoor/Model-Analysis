@@ -46,6 +46,8 @@ Model checkpoint
   -> Legality check
 ```
 
+The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
+
 Optional backend ladder:
 
 ```text

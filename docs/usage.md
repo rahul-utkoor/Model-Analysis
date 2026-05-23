@@ -342,7 +342,7 @@ reports/netron_subgraph_index/<model>.md
 reports/netron_subgraph_index/<model>__demo.md
 ```
 
-Each extracted ONNX graph preserves its selected nodes, required initializers, artificial boundary inputs/outputs, available value information, opsets, and provenance metadata. It is intended for Netron structural inspection; it is not a semantically complete model fragment and it does not alter the original ONNX model.
+Each generated Netron index lists the original model at `data/models/onnx/<model>/model.onnx` first as the full-graph comparison baseline, followed by commands for its extracted fragments. Each extracted ONNX graph preserves its selected nodes, required initializers, artificial boundary inputs/outputs, available value information, opsets, and provenance metadata. It is intended for Netron structural inspection; it is not a semantically complete model fragment and it does not alter the original ONNX model.
 
 ## Reversible PyTorch Linear Pruning
 

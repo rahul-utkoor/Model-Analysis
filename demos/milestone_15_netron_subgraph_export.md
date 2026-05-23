@@ -48,7 +48,7 @@ python scripts/export_subgraph_onnx.py \
 
 ## What to inspect
 
-Open the Netron index and launch one exported file with its displayed `netron <file>` command. Inspect graph inputs and outputs as the artificial boundaries of the extracted region, then compare the visible nodes to the originating path, join, or DAG report.
+Open the Netron index. First launch the listed original full model at `data/models/onnx/bert-base-uncased/model.onnx`, then launch one extracted file with its displayed `netron <file>` command. Inspect graph inputs and outputs as the artificial boundaries of the extracted region, and compare that isolated view to the complete original graph.
 
 ## Expected interpretation
 
@@ -65,4 +65,3 @@ The extracted files are not standalone semantically complete models. They introd
 ## Connection to next milestone
 
 Visual confirmation of region structure can guide future work that feeds multi-branch evidence into pruning maps and Dimension IR constraints.
-

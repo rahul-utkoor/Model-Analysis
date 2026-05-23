@@ -324,7 +324,7 @@ Implemented:
 - Standalone ONNX fragment extraction preserving nodes, boundaries, initializers, shapes where available, opsets, and provenance metadata
 - Exact/filter-driven export CLI
 - Curated Netron demo export CLI
-- Export manifests and Netron command indexes
+- Export manifests and Netron command indexes that list the original full ONNX graph as the comparison baseline
 - Demo documentation and synthetic ONNX extractor tests
 
 Primary commands:

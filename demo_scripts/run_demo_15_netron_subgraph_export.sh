@@ -20,8 +20,10 @@ echo
 echo "Netron index:"
 echo "  reports/netron_subgraph_index/${SAFE_MODEL}__demo.md"
 echo
+echo "Original full model baseline:"
+echo "  netron data/models/onnx/${SAFE_MODEL}/model.onnx"
+echo
 echo "Example Netron command:"
 echo "  netron artifacts/subgraph_onnx/${SAFE_MODEL}/demo/<subgraph>.onnx"
 echo
 echo "These files are visualization artifacts only; the source ONNX model is unchanged."
-

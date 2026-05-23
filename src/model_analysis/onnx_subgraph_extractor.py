@@ -445,6 +445,7 @@ def _markdown_table(rows: list[dict[str, Any]], columns: list[str]) -> str:
 
 def subgraph_export_report_to_markdown(report: SubgraphExportReport | dict) -> str:
     data = subgraph_export_report_to_dict(report) if isinstance(report, SubgraphExportReport) else report
+    source_path = data.get("source_onnx_path", "")
     exports = []
     for item in data.get("exports", []):
         exports.append(
@@ -464,10 +465,18 @@ def subgraph_export_report_to_markdown(report: SubgraphExportReport | dict) -> s
             "",
             "## Summary",
             "",
-            f"- Source ONNX path: `{data.get('source_onnx_path', '')}`",
+            f"- Source ONNX path: `{source_path}`",
             f"- Output root: `{data.get('output_root', '')}`",
             f"- Successful exports: `{data.get('summary', {}).get('num_successful_exports', 0)}`",
             f"- Failed exports: `{data.get('summary', {}).get('num_failed_exports', 0)}`",
+            "",
+            "## Original Full Model Baseline",
+            "",
+            f"- File: `{source_path}`",
+            "",
+            "```bash",
+            f"netron {source_path}",
+            "```",
             "",
             "## Exported Subgraphs",
             "",
@@ -490,7 +499,25 @@ def subgraph_export_report_to_markdown(report: SubgraphExportReport | dict) -> s
 
 def netron_index_to_markdown(report: SubgraphExportReport | dict) -> str:
     data = subgraph_export_report_to_dict(report) if isinstance(report, SubgraphExportReport) else report
-    lines = [f"# Netron Subgraph Index: {data.get('model_name', '')}", ""]
+    source_path = data.get("source_onnx_path", "")
+    lines = [
+        f"# Netron Subgraph Index: {data.get('model_name', '')}",
+        "",
+        "## Original Full Model (Comparison Baseline)",
+        "",
+        "- Kind: `original_full_model`",
+        "- Pattern: `Complete source ONNX graph`",
+        f"- File: `{source_path}`",
+        "",
+        "```bash",
+        f"netron {source_path}",
+        "```",
+        "",
+        "Open this model alongside an extracted subgraph to compare full context with the isolated region.",
+        "",
+        "## Extracted Visualization Subgraphs",
+        "",
+    ]
     for item in data.get("exports", []):
         lines.extend(
             [
