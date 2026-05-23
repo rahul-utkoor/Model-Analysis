@@ -23,9 +23,10 @@ Main research path:
 2. [Milestone 2: Structural Inventory](milestone_02_structural_inventory.md)
 3. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
 4. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
-5. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
-6. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
-7. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
+5. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
+6. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
+7. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
+8. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
 
 Optional backend path:
 
@@ -56,4 +57,3 @@ After all five models are downloaded and exported, run the all-model analysis co
 - `google/vit-base-patch16-224`
 
 Use [Glossary](glossary.md) while reading reports.
-

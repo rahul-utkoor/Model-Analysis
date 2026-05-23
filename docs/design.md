@@ -25,6 +25,7 @@ The pipeline is staged:
 17. Dimension-variable IR and symbolic propagation constraints
 18. Dimension-IR propagation analysis and legality checking
 19. Demo track and research walkthrough
+20. k-node and join-aware ONNX subgraph structural analysis
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -40,6 +41,7 @@ Model checkpoint
   -> Structural inventory
   -> Dependency graph
   -> Correspondence and shape evidence
+  -> k-node and join-aware subgraph evidence
   -> Pruning opportunity map
   -> Dimension IR
   -> Legality check
@@ -148,6 +150,12 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 `ir_analysis.py`
 : Performs static legality checks for symbolic pruning requests, computes minimal structural repair sets, and explains blocked pruning regions.
 
+`subgraph_analysis.py`
+: Enumerates directed ONNX paths of bounded length and join-centered branch-merge regions, distinguishing bias adds from residual-style Add candidates and emitting report-level pruning/propagation evidence.
+
+`subgraph_compare.py`
+: Aggregates local path, join, residual, risk, and evidence pattern summaries across model reports.
+
 ## Dependency Graph IR
 
 The dependency graph is the current compiler-like IR for pruning analysis.
@@ -243,6 +251,12 @@ reports/legality_checks/
 reports/propagation_slices/
 reports/repair_sets/
 reports/ir_analysis/
+reports/subgraphs/
+reports/subgraph_patterns/
+reports/subgraph_pruning_analysis/
+reports/subgraph_dimension_evidence/
+reports/join_subgraphs/
+reports/residual_subgraphs/
 ```
 
 ## Current Limitations
@@ -398,3 +412,14 @@ The legality layer derives:
 - blocking reasons and unresolved mappings
 
 This layer does not modify weights or execute pruning. It is intended to support future constraint solving and pruning-legality proofs over the symbolic IR.
+
+## Join-Aware ONNX Subgraph Analysis
+
+Milestone 13 adds local pattern analysis over saved ONNX graph summaries:
+
+- directed simple paths of one through five nodes expose local projection, MLP, attention, normalization, and shape-transform patterns
+- join-centered subgraphs preserve branch-merge semantics around `Add`, `Sum`, and `Concat`
+- initializer-backed `Add` operations are kept as bias additions instead of being incorrectly promoted to residual joins
+- dataflow joins followed by `LayerNormalization` provide stronger residual hidden-shape evidence
+
+This evidence is report-level input for future pruning-map and Dimension-IR precision improvements. It does not alter models or automatically rewrite existing IR artifacts.

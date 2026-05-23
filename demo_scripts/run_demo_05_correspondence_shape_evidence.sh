@@ -19,5 +19,4 @@ echo "  reports/shape_evidence/${MODEL}.md"
 echo "  reports/validated_dependency_graphs/${MODEL}.md"
 echo
 echo "Next main research demo:"
-echo "  bash demo_scripts/run_demo_09_pruning_map.sh"
-
+echo "  bash demo_scripts/run_demo_13_subgraph_analysis.sh"

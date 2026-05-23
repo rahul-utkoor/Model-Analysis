@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps and Dimension IR. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps, Dimension IR, legality reports, and local/join-aware subgraph evidence. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -65,6 +65,12 @@ reports/legality_checks/  Static Dimension-IR legality reports (ignored by git)
 reports/propagation_slices/  Forward/backward propagation slice reports (ignored by git)
 reports/repair_sets/  Minimal structural repair-set reports (ignored by git)
 reports/ir_analysis/  Dimension IR helper analysis reports (ignored by git)
+reports/subgraphs/  k-node ONNX path and join-aware report bundles (ignored by git)
+reports/subgraph_patterns/  Aggregated local pattern reports (ignored by git)
+reports/subgraph_pruning_analysis/  Subgraph pruning evidence reports (ignored by git)
+reports/subgraph_dimension_evidence/  Candidate constraint evidence reports (ignored by git)
+reports/join_subgraphs/  Branch-merge subgraph reports (ignored by git)
+reports/residual_subgraphs/  Residual-like join candidate reports (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -215,6 +221,27 @@ python scripts/simulate_pruning_action.py \
 
 Correspondence is heuristic and conservative. Shape evidence is static ONNX metadata. This still does not perform pruning.
 
+## k-Node and Join-Aware Subgraph Analysis
+
+Analyze consecutive ONNX paths of one through five nodes and separately capture branch-merge regions such as residual-style `Add` joins:
+
+```bash
+python scripts/analyze_subgraphs.py \
+  --model bert-base-uncased \
+  --max-nodes 5 \
+  --branch-depth 2 \
+  --post-join-depth 2 \
+  --verbose
+```
+
+Compare existing subgraph reports across models:
+
+```bash
+python scripts/compare_subgraphs.py --models all
+```
+
+This report pass distinguishes bias additions from residual candidates, preserving join semantics that ordinary directed paths cannot represent. It produces local pruning and propagation evidence for future refinement of pruning maps and Dimension IR; it does not modify models.
+
 ## Reversible PyTorch Linear Pruning
 
 Dry-run a Linear-only pruning action:
@@ -329,6 +356,7 @@ python scripts/export_to_onnx.py --model bert-base-uncased
 python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
+python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/build_pruning_map.py --model bert-base-uncased --verbose
 ```
 

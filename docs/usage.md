@@ -16,7 +16,7 @@ Then follow [the demo track](../demos/README.md) or run the full single-model re
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
+The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, join-aware subgraph evidence, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
 
 ## Environment Setup
 
@@ -176,6 +176,7 @@ python scripts/export_to_onnx.py --model bert-base-uncased
 python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
+python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
 ```
 
@@ -187,6 +188,7 @@ python scripts/export_to_onnx.py --model all
 python scripts/generate_structural_inventory.py --model all --require-onnx
 python scripts/build_dependency_graph.py --model all --require-onnx --verbose
 python scripts/build_correspondence.py --model all --require-dependency-graph --verbose
+python scripts/analyze_subgraphs.py --model all --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/generate_candidate_actions.py --model all --simulate --limit 5
 ```
 
@@ -228,6 +230,45 @@ python scripts/simulate_pruning_action.py \
 ```
 
 Correspondence is heuristic and conservative. Shape evidence is static and derived from ONNX graph metadata. This still does not prune weights, rewrite PyTorch modules, or rewrite ONNX.
+
+## k-Node and Join-Aware Subgraph Analysis
+
+Analyze local directed ONNX paths and branch-merge subgraphs:
+
+```bash
+python scripts/analyze_subgraphs.py \
+  --model bert-base-uncased \
+  --max-nodes 5 \
+  --branch-depth 2 \
+  --post-join-depth 2 \
+  --verbose
+```
+
+Analyze all models with existing ONNX summaries and compare their patterns:
+
+```bash
+python scripts/analyze_subgraphs.py --model all --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
+python scripts/compare_subgraphs.py --models all
+```
+
+Generated outputs:
+
+```text
+reports/subgraphs/<model>.json
+reports/subgraphs/<model>.md
+reports/subgraph_patterns/<model>.json
+reports/subgraph_patterns/<model>.md
+reports/subgraph_pruning_analysis/<model>.json
+reports/subgraph_pruning_analysis/<model>.md
+reports/subgraph_dimension_evidence/<model>.json
+reports/subgraph_dimension_evidence/<model>.md
+reports/join_subgraphs/<model>.json
+reports/join_subgraphs/<model>.md
+reports/residual_subgraphs/<model>.json
+reports/residual_subgraphs/<model>.md
+```
+
+A `MatMul` followed by an initializer-backed `Add` is reported as a bias addition, not a residual merge. Joins combining two dataflow branches, especially before `LayerNormalization`, are reported separately as residual-like evidence. This pass produces reports only.
 
 ## Reversible PyTorch Linear Pruning
 
@@ -431,6 +472,7 @@ python scripts/export_to_onnx.py --model bert-base-uncased
 python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
+python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/build_pruning_map.py --model bert-base-uncased --verbose
 ```
 

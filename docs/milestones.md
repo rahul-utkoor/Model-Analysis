@@ -265,7 +265,32 @@ PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeli
 
 The demo track makes pruning maps and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
 
-## Milestone 13: Proposed Next Step
+## Milestone 13: k-Node and Join-Aware ONNX Subgraph Structural Analysis
+
+Status: complete.
+
+Implemented:
+
+- Directed ONNX path enumeration for lengths one through five
+- Join-centered subgraph extraction for `Add`, `Sum`, and `Concat` branch merges
+- Bias-add versus residual-add classification
+- Residual-like join and post-join normalization evidence
+- Local pattern classification for projection, MLP, attention, shape-transform, join, and residual structures
+- Report-level pruning/dimension evidence
+- Cross-model subgraph comparison
+- Guided demo documentation and synthetic tests
+
+Primary commands:
+
+```bash
+python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
+python scripts/analyze_subgraphs.py --model all --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
+python scripts/compare_subgraphs.py --models all
+```
+
+This pass performs structural analysis over saved ONNX summaries only. Residual and join evidence is intended to refine future pruning maps and Dimension IR constraints.
+
+## Milestone 14: Proposed Next Step
 
 Recommended focus:
 

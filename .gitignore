@@ -77,6 +77,18 @@ reports/repair_sets/*
 !reports/repair_sets/.gitkeep
 reports/ir_analysis/*
 !reports/ir_analysis/.gitkeep
+reports/subgraphs/*
+!reports/subgraphs/.gitkeep
+reports/subgraph_patterns/*
+!reports/subgraph_patterns/.gitkeep
+reports/subgraph_pruning_analysis/*
+!reports/subgraph_pruning_analysis/.gitkeep
+reports/subgraph_dimension_evidence/*
+!reports/subgraph_dimension_evidence/.gitkeep
+reports/residual_subgraphs/*
+!reports/residual_subgraphs/.gitkeep
+reports/join_subgraphs/*
+!reports/join_subgraphs/.gitkeep
 
 *.onnx
 .DS_Store
