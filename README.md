@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, and bounded DAG-region evidence. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -44,6 +44,7 @@ reports/correspondence/  Generated PyTorch-to-ONNX correspondence reports (ignor
 reports/shape_evidence/  Generated static shape evidence reports (ignored by git)
 reports/validated_dependency_graphs/  Dependency graph validation reports (ignored by git)
 artifacts/pruned_models/  Generated pruned model checkpoints (ignored by git)
+artifacts/subgraph_onnx/  Netron-visualizable extracted ONNX fragments (ignored by git)
 reports/pruning_execution/  Generated pruning execution reports (ignored by git)
 reports/pruning_diffs/  Generated pruning structural diffs (ignored by git)
 reports/rollback_manifests/  Generated rollback manifests (ignored by git)
@@ -74,6 +75,8 @@ reports/residual_subgraphs/  Residual-like join candidate reports (ignored by gi
 reports/dag_regions/  Fork, diamond, and join-fork-join region reports (ignored by git)
 reports/dag_region_patterns/  Aggregated DAG motif reports (ignored by git)
 reports/dag_region_pruning_evidence/  Multi-branch constraint evidence reports (ignored by git)
+reports/subgraph_exports/  Extracted ONNX fragment manifests (ignored by git)
+reports/netron_subgraph_index/  Netron command indexes for fragments (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -264,6 +267,29 @@ python scripts/compare_dag_regions.py --models all
 
 For example, `A,B -> C -> D,E -> F` is represented as a `join_fork_join` region: `C` is both merge and fanout, and `F` is the reconvergence join. This pass records multi-branch propagation evidence only and does not modify models.
 
+## Netron ONNX Subgraph Export
+
+Materialize selected path, join, or DAG-region analysis records as standalone ONNX visualization artifacts:
+
+```bash
+python scripts/export_demo_subgraphs.py \
+  --model bert-base-uncased \
+  --max-per-category 3 \
+  --verbose
+```
+
+Export a selected subset, such as DAG regions:
+
+```bash
+python scripts/export_subgraph_onnx.py \
+  --model bert-base-uncased \
+  --kind dag_region \
+  --max-exports 5 \
+  --verbose
+```
+
+Open an exported fragment using a command listed in `reports/netron_subgraph_index/bert-base-uncased__demo.md`. The fragments preserve selected nodes, boundary tensors, required initializers, available value/shape information, and provenance metadata. They are visualization artifacts with artificial boundaries, not semantically complete standalone models, and the source ONNX model is not modified.
+
 ## Reversible PyTorch Linear Pruning
 
 Dry-run a Linear-only pruning action:
@@ -380,6 +406,7 @@ python scripts/build_dependency_graph.py --model bert-base-uncased --require-onn
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
+python scripts/export_demo_subgraphs.py --model bert-base-uncased --max-per-category 3 --verbose
 python scripts/build_pruning_map.py --model bert-base-uncased --verbose
 ```
 

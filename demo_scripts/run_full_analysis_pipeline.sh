@@ -24,6 +24,7 @@ run_cmd "${PYTHON_BIN}" scripts/build_dependency_graph.py --model "${MODEL}" --r
 run_cmd "${PYTHON_BIN}" scripts/build_correspondence.py --model "${MODEL}" --require-dependency-graph --verbose
 run_cmd "${PYTHON_BIN}" scripts/analyze_subgraphs.py --model "${MODEL}" --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 run_cmd "${PYTHON_BIN}" scripts/analyze_dag_regions.py --model "${MODEL}" --max-branch-depth 4 --verbose
+run_cmd "${PYTHON_BIN}" scripts/export_demo_subgraphs.py --model "${MODEL}" --max-per-category 3 --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_pruning_map.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_dimension_ir.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/list_pruning_dimensions.py --model "${MODEL}" --contains intermediate.dense --limit 10
@@ -38,6 +39,7 @@ echo "  reports/join_subgraphs/${MODEL}.md"
 echo "  reports/subgraph_pruning_analysis/${MODEL}.md"
 echo "  reports/dag_regions/${MODEL}.md"
 echo "  reports/dag_region_pruning_evidence/${MODEL}.md"
+echo "  reports/netron_subgraph_index/${MODEL}__demo.md"
 echo "  reports/model_pruning_maps/${MODEL}.md"
 echo "  reports/dimension_ir/${MODEL}.md"
 echo "  reports/pruning_ir_dumps/${MODEL}.pir"

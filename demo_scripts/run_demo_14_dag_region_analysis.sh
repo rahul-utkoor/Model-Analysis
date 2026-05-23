@@ -22,5 +22,4 @@ echo "  reports/dag_region_patterns/${MODEL}.md"
 echo "  reports/dag_region_pruning_evidence/${MODEL}.md"
 echo
 echo "Next demo:"
-echo "  bash demo_scripts/run_demo_09_pruning_map.sh"
-
+echo "  bash demo_scripts/run_demo_15_netron_subgraph_export.sh"

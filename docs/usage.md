@@ -16,7 +16,7 @@ Then follow [the demo track](../demos/README.md) or run the full single-model re
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
+The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, Netron visualization fragments, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
 
 ## Environment Setup
 
@@ -178,6 +178,7 @@ python scripts/build_dependency_graph.py --model bert-base-uncased --require-onn
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
+python scripts/export_demo_subgraphs.py --model bert-base-uncased --max-per-category 3 --verbose
 python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
 ```
 
@@ -302,6 +303,46 @@ reports/dag_region_pruning_evidence/<model>.md
 ```
 
 Path analysis captures sequential neighborhoods; join analysis captures an individual merge. DAG-region analysis captures forks, diamonds, and `join_fork_join` motifs such as `A,B -> C -> D,E -> F`, where multi-branch propagation and reconvergence constraints must be considered together. This is report-only structural analysis.
+
+## Netron ONNX Subgraph Export
+
+Export a curated small bundle of visualization fragments:
+
+```bash
+python scripts/export_demo_subgraphs.py --model bert-base-uncased --max-per-category 3 --verbose
+```
+
+Export an exact recorded subgraph:
+
+```bash
+python scripts/export_subgraph_onnx.py \
+  --model bert-base-uncased \
+  --subgraph-id path_3_000012 \
+  --verbose
+```
+
+Filter exported fragments by analysis evidence:
+
+```bash
+python scripts/export_subgraph_onnx.py --model bert-base-uncased --kind join --pattern-contains "Join(Add)" --max-exports 10
+python scripts/export_subgraph_onnx.py --model bert-base-uncased --kind dag_region --max-exports 20
+python scripts/export_subgraph_onnx.py --model bert-base-uncased --kind path --pattern-contains "Softmax" --max-exports 10
+```
+
+Generated outputs:
+
+```text
+artifacts/subgraph_onnx/<model>/<kind>/<subgraph-id>.onnx
+artifacts/subgraph_onnx/<model>/demo/*.onnx
+reports/subgraph_exports/<model>.json
+reports/subgraph_exports/<model>.md
+reports/subgraph_exports/<model>__demo.json
+reports/subgraph_exports/<model>__demo.md
+reports/netron_subgraph_index/<model>.md
+reports/netron_subgraph_index/<model>__demo.md
+```
+
+Each extracted ONNX graph preserves its selected nodes, required initializers, artificial boundary inputs/outputs, available value information, opsets, and provenance metadata. It is intended for Netron structural inspection; it is not a semantically complete model fragment and it does not alter the original ONNX model.
 
 ## Reversible PyTorch Linear Pruning
 
@@ -507,6 +548,7 @@ python scripts/build_dependency_graph.py --model bert-base-uncased --require-onn
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
+python scripts/export_demo_subgraphs.py --model bert-base-uncased --max-per-category 3 --verbose
 python scripts/build_pruning_map.py --model bert-base-uncased --verbose
 ```
 

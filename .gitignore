@@ -35,6 +35,8 @@ reports/validated_dependency_graphs/*
 !reports/validated_dependency_graphs/.gitkeep
 artifacts/pruned_models/*
 !artifacts/pruned_models/.gitkeep
+artifacts/subgraph_onnx/*
+!artifacts/subgraph_onnx/.gitkeep
 reports/pruning_execution/*
 !reports/pruning_execution/.gitkeep
 reports/pruning_diffs/*
@@ -95,6 +97,10 @@ reports/dag_region_patterns/*
 !reports/dag_region_patterns/.gitkeep
 reports/dag_region_pruning_evidence/*
 !reports/dag_region_pruning_evidence/.gitkeep
+reports/subgraph_exports/*
+!reports/subgraph_exports/.gitkeep
+reports/netron_subgraph_index/*
+!reports/netron_subgraph_index/.gitkeep
 
 *.onnx
 .DS_Store

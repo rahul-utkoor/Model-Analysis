@@ -314,7 +314,29 @@ python scripts/compare_dag_regions.py --models all
 
 This pass captures fork, join, diamond, and join-fork-join regions but does not modify models.
 
-## Milestone 15: Proposed Next Step
+## Milestone 15: Netron-Visualizable ONNX Subgraph Export
+
+Status: complete.
+
+Implemented:
+
+- Path, join, and DAG-region record loading and filtered selection
+- Standalone ONNX fragment extraction preserving nodes, boundaries, initializers, shapes where available, opsets, and provenance metadata
+- Exact/filter-driven export CLI
+- Curated Netron demo export CLI
+- Export manifests and Netron command indexes
+- Demo documentation and synthetic ONNX extractor tests
+
+Primary commands:
+
+```bash
+python scripts/export_demo_subgraphs.py --model bert-base-uncased --max-per-category 3 --verbose
+python scripts/export_subgraph_onnx.py --model bert-base-uncased --kind dag_region --max-exports 5 --verbose
+```
+
+Extracted ONNX subgraphs are visualization artifacts and do not modify the source model.
+
+## Milestone 16: Proposed Next Step
 
 Recommended focus:
 

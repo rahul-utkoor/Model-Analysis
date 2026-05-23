@@ -12,6 +12,7 @@ python scripts/build_dependency_graph.py --model bert-base-uncased --require-onn
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
 python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
+python scripts/export_demo_subgraphs.py --model bert-base-uncased --max-per-category 3 --verbose
 python scripts/build_pruning_map.py --model bert-base-uncased --verbose
 python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
 python scripts/list_pruning_dimensions.py --model bert-base-uncased --contains intermediate.dense --limit 10
@@ -39,6 +40,7 @@ Model checkpoint
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
   -> DAG motif and multi-join region evidence
+  -> Netron visualization artifacts
   -> Pruning opportunity map
   -> Dimension IR
   -> Legality check
@@ -63,10 +65,11 @@ Read these reports in order:
 5. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
 6. `reports/dag_regions/bert-base-uncased.md`
 7. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
-8. `reports/model_pruning_maps/bert-base-uncased.md`
-9. `reports/dimension_ir/bert-base-uncased.md`
-10. `reports/pruning_ir_dumps/bert-base-uncased.pir`
-11. `reports/legality_checks/`
+8. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
+9. `reports/model_pruning_maps/bert-base-uncased.md`
+10. `reports/dimension_ir/bert-base-uncased.md`
+11. `reports/pruning_ir_dumps/bert-base-uncased.pir`
+12. `reports/legality_checks/`
 
 ## Mainline vs backend
 

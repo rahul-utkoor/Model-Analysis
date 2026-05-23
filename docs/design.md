@@ -27,6 +27,7 @@ The pipeline is staged:
 19. Demo track and research walkthrough
 20. k-node and join-aware ONNX subgraph structural analysis
 21. DAG motif and multi-join region structural analysis
+22. Netron-visualizable ONNX subgraph extraction
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -44,6 +45,7 @@ Model checkpoint
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
   -> DAG motif and multi-join region evidence
+  -> Netron visualization fragments
   -> Pruning opportunity map
   -> Dimension IR
   -> Legality check
@@ -164,6 +166,9 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 `dag_region_compare.py`
 : Aggregates DAG motif patterns, region kinds, risks, and suggested constraints across model reports.
 
+`onnx_subgraph_extractor.py`
+: Converts selected path, join, or DAG-region records into derived ONNX fragments with artificial graph boundaries, consumed initializers, available tensor metadata, and extraction provenance for Netron inspection.
+
 ## Dependency Graph IR
 
 The dependency graph is the current compiler-like IR for pruning analysis.
@@ -238,6 +243,7 @@ reports/correspondence/
 reports/shape_evidence/
 reports/validated_dependency_graphs/
 artifacts/pruned_models/
+artifacts/subgraph_onnx/
 reports/pruning_execution/
 reports/pruning_diffs/
 reports/rollback_manifests/
@@ -268,6 +274,8 @@ reports/residual_subgraphs/
 reports/dag_regions/
 reports/dag_region_patterns/
 reports/dag_region_pruning_evidence/
+reports/subgraph_exports/
+reports/netron_subgraph_index/
 ```
 
 ## Current Limitations
@@ -455,3 +463,15 @@ E -> F
 ```
 
 In this region, pruning a value associated with `C`, `D`, or `E` may impose compatibility at both `C` and `F`. The report records `fanout_same_indices`, `branch_output_compatibility`, `residual_equal_shape`, and reshape-related constraints conservatively. It does not modify models or rewrite Dimension IR automatically.
+
+## Netron ONNX Subgraph Export
+
+Milestone 15 converts selected structural-analysis records into derived ONNX graphs for visual inspection:
+
+- source node order is preserved
+- boundary inputs and outputs become explicit graph boundaries
+- consumed initializers and available `value_info` metadata are copied
+- opset imports and IR version are preserved
+- metadata identifies the source graph, subgraph record, pattern, and extraction reason
+
+The files under `artifacts/subgraph_onnx/` are visualization artifacts. They make local and multi-branch evidence easier to inspect in Netron, but they are not standalone semantically complete models and do not modify the source ONNX file.
