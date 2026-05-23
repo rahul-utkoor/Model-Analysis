@@ -13,7 +13,7 @@ Neural-network pruning can be treated like a compiler transformation problem:
 - blocked regions are failed or unresolved legality checks
 - executable pruning is a backend/lowering problem, not the main research artifact
 
-ONNX is currently one implemented frontend. The repository is therefore organized around frontend-independent analysis artifacts: Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, Dimension IR, and legality reports, with existing ONNX-specific evidence passes retained as frontend utilities.
+ONNX is currently one implemented frontend. The repository is therefore organized around frontend-independent analysis artifacts: Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality reports, pruning maps, and the earlier Dimension IR path, with existing ONNX-specific evidence passes retained as frontend utilities.
 
 ## Recommended demo path
 
@@ -24,14 +24,15 @@ Main research path:
 3. [Milestone 16: Frontend-Independent Tensor Graph IR](milestone_16_tensor_ir.md)
 4. [Milestone 17: Structural Region Tree](milestone_17_structural_region_tree.md)
 5. [Milestone 18: Region-Aware Dimension IR](milestone_18_region_dimension_ir.md)
-6. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
-7. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
-8. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
-9. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
-10. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
-11. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
-12. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
-13. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
+6. [Milestone 19: Region-Aware Legality Analysis](milestone_19_region_legality_analysis.md)
+7. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
+8. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
+9. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
+10. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
+11. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
+12. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
+13. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
+14. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
 
 Optional backend path:
 

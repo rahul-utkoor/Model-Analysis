@@ -11,6 +11,8 @@ python scripts/generate_structural_inventory.py --model bert-base-uncased --requ
 python scripts/build_tensor_ir.py --model bert-base-uncased --verbose
 python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
 python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 10
+python scripts/explain_region_blocked_dimensions.py --model bert-base-uncased
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
@@ -42,6 +44,7 @@ Model checkpoint
   -> Tensor Graph IR
   -> Structural Region Tree
   -> Region-Aware Dimension IR
+  -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
@@ -52,7 +55,7 @@ Model checkpoint
   -> Legality check
 ```
 
-ONNX currently supplies the frontend graph and Netron visualization. Tensor IR is the frontend-independent analysis substrate; the Structural Region Tree organizes that IR into compiler-inspired semantic regions; Region-Aware Dimension IR lowers region interfaces into symbolic dimensions and equations. The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
+ONNX currently supplies the frontend graph and Netron visualization. Tensor IR is the frontend-independent analysis substrate; the Structural Region Tree organizes that IR into compiler-inspired semantic regions; Region-Aware Dimension IR lowers region interfaces into symbolic dimensions and equations; region legality analysis answers symbolic requests over those dimensions. The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
 
 Optional backend ladder:
 
@@ -73,17 +76,19 @@ Read these reports in order:
 5. `reports/structural_region_dumps/bert-base-uncased.srtree`
 6. `reports/region_dimension_ir/bert-base-uncased.md`
 7. `reports/region_pruning_ir_dumps/bert-base-uncased.rdim`
-8. `reports/dependency_graphs/bert-base-uncased.md`
-9. `reports/correspondence/bert-base-uncased.md`
-10. `reports/join_subgraphs/bert-base-uncased.md`
-11. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
-12. `reports/dag_regions/bert-base-uncased.md`
-13. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
-14. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
-15. `reports/model_pruning_maps/bert-base-uncased.md`
-16. `reports/dimension_ir/bert-base-uncased.md`
-17. `reports/pruning_ir_dumps/bert-base-uncased.pir`
-18. `reports/legality_checks/`
+8. `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
+9. `reports/region_legality_checks/`
+10. `reports/dependency_graphs/bert-base-uncased.md`
+11. `reports/correspondence/bert-base-uncased.md`
+12. `reports/join_subgraphs/bert-base-uncased.md`
+13. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
+14. `reports/dag_regions/bert-base-uncased.md`
+15. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
+16. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
+17. `reports/model_pruning_maps/bert-base-uncased.md`
+18. `reports/dimension_ir/bert-base-uncased.md`
+19. `reports/pruning_ir_dumps/bert-base-uncased.pir`
+20. `reports/legality_checks/`
 
 ## Mainline vs backend
 

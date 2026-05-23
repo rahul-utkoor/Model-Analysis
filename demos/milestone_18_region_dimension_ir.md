@@ -55,4 +55,4 @@ It does not decide that a pruning request is executable, recover every tensor-ax
 
 ## Connection to next milestone
 
-Region-aware legality analysis can consume this IR to explain propagation slices and blocked decisions in terms of semantic regions rather than only flat graph units.
+Milestone 19 consumes this IR to explain propagation slices, blockers, and repair obligations in terms of semantic regions rather than only flat graph units.

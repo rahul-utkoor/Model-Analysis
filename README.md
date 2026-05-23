@@ -1,6 +1,6 @@
 # Model Analysis
 
-Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, and Region-Aware Dimension IR are the intended substrate for pruning-propagation research.
+Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, Region-Aware Dimension IR, and region legality analysis are the intended substrate for pruning-propagation research.
 
 The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
 
@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality reports, pruning maps, Dimension IR, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -88,6 +88,10 @@ reports/region_dimension_ir/  Semantic-region-derived symbolic dimensions (ignor
 reports/region_dimension_equivalence/  Region-scoped equivalence classes (ignored by git)
 reports/region_constraint_equations/  Region-derived constraints (ignored by git)
 reports/region_pruning_ir_dumps/  Textual region dimension IR dumps (ignored by git)
+reports/region_legality_checks/  Region-aware static legality checks (ignored by git)
+reports/region_propagation_slices/  Region-aware propagation slices (ignored by git)
+reports/region_repair_sets/  Region-level repair obligations (ignored by git)
+reports/region_blocked_analysis/  Protected/blocked region diagnostics (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -208,6 +212,27 @@ python scripts/compare_region_dimension_ir.py --models all
 ```
 
 Outputs include `reports/region_dimension_ir/<model>.md`, `reports/region_pruning_ir_dumps/<model>.rdim`, `reports/region_constraint_equations/`, and `reports/region_dimension_equivalence/`. This path makes semantic regions responsible for prunable, protected, propagated, blocked, and unresolved symbolic dimensions; it complements rather than replaces the existing pruning-map-derived Dimension IR.
+
+## Region-Aware Pruning Propagation Analysis
+
+List semantic-region dimensions and explain blocked/protected obligations:
+
+```bash
+python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 10
+python scripts/explain_region_blocked_dimensions.py --model bert-base-uncased
+```
+
+Check a symbolic or concrete request selected from the dimension list:
+
+```bash
+python scripts/check_region_pruning_legality.py \
+  --model bert-base-uncased \
+  --dimension-var <region_dimension_var_id> \
+  --count 4 \
+  --verbose
+```
+
+Outputs include `reports/region_legality_checks/`, `reports/region_propagation_slices/`, `reports/region_repair_sets/`, and `reports/region_blocked_analysis/`. The analyzer computes semantic-region propagation obligations, protected dimensions, unresolved mappings, and blockers; it is static analysis only.
 
 ## Dependency Graph Construction
 
@@ -527,7 +552,7 @@ python scripts/build_dimension_ir.py --model all --verbose
 python scripts/compare_dimension_irs.py --models all
 ```
 
-Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
+Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality analysis, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
 
 ## Dimension-IR Legality Analysis
 

@@ -1,6 +1,6 @@
 # Design Notes
 
-Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, and Region-Aware Dimension IR lowers region interfaces into symbolic equations. The current analysis path intentionally stops before modifying weights.
+Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, Region-Aware Dimension IR lowers region interfaces into symbolic equations, and region-aware legality analysis evaluates symbolic requests. The current analysis path intentionally stops before modifying weights.
 
 ## Pipeline Design
 
@@ -31,6 +31,7 @@ The pipeline is staged:
 23. Frontend-independent Tensor Graph IR import and reporting
 24. Structural Region Tree construction over Tensor IR
 25. Region-Aware Dimension IR construction from structural interfaces
+26. Region-aware pruning propagation and legality analysis
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -47,6 +48,7 @@ Model checkpoint
   -> Tensor Graph IR
   -> Structural Region Tree
   -> Region-Aware Dimension IR
+  -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
@@ -57,7 +59,7 @@ Model checkpoint
   -> Legality check
 ```
 
-Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR remain the primary research artifacts.
+Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality analysis, pruning maps, and Dimension IR remain the primary research artifacts.
 
 ## Core Modules
 
@@ -111,6 +113,12 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 
 `region_dimension_ir_compare.py`
 : Compares axis roles, region types, constraints, blocked dimensions, and unresolved mappings across RegionDimensionIR reports.
+
+`region_ir_graph.py`
+: Builds conservative inferred-direction adjacency and forward/backward slices over region-scoped constraints.
+
+`region_ir_analysis.py`
+: Checks semantic-region pruning requests, computes repair obligations, and explains blocked/protected or unresolved region dimensions.
 
 `reporting.py`
 : Writes JSON, Markdown, CSV, and renders human-readable inventory and pruning-hint reports.
@@ -467,6 +475,18 @@ Milestone 18 adds a semantic-region-derived path alongside the pruning-map-deriv
 - fork and join regions expose fanout and branch-compatibility equations
 
 The `.rdim` dump records these region variables, equations, and equivalence classes. This new path does not replace existing Dimension IR; it provides a structural-region semantic layer for later region-aware legality analysis. It does not modify models or execute pruning.
+
+## Region-Aware Pruning Propagation Analysis
+
+Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:
+
+- whether the requested region dimension is prunable, protected, or blocked
+- which same-index or fanout constraints require propagated selections
+- which residual and normalization constraints reject hidden-width changes
+- which attention or axis-transform mappings remain unresolved
+- forward propagation slices, backward constraint slices, and minimal repair obligations
+
+Region equations currently omit explicit direction because their relation type encodes the intended semantics. This analysis conservatively infers bidirectional traversal for equality-like and unresolved mappings and forward traversal for fanout propagation. The result is a diagnostic legality oracle only; it does not modify models or invoke experimental backends.
 
 ## Dimension-IR Legality Analysis
 

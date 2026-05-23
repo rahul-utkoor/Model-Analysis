@@ -263,7 +263,7 @@ bash demo_scripts/run_demo_01_setup_check.sh
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track makes Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
+The demo track makes Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality analysis, pruning maps, and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
 
 ## Milestone 13: k-Node and Join-Aware ONNX Subgraph Structural Analysis
 
@@ -417,11 +417,35 @@ python scripts/compare_region_dimension_ir.py --models all
 
 Region-Aware Dimension IR refines symbolic dimension reasoning using semantic structural regions. It does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
 
-## Milestone 19: Proposed Next Step
+## Milestone 19: Region-Aware Pruning Propagation Analysis
+
+Status: complete.
+
+Implemented:
+
+- `RegionPruningRequest`, `RegionConstraintSatisfaction`, `RegionPropagationSlice`, `RegionRepairSetItem`, and `RegionLegalityCheckResult` model
+- Inferred-direction constraint adjacency and forward/backward slice extraction over RegionDimensionIR
+- Static legality classification for semantic-region pruning requests
+- Minimal repair obligations for MLP, linear-bias, fanout, residual, normalization, axis-transform, attention, and join constraints
+- Protected/blocked dimension explanations with mitigations
+- Region dimension listing, legality-check, and blocked-dimension CLIs
+- Guided demo and synthetic tests
+
+Primary commands:
+
+```bash
+python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 10
+python scripts/explain_region_blocked_dimensions.py --model bert-base-uncased
+python scripts/check_region_pruning_legality.py --model bert-base-uncased --dimension-var <region_dimension_var_id> --count 4 --verbose
+```
+
+This milestone performs static region-aware legality analysis and does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
+
+## Milestone 20: Proposed Next Step
 
 Recommended focus:
 
-- Add legality and propagation slicing directly over Region-Aware Dimension IR
 - Link region-scoped dimensions to existing low-level Dimension IR variables where evidence agrees
+- Carry tensor-shape/axis evidence from Tensor IR into region dimension sizes and mappings
 - Explain blocked pruning requests at both region and primitive-op levels
 - Refine decomposed feed-forward and attention structural matching conservatively

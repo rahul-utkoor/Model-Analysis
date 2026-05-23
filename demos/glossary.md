@@ -24,6 +24,10 @@ A preliminary symbolic description of a region's pruning role, protected dimensi
 
 A symbolic IR derived from Structural Region Tree interfaces. It assigns dimensions to semantic regions and records region-imposed propagation, protection, blocking, and equivalence constraints.
 
+## Region-aware legality analysis
+
+A static query layer over Region-Aware Dimension IR that reports semantic-region propagation slices, blockers, unresolved axis mappings, and repair obligations for a requested dimension.
+
 ## Prunable unit
 
 A module, graph node, or higher-level structure that might expose a prunable dimension, such as a Linear layer, embedding matrix, Conv node, MLP pair, or Q/K/V attention group.
@@ -90,4 +94,4 @@ The smallest conservative set of structural updates implied by the legality anal
 
 ## Executable backend
 
-An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR.
+An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality analysis, pruning maps, and Dimension IR.

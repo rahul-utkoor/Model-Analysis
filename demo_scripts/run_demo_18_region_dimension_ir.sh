@@ -21,3 +21,5 @@ echo "  reports/region_constraint_equations/${SAFE_MODEL}.md"
 echo "  reports/region_dimension_equivalence/${SAFE_MODEL}.md"
 echo
 echo "This is static region-aware dimension analysis only; it does not modify models."
+echo "Next main research demo:"
+echo "  bash demo_scripts/run_demo_19_region_legality_analysis.sh"

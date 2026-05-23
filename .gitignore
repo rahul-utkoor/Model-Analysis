@@ -127,6 +127,14 @@ reports/region_constraint_equations/*
 !reports/region_constraint_equations/.gitkeep
 reports/region_pruning_ir_dumps/*
 !reports/region_pruning_ir_dumps/.gitkeep
+reports/region_legality_checks/*
+!reports/region_legality_checks/.gitkeep
+reports/region_propagation_slices/*
+!reports/region_propagation_slices/.gitkeep
+reports/region_repair_sets/*
+!reports/region_repair_sets/.gitkeep
+reports/region_blocked_analysis/*
+!reports/region_blocked_analysis/.gitkeep
 
 *.onnx
 .DS_Store
