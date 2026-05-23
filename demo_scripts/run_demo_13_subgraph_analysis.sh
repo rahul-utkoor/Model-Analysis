@@ -27,5 +27,4 @@ echo "  reports/join_subgraphs/${MODEL}.md"
 echo "  reports/residual_subgraphs/${MODEL}.md"
 echo
 echo "Next demo:"
-echo "  bash demo_scripts/run_demo_09_pruning_map.sh"
-
+echo "  bash demo_scripts/run_demo_14_dag_region_analysis.sh"

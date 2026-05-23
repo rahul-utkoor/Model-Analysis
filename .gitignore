@@ -89,6 +89,12 @@ reports/residual_subgraphs/*
 !reports/residual_subgraphs/.gitkeep
 reports/join_subgraphs/*
 !reports/join_subgraphs/.gitkeep
+reports/dag_regions/*
+!reports/dag_regions/.gitkeep
+reports/dag_region_patterns/*
+!reports/dag_region_patterns/.gitkeep
+reports/dag_region_pruning_evidence/*
+!reports/dag_region_pruning_evidence/.gitkeep
 
 *.onnx
 .DS_Store

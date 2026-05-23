@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps, Dimension IR, legality reports, and local/join-aware subgraph evidence. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, and bounded DAG-region evidence. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -71,6 +71,9 @@ reports/subgraph_pruning_analysis/  Subgraph pruning evidence reports (ignored b
 reports/subgraph_dimension_evidence/  Candidate constraint evidence reports (ignored by git)
 reports/join_subgraphs/  Branch-merge subgraph reports (ignored by git)
 reports/residual_subgraphs/  Residual-like join candidate reports (ignored by git)
+reports/dag_regions/  Fork, diamond, and join-fork-join region reports (ignored by git)
+reports/dag_region_patterns/  Aggregated DAG motif reports (ignored by git)
+reports/dag_region_pruning_evidence/  Multi-branch constraint evidence reports (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -242,6 +245,25 @@ python scripts/compare_subgraphs.py --models all
 
 This report pass distinguishes bias additions from residual candidates, preserving join semantics that ordinary directed paths cannot represent. It produces local pruning and propagation evidence for future refinement of pruning maps and Dimension IR; it does not modify models.
 
+## DAG Motif and Multi-Join Region Analysis
+
+Detect bounded fork, diamond, and join-fork-join regions that cannot be represented as one linear path or one merge-centered subgraph:
+
+```bash
+python scripts/analyze_dag_regions.py \
+  --model bert-base-uncased \
+  --max-branch-depth 4 \
+  --verbose
+```
+
+Compare existing DAG-region reports across models:
+
+```bash
+python scripts/compare_dag_regions.py --models all
+```
+
+For example, `A,B -> C -> D,E -> F` is represented as a `join_fork_join` region: `C` is both merge and fanout, and `F` is the reconvergence join. This pass records multi-branch propagation evidence only and does not modify models.
+
 ## Reversible PyTorch Linear Pruning
 
 Dry-run a Linear-only pruning action:
@@ -357,6 +379,7 @@ python scripts/generate_structural_inventory.py --model bert-base-uncased --requ
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
+python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
 python scripts/build_pruning_map.py --model bert-base-uncased --verbose
 ```
 

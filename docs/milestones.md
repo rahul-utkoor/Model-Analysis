@@ -290,7 +290,31 @@ python scripts/compare_subgraphs.py --models all
 
 This pass performs structural analysis over saved ONNX summaries only. Residual and join evidence is intended to refine future pruning maps and Dimension IR constraints.
 
-## Milestone 14: Proposed Next Step
+## Milestone 14: DAG Motif and Multi-Join Region Subgraph Analysis
+
+Status: complete.
+
+Implemented:
+
+- Fork-region detection for producer fanout
+- Bounded reconvergence search and diamond-region extraction
+- Join-fork-join detection for multi-join motifs such as `A,B -> C -> D,E -> F`
+- Canonical op-type patterns for multi-branch regions
+- Suggested fanout, branch compatibility, residual, and reshape constraints
+- DAG region report and cross-model comparison CLIs
+- Demo documentation and synthetic exact-motif tests
+
+Primary commands:
+
+```bash
+python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
+python scripts/analyze_dag_regions.py --model all --max-branch-depth 4 --verbose
+python scripts/compare_dag_regions.py --models all
+```
+
+This pass captures fork, join, diamond, and join-fork-join regions but does not modify models.
+
+## Milestone 15: Proposed Next Step
 
 Recommended focus:
 

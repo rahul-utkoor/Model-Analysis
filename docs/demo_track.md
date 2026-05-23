@@ -23,6 +23,7 @@ Model checkpoint
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
+  -> DAG motif and multi-join region evidence
   -> Pruning opportunity map
   -> Dimension IR
   -> Legality check
@@ -52,13 +53,14 @@ Executable backend dry run
 | 10 | Dimension IR | `.pir` textual dump | Symbolic compiler IR |
 | 11 | Legality analysis | Legality and slice reports | Static legality oracle |
 | 13 | Subgraph analysis | Path and join-centered evidence | Local pattern and join analysis |
+| 14 | DAG region analysis | Fork/diamond/join-fork-join evidence | Multi-branch dataflow analysis |
 
 ## Mainline vs Backend
 
 The main research path is:
 
 ```text
-1 -> 2 -> 3 -> 5 -> 13 -> 9 -> 10 -> 11
+1 -> 2 -> 3 -> 5 -> 13 -> 14 -> 9 -> 10 -> 11
 ```
 
 Milestones 6, 7, and 8 are experimental execution backends. They are useful for validating structural ideas, but they are not the primary contribution. New analysis work should usually extend pruning maps, Dimension IR, legality checking, or evidence precision before expanding executable pruning.
@@ -68,7 +70,7 @@ Milestones 6, 7, and 8 are experimental execution backends. They are useful for 
 1. Start with `demos/README.md` to frame pruning as compiler analysis.
 2. Run `demo_scripts/run_demo_01_setup_check.sh`.
 3. If model files are not present, run the download and ONNX export commands manually.
-4. Run the structural inventory, dependency graph, correspondence, subgraph analysis, pruning map, Dimension IR, and legality demos.
+4. Run the structural inventory, dependency graph, correspondence, subgraph analysis, DAG-region analysis, pruning map, Dimension IR, and legality demos.
 5. Open the reports in the artifact ladder order.
 6. Mention backend demos only as optional lowering experiments.
 
@@ -83,6 +85,8 @@ For a `bert-base-uncased` walkthrough, the key reports are:
 - `reports/shape_evidence/bert-base-uncased.md`
 - `reports/join_subgraphs/bert-base-uncased.md`
 - `reports/subgraph_pruning_analysis/bert-base-uncased.md`
+- `reports/dag_regions/bert-base-uncased.md`
+- `reports/dag_region_pruning_evidence/bert-base-uncased.md`
 - `reports/model_pruning_maps/bert-base-uncased.md`
 - `reports/dimension_ir/bert-base-uncased.md`
 - `reports/pruning_ir_dumps/bert-base-uncased.pir`

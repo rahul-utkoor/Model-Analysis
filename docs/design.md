@@ -26,6 +26,7 @@ The pipeline is staged:
 18. Dimension-IR propagation analysis and legality checking
 19. Demo track and research walkthrough
 20. k-node and join-aware ONNX subgraph structural analysis
+21. DAG motif and multi-join region structural analysis
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -42,6 +43,7 @@ Model checkpoint
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
+  -> DAG motif and multi-join region evidence
   -> Pruning opportunity map
   -> Dimension IR
   -> Legality check
@@ -156,6 +158,12 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 `subgraph_compare.py`
 : Aggregates local path, join, residual, risk, and evidence pattern summaries across model reports.
 
+`dag_region_analysis.py`
+: Detects bounded forks, reconvergent diamonds, and join-fork-join regions while preserving branch paths, internal edges, tensor boundaries, and suggested multi-branch constraints.
+
+`dag_region_compare.py`
+: Aggregates DAG motif patterns, region kinds, risks, and suggested constraints across model reports.
+
 ## Dependency Graph IR
 
 The dependency graph is the current compiler-like IR for pruning analysis.
@@ -257,6 +265,9 @@ reports/subgraph_pruning_analysis/
 reports/subgraph_dimension_evidence/
 reports/join_subgraphs/
 reports/residual_subgraphs/
+reports/dag_regions/
+reports/dag_region_patterns/
+reports/dag_region_pruning_evidence/
 ```
 
 ## Current Limitations
@@ -423,3 +434,24 @@ Milestone 13 adds local pattern analysis over saved ONNX graph summaries:
 - dataflow joins followed by `LayerNormalization` provide stronger residual hidden-shape evidence
 
 This evidence is report-level input for future pruning-map and Dimension-IR precision improvements. It does not alter models or automatically rewrite existing IR artifacts.
+
+## DAG Motif and Multi-Join Region Analysis
+
+Milestone 14 extends local analysis from paths and single joins to bounded DAG motifs:
+
+- a `fork` records one producer feeding multiple consumers
+- a `diamond` records fanout followed by reconvergence
+- a `join_fork_join` records a node that first merges branches, then fans out into branches that merge again
+
+The canonical example is:
+
+```text
+A -> C
+B -> C
+C -> D
+C -> E
+D -> F
+E -> F
+```
+
+In this region, pruning a value associated with `C`, `D`, or `E` may impose compatibility at both `C` and `F`. The report records `fanout_same_indices`, `branch_output_compatibility`, `residual_equal_shape`, and reshape-related constraints conservatively. It does not modify models or rewrite Dimension IR automatically.

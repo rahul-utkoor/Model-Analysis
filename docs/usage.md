@@ -16,7 +16,7 @@ Then follow [the demo track](../demos/README.md) or run the full single-model re
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, join-aware subgraph evidence, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
+The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
 
 ## Environment Setup
 
@@ -177,6 +177,7 @@ python scripts/generate_structural_inventory.py --model bert-base-uncased --requ
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
+python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
 python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
 ```
 
@@ -189,6 +190,7 @@ python scripts/generate_structural_inventory.py --model all --require-onnx
 python scripts/build_dependency_graph.py --model all --require-onnx --verbose
 python scripts/build_correspondence.py --model all --require-dependency-graph --verbose
 python scripts/analyze_subgraphs.py --model all --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
+python scripts/analyze_dag_regions.py --model all --max-branch-depth 4 --verbose
 python scripts/generate_candidate_actions.py --model all --simulate --limit 5
 ```
 
@@ -269,6 +271,37 @@ reports/residual_subgraphs/<model>.md
 ```
 
 A `MatMul` followed by an initializer-backed `Add` is reported as a bias addition, not a residual merge. Joins combining two dataflow branches, especially before `LayerNormalization`, are reported separately as residual-like evidence. This pass produces reports only.
+
+## DAG Motif and Multi-Join Region Analysis
+
+Analyze bounded fanout and reconvergence patterns:
+
+```bash
+python scripts/analyze_dag_regions.py \
+  --model bert-base-uncased \
+  --max-branch-depth 4 \
+  --verbose
+```
+
+Analyze and compare existing ONNX summaries for all configured models:
+
+```bash
+python scripts/analyze_dag_regions.py --model all --max-branch-depth 4 --verbose
+python scripts/compare_dag_regions.py --models all
+```
+
+Generated outputs:
+
+```text
+reports/dag_regions/<model>.json
+reports/dag_regions/<model>.md
+reports/dag_region_patterns/<model>.json
+reports/dag_region_patterns/<model>.md
+reports/dag_region_pruning_evidence/<model>.json
+reports/dag_region_pruning_evidence/<model>.md
+```
+
+Path analysis captures sequential neighborhoods; join analysis captures an individual merge. DAG-region analysis captures forks, diamonds, and `join_fork_join` motifs such as `A,B -> C -> D,E -> F`, where multi-branch propagation and reconvergence constraints must be considered together. This is report-only structural analysis.
 
 ## Reversible PyTorch Linear Pruning
 
@@ -473,6 +506,7 @@ python scripts/generate_structural_inventory.py --model bert-base-uncased --requ
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
+python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
 python scripts/build_pruning_map.py --model bert-base-uncased --verbose
 ```
 
