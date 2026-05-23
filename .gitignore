@@ -119,6 +119,14 @@ reports/structural_region_interfaces/*
 !reports/structural_region_interfaces/.gitkeep
 reports/structural_region_patterns/*
 !reports/structural_region_patterns/.gitkeep
+reports/region_dimension_ir/*
+!reports/region_dimension_ir/.gitkeep
+reports/region_dimension_equivalence/*
+!reports/region_dimension_equivalence/.gitkeep
+reports/region_constraint_equations/*
+!reports/region_constraint_equations/.gitkeep
+reports/region_pruning_ir_dumps/*
+!reports/region_pruning_ir_dumps/.gitkeep
 
 *.onnx
 .DS_Store

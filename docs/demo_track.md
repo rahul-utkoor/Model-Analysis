@@ -22,6 +22,7 @@ Model checkpoint
   -> Structural inventory
   -> Tensor Graph IR
   -> Structural Region Tree
+  -> Region-Aware Dimension IR
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
@@ -60,23 +61,24 @@ Executable backend dry run
 | 15 | Netron subgraph export | Extracted ONNX fragments and index | Visual IR inspection |
 | 16 | Tensor IR | Frontend-independent tensor graph and `.tir` dump | Frontend lowering into analysis IR |
 | 17 | Structural Region Tree | Semantic region hierarchy and interfaces | Compiler-style region analysis |
+| 18 | Region-Aware Dimension IR | `.rdim` region constraint dump | Semantic-region-derived symbolic dimensions |
 
 ## Mainline vs Backend
 
 The main research path is:
 
 ```text
-1 -> 2 -> 16 -> 17 -> 3 -> 5 -> 13 -> 14 -> 15 -> 9 -> 10 -> 11
+1 -> 2 -> 16 -> 17 -> 18 -> 3 -> 5 -> 13 -> 14 -> 15 -> 9 -> 10 -> 11
 ```
 
-Milestones 6, 7, and 8 are experimental execution backends. They are useful for validating structural ideas, but they are not the primary contribution. New analysis work should operate on Tensor IR and Structural Region Tree and extend pruning-map, Dimension-IR, legality, or evidence precision before expanding executable pruning.
+Milestones 6, 7, and 8 are experimental execution backends. They are useful for validating structural ideas, but they are not the primary contribution. New analysis work should operate on Tensor IR, Structural Region Tree, and Region-Aware Dimension IR and extend legality or evidence precision before expanding executable pruning.
 
 ## Recommended Presentation Sequence
 
 1. Start with `demos/README.md` to frame pruning as compiler analysis.
 2. Run `demo_scripts/run_demo_01_setup_check.sh`.
 3. If model files are not present, run the download and ONNX export commands manually.
-4. Run the structural inventory, Tensor IR, Structural Region Tree, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
+4. Run the structural inventory, Tensor IR, Structural Region Tree, Region-Aware Dimension IR, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
 5. Open the reports in the artifact ladder order.
 6. Mention backend demos only as optional lowering experiments.
 
@@ -90,6 +92,8 @@ For a `bert-base-uncased` walkthrough, the key reports are:
 - `reports/tensor_ir_dumps/bert-base-uncased.tir`
 - `reports/structural_region_trees/bert-base-uncased.md`
 - `reports/structural_region_dumps/bert-base-uncased.srtree`
+- `reports/region_dimension_ir/bert-base-uncased.md`
+- `reports/region_pruning_ir_dumps/bert-base-uncased.rdim`
 - `reports/dependency_graphs/bert-base-uncased.md`
 - `reports/correspondence/bert-base-uncased.md`
 - `reports/shape_evidence/bert-base-uncased.md`

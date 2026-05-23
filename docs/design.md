@@ -1,6 +1,6 @@
 # Design Notes
 
-Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate and Structural Region Tree is its compiler-inspired semantic hierarchy. The current analysis path intentionally stops before modifying weights.
+Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, and Region-Aware Dimension IR lowers region interfaces into symbolic equations. The current analysis path intentionally stops before modifying weights.
 
 ## Pipeline Design
 
@@ -30,6 +30,7 @@ The pipeline is staged:
 22. Netron-visualizable ONNX subgraph extraction
 23. Frontend-independent Tensor Graph IR import and reporting
 24. Structural Region Tree construction over Tensor IR
+25. Region-Aware Dimension IR construction from structural interfaces
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -45,6 +46,7 @@ Model checkpoint
   -> Structural inventory
   -> Tensor Graph IR
   -> Structural Region Tree
+  -> Region-Aware Dimension IR
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
@@ -55,7 +57,7 @@ Model checkpoint
   -> Legality check
 ```
 
-Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but Tensor IR, Structural Region Tree, pruning maps, and Dimension IR remain the primary research artifacts.
+Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR remain the primary research artifacts.
 
 ## Core Modules
 
@@ -100,6 +102,15 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 
 `structural_region_tree_compare.py`
 : Compares semantic region types and pruning roles across constructed trees.
+
+`region_dimension_ir.py`
+: Derives region-scoped symbolic dimensions, constraints, equivalence classes, blocked dimensions, and unresolved mappings from Structural Region Tree interfaces.
+
+`region_dimension_ir_text.py`
+: Renders deterministic `.rdim` textual dumps for semantic-region-derived dimensions and equations.
+
+`region_dimension_ir_compare.py`
+: Compares axis roles, region types, constraints, blocked dimensions, and unresolved mappings across RegionDimensionIR reports.
 
 `reporting.py`
 : Writes JSON, Markdown, CSV, and renders human-readable inventory and pruning-hint reports.
@@ -444,6 +455,18 @@ pruning.module @bert-base-uncased {
 ```
 
 This is a textual research artifact, not executable MLIR. It exists to make pruning legality, symbolic propagation, and blocked-region analysis easier to inspect and reason about.
+
+## Region-Aware Dimension IR
+
+Milestone 18 adds a semantic-region-derived path alongside the pruning-map-derived Dimension IR. Region interfaces now introduce scoped symbolic dimensions:
+
+- projection regions expose output and propagated input feature dimensions
+- feed-forward regions expose producer/consumer intermediate dimensions linked by same-index equations while protecting their hidden boundary
+- residual merge and normalization regions protect hidden dimensions with equality constraints
+- axis transform and attention skeleton regions retain unresolved mapping obligations conservatively
+- fork and join regions expose fanout and branch-compatibility equations
+
+The `.rdim` dump records these region variables, equations, and equivalence classes. This new path does not replace existing Dimension IR; it provides a structural-region semantic layer for later region-aware legality analysis. It does not modify models or execute pruning.
 
 ## Dimension-IR Legality Analysis
 

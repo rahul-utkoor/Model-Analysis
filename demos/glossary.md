@@ -20,6 +20,10 @@ A compiler-inspired hierarchy over Tensor IR that retains primitive TensorOps as
 
 A preliminary symbolic description of a region's pruning role, protected dimensions, propagated dimensions, blocked dimensions, and required structural constraints.
 
+## Region-Aware Dimension IR
+
+A symbolic IR derived from Structural Region Tree interfaces. It assigns dimensions to semantic regions and records region-imposed propagation, protection, blocking, and equivalence constraints.
+
 ## Prunable unit
 
 A module, graph node, or higher-level structure that might expose a prunable dimension, such as a Linear layer, embedding matrix, Conv node, MLP pair, or Q/K/V attention group.
@@ -86,4 +90,4 @@ The smallest conservative set of structural updates implied by the legality anal
 
 ## Executable backend
 
-An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to Tensor IR, Structural Region Tree, pruning maps, and Dimension IR.
+An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR.

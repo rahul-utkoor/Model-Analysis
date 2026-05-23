@@ -26,6 +26,7 @@ def test_all_milestone_demo_files_exist() -> None:
         "milestone_15_netron_subgraph_export.md",
         "milestone_16_tensor_ir.md",
         "milestone_17_structural_region_tree.md",
+        "milestone_18_region_dimension_ir.md",
     ]
     for name in expected:
         assert (REPO_ROOT / "demos" / name).exists()
@@ -38,6 +39,7 @@ def test_full_pipeline_demo_script_exists() -> None:
     assert (REPO_ROOT / "demo_scripts" / "run_demo_15_netron_subgraph_export.sh").exists()
     assert (REPO_ROOT / "demo_scripts" / "run_demo_16_tensor_ir.sh").exists()
     assert (REPO_ROOT / "demo_scripts" / "run_demo_17_structural_region_tree.sh").exists()
+    assert (REPO_ROOT / "demo_scripts" / "run_demo_18_region_dimension_ir.sh").exists()
 
 
 def test_glossary_mentions_dimension_variable() -> None:

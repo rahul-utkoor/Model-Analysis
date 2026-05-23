@@ -263,7 +263,7 @@ bash demo_scripts/run_demo_01_setup_check.sh
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track makes Tensor IR, Structural Region Tree, pruning maps, and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
+The demo track makes Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
 
 ## Milestone 13: k-Node and Join-Aware ONNX Subgraph Structural Analysis
 
@@ -394,11 +394,34 @@ python scripts/compare_structural_region_trees.py --models all
 
 This builds a compiler-inspired structural hierarchy over Tensor IR. It does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
 
-## Milestone 18: Proposed Next Step
+## Milestone 18: Region-Aware Dimension IR
+
+Status: complete.
+
+Implemented:
+
+- `RegionDimensionVariable`, `RegionConstraintEquation`, `RegionDimensionEquivalenceClass`, and `RegionDimensionIR` data model
+- Symbolic dimensions derived from projection, feed-forward, residual merge, normalization, axis-transform, activation, attention, fork, and join region interfaces
+- Region-scoped constraints for same-index MLP propagation, residual/normalization equality, transform mapping, attention-axis uncertainty, fanout, and join compatibility
+- Equivalence-class construction over explicit equality-like region constraints
+- Readable `.rdim` textual dump and cross-model comparison
+- Guided demo and synthetic tests
+
+Primary commands:
+
+```bash
+python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/build_region_dimension_ir.py --model all --verbose
+python scripts/compare_region_dimension_ir.py --models all
+```
+
+Region-Aware Dimension IR refines symbolic dimension reasoning using semantic structural regions. It does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
+
+## Milestone 19: Proposed Next Step
 
 Recommended focus:
 
-- Connect Structural Region Interfaces to Dimension IR constraints
-- Lower region boundaries into symbolic forward/backward propagation equations
-- Expose region-aware legality slices and blocked-region explanations
+- Add legality and propagation slicing directly over Region-Aware Dimension IR
+- Link region-scoped dimensions to existing low-level Dimension IR variables where evidence agrees
+- Explain blocked pruning requests at both region and primitive-op levels
 - Refine decomposed feed-forward and attention structural matching conservatively

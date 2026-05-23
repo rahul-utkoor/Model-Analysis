@@ -16,7 +16,7 @@ Then follow [the demo track](../demos/README.md) or run the full single-model re
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track is organized around the main research artifacts: structural inventory, frontend-independent Tensor IR, Structural Region Tree, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, Netron visualization fragments, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
+The demo track is organized around the main research artifacts: structural inventory, frontend-independent Tensor IR, Structural Region Tree, Region-Aware Dimension IR, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, Netron visualization fragments, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
 
 ## Environment Setup
 
@@ -175,6 +175,35 @@ reports/structural_region_patterns/<model>.md
 ```
 
 Leaves remain primitive TensorOps. Internal nodes conservatively summarize recognized tensor-computation regions and expose preliminary pruning/propagation roles; this step is static analysis only.
+
+## Region-Aware Dimension IR
+
+Lower structural-region interfaces into region-scoped dimension variables and constraints:
+
+```bash
+python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+```
+
+Build and compare region Dimension IR reports across all available region trees:
+
+```bash
+python scripts/build_region_dimension_ir.py --model all --verbose
+python scripts/compare_region_dimension_ir.py --models all
+```
+
+Generated outputs:
+
+```text
+reports/region_dimension_ir/<model>.json
+reports/region_dimension_ir/<model>.md
+reports/region_pruning_ir_dumps/<model>.rdim
+reports/region_constraint_equations/<model>.json
+reports/region_constraint_equations/<model>.md
+reports/region_dimension_equivalence/<model>.json
+reports/region_dimension_equivalence/<model>.md
+```
+
+RegionDimensionIR derives symbolic axes and equations from semantic regions. It intentionally retains unresolved attention and reshape-axis mappings and blocking residual/normalization constraints. It does not modify models.
 
 ## Quick Inspection
 
@@ -704,7 +733,7 @@ reports/dimension_ir/comparison.json
 reports/dimension_ir/comparison.md
 ```
 
-Tensor IR, Structural Region Tree, pruning maps, and Dimension IR are the primary research artifacts. Executable pruning remains experimental backend support only.
+Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR are the primary research artifacts. Executable pruning remains experimental backend support only.
 
 ## Dimension-IR Legality Analysis
 
@@ -737,7 +766,7 @@ reports/ir_analysis/<model>__blocked_regions.json
 reports/ir_analysis/<model>__dimension_list.json
 ```
 
-Legality analysis is static and conservative. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy. Tensor IR, Structural Region Tree, pruning maps, and Dimension IR remain the primary research artifacts; executable pruning remains experimental backend support only.
+Legality analysis is static and conservative. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy. Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR remain the primary research artifacts; executable pruning remains experimental backend support only.
 
 ## Pruning Action Simulation
 

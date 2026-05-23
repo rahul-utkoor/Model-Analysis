@@ -22,6 +22,7 @@ run_cmd "${PYTHON_BIN}" scripts/export_to_onnx.py --model "${MODEL}"
 run_cmd "${PYTHON_BIN}" scripts/generate_structural_inventory.py --model "${MODEL}" --require-onnx
 run_cmd "${PYTHON_BIN}" scripts/build_tensor_ir.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_structural_region_tree.py --model "${MODEL}" --verbose
+run_cmd "${PYTHON_BIN}" scripts/build_region_dimension_ir.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_dependency_graph.py --model "${MODEL}" --require-onnx --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_correspondence.py --model "${MODEL}" --require-dependency-graph --verbose
 run_cmd "${PYTHON_BIN}" scripts/analyze_subgraphs.py --model "${MODEL}" --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
@@ -39,6 +40,8 @@ echo "  reports/tensor_ir/${MODEL}.md"
 echo "  reports/tensor_ir_dumps/${MODEL}.tir"
 echo "  reports/structural_region_trees/${MODEL}.md"
 echo "  reports/structural_region_dumps/${MODEL}.srtree"
+echo "  reports/region_dimension_ir/${MODEL}.md"
+echo "  reports/region_pruning_ir_dumps/${MODEL}.rdim"
 echo "  reports/dependency_graphs/${MODEL}.md"
 echo "  reports/correspondence/${MODEL}.md"
 echo "  reports/join_subgraphs/${MODEL}.md"

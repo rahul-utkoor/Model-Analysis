@@ -21,3 +21,5 @@ echo "  reports/structural_region_interfaces/${SAFE_MODEL}.md"
 echo "  reports/structural_region_patterns/${SAFE_MODEL}.md"
 echo
 echo "This is compiler-style structural analysis only; it does not modify models."
+echo "Next main research demo:"
+echo "  bash demo_scripts/run_demo_18_region_dimension_ir.sh"

@@ -55,4 +55,4 @@ The first pass is conservative and does not recover every decomposed feed-forwar
 
 ## Connection to next milestone
 
-Future work should connect region interfaces to Dimension IR, allowing propagation constraints and legality queries to operate over hierarchical regions rather than flat operation neighborhoods.
+Milestone 18 connects region interfaces to Region-Aware Dimension IR, allowing symbolic dimensions and propagation constraints to be derived from hierarchical semantic regions rather than only flat operation neighborhoods.

@@ -1,6 +1,6 @@
 # Model Analysis
 
-Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR and its Structural Region Tree are the intended substrate for pruning-propagation research.
+Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, and Region-Aware Dimension IR are the intended substrate for pruning-propagation research.
 
 The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
 
@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -84,6 +84,10 @@ reports/structural_region_trees/  Compiler-inspired Tensor IR region trees (igno
 reports/structural_region_dumps/  Readable structural tree dumps (ignored by git)
 reports/structural_region_interfaces/  Preliminary region propagation interfaces (ignored by git)
 reports/structural_region_patterns/  Region type summaries (ignored by git)
+reports/region_dimension_ir/  Semantic-region-derived symbolic dimensions (ignored by git)
+reports/region_dimension_equivalence/  Region-scoped equivalence classes (ignored by git)
+reports/region_constraint_equations/  Region-derived constraints (ignored by git)
+reports/region_pruning_ir_dumps/  Textual region dimension IR dumps (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -187,6 +191,23 @@ python scripts/compare_structural_region_trees.py --models all
 ```
 
 Outputs include `reports/structural_region_trees/<model>.md`, `reports/structural_region_dumps/<model>.srtree`, and preliminary interfaces in `reports/structural_region_interfaces/`. Primitive TensorOps remain leaves; internal regions capture projections, joins, forks, axis transforms, residual merges, and bounded attention skeletons for future propagation analysis.
+
+## Region-Aware Dimension IR
+
+Derive symbolic dimensions and propagation constraints from semantic Structural Region Tree interfaces:
+
+```bash
+python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+```
+
+For all region trees and cross-model comparison:
+
+```bash
+python scripts/build_region_dimension_ir.py --model all --verbose
+python scripts/compare_region_dimension_ir.py --models all
+```
+
+Outputs include `reports/region_dimension_ir/<model>.md`, `reports/region_pruning_ir_dumps/<model>.rdim`, `reports/region_constraint_equations/`, and `reports/region_dimension_equivalence/`. This path makes semantic regions responsible for prunable, protected, propagated, blocked, and unresolved symbolic dimensions; it complements rather than replaces the existing pruning-map-derived Dimension IR.
 
 ## Dependency Graph Construction
 
@@ -506,7 +527,7 @@ python scripts/build_dimension_ir.py --model all --verbose
 python scripts/compare_dimension_irs.py --models all
 ```
 
-Tensor IR, Structural Region Tree, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
+Tensor IR, Structural Region Tree, Region-Aware Dimension IR, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
 
 ## Dimension-IR Legality Analysis
 
