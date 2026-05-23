@@ -1,6 +1,6 @@
 # Model Analysis
 
-Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs.
+Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR is the intended substrate for structural region-tree and pruning-propagation research.
 
 The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
 
@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, pruning maps, Dimension IR, legality reports, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -77,6 +77,9 @@ reports/dag_region_patterns/  Aggregated DAG motif reports (ignored by git)
 reports/dag_region_pruning_evidence/  Multi-branch constraint evidence reports (ignored by git)
 reports/subgraph_exports/  Extracted ONNX fragment manifests (ignored by git)
 reports/netron_subgraph_index/  Netron command indexes for fragments (ignored by git)
+reports/tensor_ir/  Frontend-independent Tensor Graph IR reports (ignored by git)
+reports/tensor_ir_dumps/  Readable tensor dataflow IR dumps (ignored by git)
+reports/tensor_ir_stats/  Canonical op/fork/join statistics (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -146,6 +149,23 @@ reports/pruning_hints/<model>.md           Conservative structural pruning hints
 ```
 
 Use `--require-onnx` when an ONNX report must exist, and `--format json|md|both` to control generated structural and ONNX report formats.
+
+## Frontend-Independent Tensor Graph IR
+
+Import the currently available ONNX frontend summary into Tensor IR:
+
+```bash
+python scripts/build_tensor_ir.py --model bert-base-uncased --verbose
+```
+
+For all models and comparison:
+
+```bash
+python scripts/build_tensor_ir.py --model all --verbose
+python scripts/compare_tensor_ir.py --models all
+```
+
+Outputs include `reports/tensor_ir/<model>.json`, `reports/tensor_ir/<model>.md`, and `reports/tensor_ir_dumps/<model>.tir`. Tensor IR records canonical operations, tensor values, producer/consumer links, forks, joins, semantic roles, and region hints. ONNX supplies the current frontend input; future Structural Region Tree analysis should operate over Tensor IR rather than depend directly on ONNX.
 
 ## Dependency Graph Construction
 
@@ -465,7 +485,7 @@ python scripts/build_dimension_ir.py --model all --verbose
 python scripts/compare_dimension_irs.py --models all
 ```
 
-Dimension IR and pruning maps are the main research artifacts. Executable pruning remains experimental backend support only.
+Tensor IR, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
 
 ## Dimension-IR Legality Analysis
 

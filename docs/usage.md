@@ -16,7 +16,7 @@ Then follow [the demo track](../demos/README.md) or run the full single-model re
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track is organized around the main research artifacts: structural inventory, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, Netron visualization fragments, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
+The demo track is organized around the main research artifacts: structural inventory, frontend-independent Tensor IR, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, Netron visualization fragments, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
 
 ## Environment Setup
 
@@ -119,6 +119,33 @@ The result is written to `data/models/onnx_static/bert-base-uncased/model.static
 ```
 
 This path is for visualization only and does not replace `data/models/onnx/`.
+
+## Frontend-Independent Tensor Graph IR
+
+ONNX graph summaries are the currently implemented frontend input. Import them into Tensor IR before future structural-region analysis:
+
+```bash
+python scripts/build_tensor_ir.py --model bert-base-uncased --verbose
+```
+
+Generate and compare all currently available model IRs:
+
+```bash
+python scripts/build_tensor_ir.py --model all --verbose
+python scripts/compare_tensor_ir.py --models all
+```
+
+Generated outputs:
+
+```text
+reports/tensor_ir/<model>.json
+reports/tensor_ir/<model>.md
+reports/tensor_ir_dumps/<model>.tir
+reports/tensor_ir_stats/<model>.json
+reports/tensor_ir_stats/<model>.md
+```
+
+Tensor IR exposes canonical operations, tensor values, producer/consumer connectivity, forks, joins, semantic roles, and region hints. ONNX remains useful as a frontend and for Netron inspection; it is not the core structural-analysis abstraction.
 
 ## Quick Inspection
 
@@ -648,7 +675,7 @@ reports/dimension_ir/comparison.json
 reports/dimension_ir/comparison.md
 ```
 
-Dimension IR and pruning maps are the primary research artifacts. Executable pruning remains experimental backend support only.
+Tensor IR, pruning maps, and Dimension IR are the primary research artifacts. Executable pruning remains experimental backend support only.
 
 ## Dimension-IR Legality Analysis
 
@@ -681,7 +708,7 @@ reports/ir_analysis/<model>__blocked_regions.json
 reports/ir_analysis/<model>__dimension_list.json
 ```
 
-Legality analysis is static and conservative. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy. Pruning maps and Dimension IR remain the primary research artifacts; executable pruning remains experimental backend support only.
+Legality analysis is static and conservative. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy. Tensor IR, pruning maps, and Dimension IR remain the primary research artifacts; executable pruning remains experimental backend support only.
 
 ## Pruning Action Simulation
 

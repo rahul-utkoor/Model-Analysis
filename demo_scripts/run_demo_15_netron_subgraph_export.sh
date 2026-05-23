@@ -27,3 +27,6 @@ echo "Example Netron command:"
 echo "  netron artifacts/subgraph_onnx/${SAFE_MODEL}/demo/<subgraph>.onnx"
 echo
 echo "These files are visualization artifacts only; the source ONNX model is unchanged."
+echo
+echo "Next frontend-independent IR demo:"
+echo "  bash demo_scripts/run_demo_16_tensor_ir.sh"

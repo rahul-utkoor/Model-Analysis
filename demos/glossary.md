@@ -8,6 +8,14 @@ A front-end report describing PyTorch modules, parameters, Linear layers, embedd
 
 A graph-level report describing ONNX inputs, outputs, initializers, nodes, op type counts, tensor shapes where available, and pruning-relevant graph operations.
 
+## Tensor Graph IR
+
+A frontend-independent tensor-dataflow representation of operations and tensor values, including producer/consumer links, forks, joins, semantic roles, and region hints. ONNX is currently one importer into this IR.
+
+## Structural Region Tree
+
+A planned hierarchy that collapses recognized Tensor IR regions, such as sequential projections, forks, joins, and reconvergent motifs, into nested structural nodes for propagation analysis.
+
 ## Prunable unit
 
 A module, graph node, or higher-level structure that might expose a prunable dimension, such as a Linear layer, embedding matrix, Conv node, MLP pair, or Q/K/V attention group.
@@ -74,5 +82,4 @@ The smallest conservative set of structural updates implied by the legality anal
 
 ## Executable backend
 
-An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to pruning maps and Dimension IR.
-
+An experimental lowering path that can modify local model artifacts. In this repository, executable backends are secondary to Tensor IR, pruning maps, and Dimension IR.

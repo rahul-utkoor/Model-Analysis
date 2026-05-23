@@ -8,6 +8,7 @@ This is the coherent mainline demo for the repository. It intentionally skips ex
 python scripts/download_models.py --model bert-base-uncased
 python scripts/export_to_onnx.py --model bert-base-uncased
 python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
+python scripts/build_tensor_ir.py --model bert-base-uncased --verbose
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
 python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
 python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
@@ -34,8 +35,9 @@ bash demo_scripts/run_full_analysis_pipeline.sh
 
 ```text
 Model checkpoint
-  -> ONNX graph
+  -> ONNX frontend graph
   -> Structural inventory
+  -> Tensor Graph IR
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
@@ -46,7 +48,7 @@ Model checkpoint
   -> Legality check
 ```
 
-The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
+ONNX currently supplies the frontend graph and Netron visualization. Tensor IR is the frontend-independent analysis substrate intended for future Structural Region Tree construction. The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
 
 Optional backend ladder:
 
@@ -61,17 +63,19 @@ Executable backend dry run
 Read these reports in order:
 
 1. `reports/structural_inventory/bert-base-uncased.md`
-2. `reports/dependency_graphs/bert-base-uncased.md`
-3. `reports/correspondence/bert-base-uncased.md`
-4. `reports/join_subgraphs/bert-base-uncased.md`
-5. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
-6. `reports/dag_regions/bert-base-uncased.md`
-7. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
-8. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
-9. `reports/model_pruning_maps/bert-base-uncased.md`
-10. `reports/dimension_ir/bert-base-uncased.md`
-11. `reports/pruning_ir_dumps/bert-base-uncased.pir`
-12. `reports/legality_checks/`
+2. `reports/tensor_ir/bert-base-uncased.md`
+3. `reports/tensor_ir_dumps/bert-base-uncased.tir`
+4. `reports/dependency_graphs/bert-base-uncased.md`
+5. `reports/correspondence/bert-base-uncased.md`
+6. `reports/join_subgraphs/bert-base-uncased.md`
+7. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
+8. `reports/dag_regions/bert-base-uncased.md`
+9. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
+10. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
+11. `reports/model_pruning_maps/bert-base-uncased.md`
+12. `reports/dimension_ir/bert-base-uncased.md`
+13. `reports/pruning_ir_dumps/bert-base-uncased.pir`
+14. `reports/legality_checks/`
 
 ## Mainline vs backend
 

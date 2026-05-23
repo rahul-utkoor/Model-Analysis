@@ -263,7 +263,7 @@ bash demo_scripts/run_demo_01_setup_check.sh
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track makes pruning maps and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
+The demo track makes Tensor IR, pruning maps, and Dimension IR the main learning path. Executable pruning modules are documented as optional experimental backends.
 
 ## Milestone 13: k-Node and Join-Aware ONNX Subgraph Structural Analysis
 
@@ -345,12 +345,35 @@ The static-shape exporter is a Netron visualization aid adjacent to Milestone 15
 ./conda-env/bin/python scripts/export_static_shape_onnx.py --model all --seq-len 128 --batch-size 1 --opset 17 --device cpu --continue-on-error
 ```
 
-## Milestone 16: Proposed Next Step
+## Milestone 16: Frontend-Independent Tensor Graph IR
+
+Status: complete.
+
+Implemented:
+
+- Frontend-independent `TensorValue`, `TensorOp`, and `TensorGraph` data model
+- Conservative canonical operation typing and region hints
+- ONNX-summary importer as the first Tensor IR frontend
+- Producer/consumer, fork, and join construction
+- Markdown, JSON, statistics, and readable `.tir` dumps
+- Cross-model Tensor IR comparison
+- Guided demo and synthetic tests
+
+Primary commands:
+
+```bash
+python scripts/build_tensor_ir.py --model bert-base-uncased --verbose
+python scripts/build_tensor_ir.py --model all --verbose
+python scripts/compare_tensor_ir.py --models all
+```
+
+ONNX is only one frontend representation. Tensor IR is the frontend-independent substrate intended for future Structural Region Tree and pruning-propagation analysis.
+
+## Milestone 17: Proposed Next Step
 
 Recommended focus:
 
-- Improve precision of the Dimension IR
-- Better extraction of tensor axis semantics
-- Map ONNX reshape/transpose axes into symbolic dimension equations
-- Distinguish batch, sequence, hidden, intermediate, and head axes
-- Richer textual IR diagnostics
+- Construct a Structural Region Tree over Tensor IR
+- Detect reducible linear, join, fork, diamond, and nested regions over canonical operations
+- Collapse recognized regions into abstract nodes
+- Retain value-boundary and pruning-propagation annotations at each region level

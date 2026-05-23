@@ -105,6 +105,12 @@ reports/netron_subgraph_index/*
 !reports/netron_subgraph_index/.gitkeep
 reports/static_onnx_exports/*
 !reports/static_onnx_exports/.gitkeep
+reports/tensor_ir/*
+!reports/tensor_ir/.gitkeep
+reports/tensor_ir_dumps/*
+!reports/tensor_ir_dumps/.gitkeep
+reports/tensor_ir_stats/*
+!reports/tensor_ir_stats/.gitkeep
 
 *.onnx
 .DS_Store

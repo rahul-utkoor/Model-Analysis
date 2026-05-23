@@ -1,6 +1,6 @@
 # Design Notes
 
-Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. The current code intentionally stops before modifying weights.
+Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is now the frontend-independent substrate intended for structural decomposition and future Structural Region Tree construction. The current analysis path intentionally stops before modifying weights.
 
 ## Pipeline Design
 
@@ -28,6 +28,7 @@ The pipeline is staged:
 20. k-node and join-aware ONNX subgraph structural analysis
 21. DAG motif and multi-join region structural analysis
 22. Netron-visualizable ONNX subgraph extraction
+23. Frontend-independent Tensor Graph IR import and reporting
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -39,8 +40,9 @@ The mainline demo ladder is:
 
 ```text
 Model checkpoint
-  -> ONNX graph
+  -> ONNX frontend graph
   -> Structural inventory
+  -> Tensor Graph IR
   -> Dependency graph
   -> Correspondence and shape evidence
   -> k-node and join-aware subgraph evidence
@@ -51,7 +53,7 @@ Model checkpoint
   -> Legality check
 ```
 
-Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but pruning maps and Dimension IR remain the primary research artifacts.
+Milestones 6-8 are documented as optional experimental backend demos. They are useful for validating lowering ideas, but Tensor IR, pruning maps, and Dimension IR remain the primary research artifacts.
 
 ## Core Modules
 
@@ -72,6 +74,18 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 
 `onnx_graph_analysis.py`
 : Builds ONNX graph summaries from exported models. It records graph inputs, outputs, initializers, node types, tensor shapes where available, and pruning-relevant ONNX nodes.
+
+`tensor_ir.py`
+: Defines frontend-independent tensor values, canonical tensor operations, graph serialization, operation canonicalization, and human-readable Tensor IR reports.
+
+`onnx_to_tensor_ir.py`
+: Imports ONNX graph summaries into Tensor IR while retaining ONNX only as source provenance.
+
+`tensor_ir_text.py`
+: Renders deterministic `.tir` tensor-dataflow dumps for inspection and future structural-region work.
+
+`tensor_ir_compare.py`
+: Compares canonical operations, semantic roles, region hints, forks, and joins across Tensor IR graphs.
 
 `reporting.py`
 : Writes JSON, Markdown, CSV, and renders human-readable inventory and pruning-hint reports.
