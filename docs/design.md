@@ -475,3 +475,9 @@ Milestone 15 converts selected structural-analysis records into derived ONNX gra
 - metadata identifies the source graph, subgraph record, pattern, and extraction reason
 
 The Netron index places the canonical original ONNX file under `data/models/onnx/<model>/model.onnx` first as a full-graph comparison baseline; it is referenced in place rather than duplicated. The files under `artifacts/subgraph_onnx/` are visualization artifacts. They make local and multi-branch evidence easier to inspect in Netron, but they are not standalone semantically complete models and do not modify the source ONNX file.
+
+## Static-Shape ONNX Export for Netron
+
+`scripts/export_static_shape_onnx.py` creates independent fixed-shape visualization exports under `data/models/onnx_static/`. Text exports trace a wrapper that reconstructs keyword model inputs, preventing Hugging Face positional-signature differences from changing semantics; tokenizer fields unsupported by a model are recorded and dropped. Image exports likewise trace a named `pixel_values` wrapper.
+
+The exporter retains static axes, runs ONNX shape inference and validation, and writes metadata beside each artifact. These files support Netron visualization with concrete shapes only. The dynamic export under `data/models/onnx/` remains the source for analysis passes.

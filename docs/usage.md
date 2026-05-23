@@ -93,6 +93,33 @@ python scripts/export_to_onnx.py --model bert-base-uncased --opset 17
 
 ONNX exports are written under `data/models/onnx/` and are ignored by git.
 
+### Static-Shape ONNX for Netron
+
+The dynamic export above remains the analysis input. A separate static export can make Netron display concrete tensor dimensions:
+
+```bash
+./conda-env/bin/python scripts/export_static_shape_onnx.py \
+  --model bert-base-uncased \
+  --seq-len max \
+  --batch-size 1 \
+  --opset 17 \
+  --device cpu
+```
+
+The result is written to `data/models/onnx_static/bert-base-uncased/model.static.onnx` with adjacent metadata. To attempt all local models while retaining a report for any failure:
+
+```bash
+./conda-env/bin/python scripts/export_static_shape_onnx.py \
+  --model all \
+  --seq-len 128 \
+  --batch-size 1 \
+  --opset 17 \
+  --device cpu \
+  --continue-on-error
+```
+
+This path is for visualization only and does not replace `data/models/onnx/`.
+
 ## Quick Inspection
 
 Print a lightweight local model summary and write a Markdown summary:

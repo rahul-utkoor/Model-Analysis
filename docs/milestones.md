@@ -336,6 +336,15 @@ python scripts/export_subgraph_onnx.py --model bert-base-uncased --kind dag_regi
 
 Extracted ONNX subgraphs are visualization artifacts and do not modify the source model.
 
+### Static-Shape ONNX Visualization Export
+
+The static-shape exporter is a Netron visualization aid adjacent to Milestone 15. It writes `data/models/onnx_static/<model>/model.static.onnx`, reconstructs Hugging Face inputs by keyword through ONNX wrapper modules, and records dropped tokenizer inputs and fixed shapes in metadata. Dynamic ONNX exports remain the analysis input.
+
+```bash
+./conda-env/bin/python scripts/export_static_shape_onnx.py --model bert-base-uncased --seq-len max --batch-size 1 --opset 17 --device cpu
+./conda-env/bin/python scripts/export_static_shape_onnx.py --model all --seq-len 128 --batch-size 1 --opset 17 --device cpu --continue-on-error
+```
+
 ## Milestone 16: Proposed Next Step
 
 Recommended focus:

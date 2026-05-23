@@ -9,6 +9,8 @@ data/models/hf/*
 !data/models/hf/.gitkeep
 data/models/onnx/*
 !data/models/onnx/.gitkeep
+data/models/onnx_static/*
+!data/models/onnx_static/.gitkeep
 reports/model_summaries/*
 !reports/model_summaries/.gitkeep
 reports/structural_inventory/*
@@ -101,6 +103,8 @@ reports/subgraph_exports/*
 !reports/subgraph_exports/.gitkeep
 reports/netron_subgraph_index/*
 !reports/netron_subgraph_index/.gitkeep
+reports/static_onnx_exports/*
+!reports/static_onnx_exports/.gitkeep
 
 *.onnx
 .DS_Store

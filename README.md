@@ -290,6 +290,33 @@ python scripts/export_subgraph_onnx.py \
 
 Open the original full graph and an exported fragment using the commands listed in `reports/netron_subgraph_index/bert-base-uncased__demo.md`. The index identifies `data/models/onnx/bert-base-uncased/model.onnx` as the comparison baseline. The fragments preserve selected nodes, boundary tensors, required initializers, available value/shape information, and provenance metadata. They are visualization artifacts with artificial boundaries, not semantically complete standalone models, and the source ONNX model is not modified.
 
+## Static-Shape ONNX Export for Netron
+
+Dynamic ONNX under `data/models/onnx/` remains the main export for structural analysis. For Netron inspection with concrete tensor shapes, generate a separate static artifact under `data/models/onnx_static/<model>/model.static.onnx`:
+
+```bash
+./conda-env/bin/python scripts/export_static_shape_onnx.py \
+  --model bert-base-uncased \
+  --seq-len max \
+  --batch-size 1 \
+  --opset 17 \
+  --device cpu
+```
+
+For a best-effort visualization export of all registered models:
+
+```bash
+./conda-env/bin/python scripts/export_static_shape_onnx.py \
+  --model all \
+  --seq-len 128 \
+  --batch-size 1 \
+  --opset 17 \
+  --device cpu \
+  --continue-on-error
+```
+
+Static-shape exports are visualization artifacts and do not replace the dynamic ONNX analysis pipeline.
+
 ## Reversible PyTorch Linear Pruning
 
 Dry-run a Linear-only pruning action:
