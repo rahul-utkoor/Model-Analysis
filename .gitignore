@@ -135,6 +135,10 @@ reports/region_repair_sets/*
 !reports/region_repair_sets/.gitkeep
 reports/region_blocked_analysis/*
 !reports/region_blocked_analysis/.gitkeep
+reports/semantic_fusion/*
+!reports/semantic_fusion/.gitkeep
+reports/fused_region_patterns/*
+!reports/fused_region_patterns/.gitkeep
 
 *.onnx
 .DS_Store

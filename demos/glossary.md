@@ -16,6 +16,10 @@ A frontend-independent tensor-dataflow representation of operations and tensor v
 
 A compiler-inspired hierarchy over Tensor IR that retains primitive TensorOps as leaves and summarizes recognized projections, transforms, forks, joins, and residual merges as semantic regions for propagation analysis.
 
+## Semantic fusion
+
+A structural idiom-recognition pass that lifts decomposed Tensor IR operations, such as an exported `Div/Erf/Add/Mul/Mul` GELU expression, into an activation or feed-forward semantic region without changing the model graph.
+
 ## Structural region interface
 
 A preliminary symbolic description of a region's pruning role, protected dimensions, propagated dimensions, blocked dimensions, and required structural constraints.

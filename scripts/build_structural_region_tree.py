@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", required=True, help="Configured model name/HF ID or 'all'.")
     parser.add_argument("--format", choices=["json", "md", "text", "all"], default="all")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--disable-semantic-fusion", action="store_true", help="Do not recover decomposed activation/feed-forward regions.")
     return parser.parse_args()
 
 
@@ -89,13 +90,18 @@ def main() -> int:
             print(f"[missing] Tensor IR missing. Run: python scripts/build_tensor_ir.py --model {config['name']}", file=sys.stderr)
             failed = True
             continue
-        tree = build_structural_region_tree(load_tensor_graph_dict(source_path))
+        tree = build_structural_region_tree(
+            load_tensor_graph_dict(source_path),
+            enable_semantic_fusion=not args.disable_semantic_fusion,
+        )
         _write_outputs(root, safe_name, tree, args.format)
         if args.verbose:
             summary = tree.summary
             print(f"[structural-region-tree] {tree.model_name}")
             print(f"  regions: {summary['num_regions']}")
             print(f"  primitive leaves: {summary['num_primitive_regions']}")
+            print(f"  gelu_fusions: {summary['num_gelu_fusions']}")
+            print(f"  fused_feedforward: {summary['num_feedforward_fusions']}")
             print(f"  feedforward: {summary['num_feedforward_regions']}")
             print(f"  attention_skeleton: {summary['num_attention_skeleton_regions']}")
             print(f"  residual_merges: {summary['num_residual_merge_regions']}")

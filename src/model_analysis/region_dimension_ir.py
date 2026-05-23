@@ -131,7 +131,7 @@ def _has_constraint(interface: dict, constraint_type: str) -> bool:
 
 
 def _evidence(region: dict, interface: dict, role: str) -> list[dict[str, Any]]:
-    return [
+    evidence = [
         {
             "source": "region_interface",
             "region_id": region.get("region_id"),
@@ -140,6 +140,18 @@ def _evidence(region: dict, interface: dict, role: str) -> list[dict[str, Any]]:
             "constraints": interface.get("constraints", []),
         }
     ]
+    metadata = region.get("metadata", {})
+    if metadata.get("semantic_fusion"):
+        evidence.append(
+            {
+                "source": "semantic_fusion",
+                "fusion_id": metadata.get("fusion_id"),
+                "activation_kind": metadata.get("activation_kind"),
+                "first_projection_ops": metadata.get("first_projection_ops", []),
+                "second_projection_ops": metadata.get("second_projection_ops", []),
+            }
+        )
+    return evidence
 
 
 def _add_dimension(

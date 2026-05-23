@@ -476,6 +476,12 @@ Milestone 18 adds a semantic-region-derived path alongside the pruning-map-deriv
 
 The `.rdim` dump records these region variables, equations, and equivalence classes. This new path does not replace existing Dimension IR; it provides a structural-region semantic layer for later region-aware legality analysis. It does not modify models or execute pruning.
 
+## Semantic Fusion for Feed-Forward Regions
+
+Milestone 20 refines Structural Region Tree candidate detection with semantic idiom recovery over Tensor IR. Some frontend graphs, notably BERT ONNX-derived Tensor IR, express GELU as a small dataflow DAG rather than one activation op. The fusion pass recognizes an `Erf`-centered multiply-back form such as `Div -> Erf -> Add -> Mul -> Mul`, records it as a `GeluActivation`, and recognizes enclosing projection/GELU/projection motifs as `FeedForward` regions.
+
+Fused regions are inserted as semantic region candidates before overlap resolution, while primitive operations remain leaves. Adds proven to be inside a GELU expression are not promoted to residual-merge blockers. Feed-forward fusion metadata flows into Region-Aware Dimension IR evidence so recovered BERT intermediate dimensions can be traced to their first and second projections. This is structural recovery only; no model or frontend graph is modified.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

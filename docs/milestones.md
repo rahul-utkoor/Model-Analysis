@@ -441,11 +441,27 @@ python scripts/check_region_pruning_legality.py --model bert-base-uncased --dime
 
 This milestone performs static region-aware legality analysis and does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
 
-## Milestone 20: Proposed Next Step
+## Milestone 20: Semantic Fusion for Activation and Feed-Forward Regions
 
-Recommended focus:
+Status: complete.
 
-- Link region-scoped dimensions to existing low-level Dimension IR variables where evidence agrees
-- Carry tensor-shape/axis evidence from Tensor IR into region dimension sizes and mappings
-- Explain blocked pruning requests at both region and primitive-op levels
-- Refine decomposed feed-forward and attention structural matching conservatively
+Implemented:
+
+- Tensor IR semantic-fusion report for decomposed GELU activation patterns
+- Graph-structured `Div/Mul -> Erf -> Add -> Mul -> Mul` recovery with confidence labels
+- Projection/GELU/projection feed-forward fusion detection
+- Structural Region Tree integration with fused activation and feed-forward candidates
+- Exclusion of proved GELU-internal additions from residual-merge blocking candidates
+- Region Dimension IR evidence carrying fused projection metadata
+- CLI reports, demo workflow, and synthetic regression tests
+
+Primary commands:
+
+```bash
+python scripts/analyze_semantic_fusion.py --model bert-base-uncased --verbose
+python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
+python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 20
+```
+
+Semantic fusion recovers high-level activation/feed-forward regions without modifying models, rewriting ONNX, executing pruning, or evaluating quality.

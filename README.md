@@ -179,6 +179,19 @@ python scripts/compare_tensor_ir.py --models all
 
 Outputs include `reports/tensor_ir/<model>.json`, `reports/tensor_ir/<model>.md`, and `reports/tensor_ir_dumps/<model>.tir`. Tensor IR records canonical operations, tensor values, producer/consumer links, forks, joins, semantic roles, and region hints. ONNX supplies the current frontend input; Structural Region Tree analysis operates over Tensor IR rather than depending directly on ONNX.
 
+## Semantic Fusion for Activation and Feed-Forward Regions
+
+Recover decomposed activation idioms such as BERT's exported GELU structure and use them during semantic region construction:
+
+```bash
+python scripts/analyze_semantic_fusion.py --model bert-base-uncased --verbose
+python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
+python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 20
+```
+
+Outputs include `reports/semantic_fusion/<model>.md` and `reports/fused_region_patterns/<model>.md`. Semantic fusion recognizes `Div/Mul -> Erf -> Add -> Mul -> Mul` activation graphs and projection-activation-projection feed-forward regions so Region-Aware Dimension IR can expose `intermediate_dim` for BERT-style models. It is static structural recovery only and does not modify models.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:

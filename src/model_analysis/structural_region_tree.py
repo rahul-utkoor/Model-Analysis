@@ -142,6 +142,8 @@ def structural_region_tree_to_markdown(tree: StructuralRegionTree | dict) -> str
             f"- Regions: `{summary.get('num_regions', 0)}`",
             f"- Primitive regions: `{summary.get('num_primitive_regions', 0)}`",
             f"- Feed-forward regions: `{summary.get('num_feedforward_regions', 0)}`",
+            f"- GELU semantic fusions: `{summary.get('num_gelu_fusions', 0)}`",
+            f"- Fused feed-forward regions: `{summary.get('num_feedforward_fusions', 0)}`",
             f"- Attention skeleton regions: `{summary.get('num_attention_skeleton_regions', 0)}`",
             f"- Residual merge regions: `{summary.get('num_residual_merge_regions', 0)}`",
             f"- Fork regions: `{summary.get('num_fork_regions', 0)}`",

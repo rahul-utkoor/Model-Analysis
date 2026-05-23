@@ -21,6 +21,7 @@ run_cmd "${PYTHON_BIN}" scripts/download_models.py --model "${MODEL}"
 run_cmd "${PYTHON_BIN}" scripts/export_to_onnx.py --model "${MODEL}"
 run_cmd "${PYTHON_BIN}" scripts/generate_structural_inventory.py --model "${MODEL}" --require-onnx
 run_cmd "${PYTHON_BIN}" scripts/build_tensor_ir.py --model "${MODEL}" --verbose
+run_cmd "${PYTHON_BIN}" scripts/analyze_semantic_fusion.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_structural_region_tree.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_region_dimension_ir.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/list_region_dimensions.py --model "${MODEL}" --contains intermediate --limit 10
@@ -40,6 +41,7 @@ echo "Main artifacts:"
 echo "  reports/structural_inventory/${MODEL}.md"
 echo "  reports/tensor_ir/${MODEL}.md"
 echo "  reports/tensor_ir_dumps/${MODEL}.tir"
+echo "  reports/semantic_fusion/${MODEL}.md"
 echo "  reports/structural_region_trees/${MODEL}.md"
 echo "  reports/structural_region_dumps/${MODEL}.srtree"
 echo "  reports/region_dimension_ir/${MODEL}.md"

@@ -147,6 +147,19 @@ reports/tensor_ir_stats/<model>.md
 
 Tensor IR exposes canonical operations, tensor values, producer/consumer connectivity, forks, joins, semantic roles, and region hints. ONNX remains useful as a frontend and for Netron inspection; it is not the core structural-analysis abstraction.
 
+## Semantic Fusion for Activation and Feed-Forward Regions
+
+Run semantic idiom recovery on Tensor IR before rebuilding semantic regions:
+
+```bash
+python scripts/analyze_semantic_fusion.py --model bert-base-uncased --verbose
+python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
+python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 20
+```
+
+Generated fusion reports are written to `reports/semantic_fusion/` and `reports/fused_region_patterns/`. The Structural Region Tree enables semantic fusion by default; pass `--disable-semantic-fusion` to `build_structural_region_tree.py` only when comparing against the conservative unfused baseline. GELU fusion lifts decomposed activation operations into `ActivationRegion` and `FeedForwardRegion` candidates without rewriting Tensor IR, ONNX, or model weights.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

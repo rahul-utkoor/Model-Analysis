@@ -8,6 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any, Iterable
 
+from model_analysis.semantic_fusion import SemanticFusionReport, build_semantic_fusion_report
 from model_analysis.structural_region_tree import (
     StructuralRegion,
     StructuralRegionInterface,
@@ -240,11 +241,17 @@ def detect_axis_transform_regions(tensor_graph: dict) -> list[StructuralRegion]:
     return regions
 
 
-def detect_residual_merge_regions(tensor_graph: dict) -> list[StructuralRegion]:
+def detect_residual_merge_regions(
+    tensor_graph: dict,
+    excluded_op_ids: set[str] | None = None,
+) -> list[StructuralRegion]:
     ops = get_ops_by_id(tensor_graph)
     adjacency = build_op_adjacency_from_tensor_graph(tensor_graph)
+    excluded = excluded_op_ids or set()
     regions = []
     for op in tensor_graph.get("ops", []):
+        if op["op_id"] in excluded:
+            continue
         if op.get("canonical_op_type") not in {"residual_add", "elementwise_join"}:
             continue
         matched = [op["op_id"]]
@@ -389,14 +396,87 @@ def detect_join_regions(tensor_graph: dict) -> list[StructuralRegion]:
     ]
 
 
-def detect_region_candidates(tensor_graph: dict) -> list[StructuralRegion]:
+def _fused_region_candidates(
+    tensor_graph: dict,
+    report: SemanticFusionReport,
+) -> tuple[list[StructuralRegion], set[str], set[str]]:
+    ops = get_ops_by_id(tensor_graph)
+    candidates: list[StructuralRegion] = []
+    covered_activation_ops: set[str] = set()
+    activation_join_ops: set[str] = set()
+    for index, fusion in enumerate(report.fusions, start=1):
+        if fusion.fusion_type == "GeluActivation" and fusion.confidence in {"high", "medium"}:
+            covered_activation_ops.update(fusion.op_ids)
+            activation_join_ops.update(
+                op_id for op_id in fusion.op_ids if ops.get(op_id, {}).get("op_type", "").lower() == "add"
+            )
+            candidates.append(
+                _region(
+                    tensor_graph,
+                    "ActivationRegion",
+                    fusion.op_ids,
+                    500000 + index,
+                    fusion.confidence,
+                    fusion.reason,
+                    {
+                        "semantic_fusion": True,
+                        "activation_kind": "gelu",
+                        "fusion_id": fusion.fusion_id,
+                        "fusion_pattern": fusion.pattern,
+                    },
+                )
+            )
+        elif fusion.fusion_type == "FeedForward":
+            candidates.append(
+                _region(
+                    tensor_graph,
+                    "FeedForwardRegion",
+                    fusion.op_ids,
+                    500000 + index,
+                    fusion.confidence,
+                    fusion.reason,
+                    {
+                        "semantic_fusion": True,
+                        "activation_kind": "gelu",
+                        "fusion_id": fusion.fusion_id,
+                        **fusion.metadata,
+                    },
+                )
+            )
+    return candidates, covered_activation_ops, activation_join_ops
+
+
+def detect_region_candidates(
+    tensor_graph: dict,
+    enable_semantic_fusion: bool = True,
+    fusion_report: SemanticFusionReport | None = None,
+) -> list[StructuralRegion]:
+    fused_candidates: list[StructuralRegion] = []
+    covered_activation_ops: set[str] = set()
+    activation_join_ops: set[str] = set()
+    if enable_semantic_fusion:
+        fused_candidates, covered_activation_ops, activation_join_ops = _fused_region_candidates(
+            tensor_graph,
+            fusion_report or build_semantic_fusion_report(tensor_graph),
+        )
+    single_activation_regions = [
+        item
+        for item in detect_single_op_regions(
+            tensor_graph,
+            "activation",
+            "ActivationRegion",
+            "Elementwise activation preserves tensor shape.",
+        )
+        if not set(item.op_ids) <= covered_activation_ops
+    ]
     return [
+        *fused_candidates,
         *detect_feedforward_regions(tensor_graph),
         *detect_attention_skeleton_regions(tensor_graph),
-        *detect_residual_merge_regions(tensor_graph),
+        *detect_residual_merge_regions(tensor_graph, activation_join_ops),
         *detect_linear_projection_regions(tensor_graph),
         *detect_single_op_regions(tensor_graph, "layer_norm", "LayerNormRegion", "Normalization carries hidden-dimension constraints."),
-        *detect_single_op_regions(tensor_graph, "activation", "ActivationRegion", "Elementwise activation preserves tensor shape."),
+        *single_activation_regions,
         *detect_axis_transform_regions(tensor_graph),
         *detect_fork_regions(tensor_graph),
         *detect_join_regions(tensor_graph),
@@ -561,9 +641,13 @@ def _set_depths(regions: list[StructuralRegion], root_id: str) -> None:
         queue.extend((child, depth + 1) for child in by_id[region_id].children)
 
 
-def build_structural_region_tree(tensor_graph: dict) -> StructuralRegionTree:
+def build_structural_region_tree(
+    tensor_graph: dict,
+    enable_semantic_fusion: bool = True,
+) -> StructuralRegionTree:
     primitive_regions = build_primitive_regions(tensor_graph)
-    candidates = detect_region_candidates(tensor_graph)
+    fusion_report = build_semantic_fusion_report(tensor_graph) if enable_semantic_fusion else None
+    candidates = detect_region_candidates(tensor_graph, enable_semantic_fusion, fusion_report)
     selected_with_primitives = resolve_region_overlaps(candidates, primitive_regions)
     selected = [item for item in selected_with_primitives if item.region_type != "PrimitiveRegion"]
     all_ops = [item["op_id"] for item in tensor_graph.get("ops", [])]
@@ -603,9 +687,13 @@ def build_structural_region_tree(tensor_graph: dict) -> StructuralRegionTree:
             "num_directly_prunable_regions": role_counts.get("directly_prunable", 0),
             "num_blocked_regions": role_counts.get("blocked", 0),
             "num_analysis_only_regions": role_counts.get("analysis_only", 0),
+            "num_gelu_fusions": fusion_report.summary.get("num_gelu_fusions", 0) if fusion_report else 0,
+            "num_feedforward_fusions": fusion_report.summary.get("num_feedforward_fusions", 0) if fusion_report else 0,
         },
         metadata={
             "tensor_graph_id": tensor_graph.get("graph_id"),
             "detection_note": "Conservative first-pass structural regions over frontend-independent Tensor IR.",
+            "semantic_fusion_enabled": enable_semantic_fusion,
+            "semantic_fusion_summary": fusion_report.summary if fusion_report else {},
         },
     )
