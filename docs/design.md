@@ -482,6 +482,12 @@ Milestone 20 refines Structural Region Tree candidate detection with semantic id
 
 Fused regions are inserted as semantic region candidates before overlap resolution, while primitive operations remain leaves. Adds proven to be inside a GELU expression are not promoted to residual-merge blockers. Feed-forward fusion metadata flows into Region-Aware Dimension IR evidence so recovered BERT intermediate dimensions can be traced to their first and second projections. This is structural recovery only; no model or frontend graph is modified.
 
+## Stepwise Control-Tree Construction Trace
+
+Milestone 21 adds an explanatory construction trace for the Structural Region Tree. The trace initializes one active graph node per TensorOp, applies semantic-region evidence from fusion reports and the Structural Region Tree, collapses matched nodes into abstract region nodes, and records before/after graph summaries plus DOT snapshots.
+
+The trace mirrors compiler structural analysis as a sequence of region reductions, but it is deliberately a teaching and debugging artifact. The final Structural Region Tree remains the authoritative hierarchy. The trace does not modify Tensor IR, ONNX, models, or pruning logic.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

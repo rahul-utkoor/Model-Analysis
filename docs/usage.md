@@ -160,6 +160,26 @@ python scripts/list_region_dimensions.py --model bert-base-uncased --contains in
 
 Generated fusion reports are written to `reports/semantic_fusion/` and `reports/fused_region_patterns/`. The Structural Region Tree enables semantic fusion by default; pass `--disable-semantic-fusion` to `build_structural_region_tree.py` only when comparing against the conservative unfused baseline. GELU fusion lifts decomposed activation operations into `ActivationRegion` and `FeedForwardRegion` candidates without rewriting Tensor IR, ONNX, or model weights.
 
+## Stepwise Dataflow Control-Tree Trace
+
+Build a step-by-step construction trace for the Structural Region Tree:
+
+```bash
+python scripts/build_control_tree_trace.py --model bert-base-uncased --format all --max-dot-steps 20 --verbose
+python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
+```
+
+Inspect:
+
+```text
+reports/control_tree_steps/<model>.md
+reports/control_tree_step_dumps/<model>.ctrace
+reports/control_tree_step_graphs/<model>/step_000.dot
+reports/mindnode_outlines/<model>.control_tree_steps.mindnode.txt
+```
+
+The trace starts from primitive TensorOps, records each semantic-region collapse, and snapshots the current abstract graph. It is explanatory structural analysis only and does not replace the final Structural Region Tree.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

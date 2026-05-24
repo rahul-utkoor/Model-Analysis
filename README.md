@@ -92,6 +92,10 @@ reports/region_legality_checks/  Region-aware static legality checks (ignored by
 reports/region_propagation_slices/  Region-aware propagation slices (ignored by git)
 reports/region_repair_sets/  Region-level repair obligations (ignored by git)
 reports/region_blocked_analysis/  Protected/blocked region diagnostics (ignored by git)
+reports/control_tree_steps/  Stepwise dataflow control-tree traces (ignored by git)
+reports/control_tree_step_graphs/  DOT/SVG trace graph snapshots (ignored by git)
+reports/control_tree_step_dumps/  Textual control-tree trace dumps (ignored by git)
+reports/control_tree_step_summaries/  Trace construction summaries (ignored by git)
 docs/                     Design notes, milestone notes, and detailed usage
 tests/                    Lightweight pytest coverage
 ```
@@ -191,6 +195,17 @@ python scripts/list_region_dimensions.py --model bert-base-uncased --contains in
 ```
 
 Outputs include `reports/semantic_fusion/<model>.md` and `reports/fused_region_patterns/<model>.md`. Semantic fusion recognizes `Div/Mul -> Erf -> Add -> Mul -> Mul` activation graphs and projection-activation-projection feed-forward regions so Region-Aware Dimension IR can expose `intermediate_dim` for BERT-style models. It is static structural recovery only and does not modify models.
+
+## Stepwise Dataflow Control-Tree Trace
+
+Build an explanatory trace showing how primitive TensorOps are collapsed into semantic regions:
+
+```bash
+python scripts/build_control_tree_trace.py --model bert-base-uncased --format all --max-dot-steps 20 --verbose
+python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
+```
+
+Outputs include `reports/control_tree_steps/<model>.md`, `reports/control_tree_step_dumps/<model>.ctrace`, DOT graph snapshots under `reports/control_tree_step_graphs/<model>/`, and a MindNode outline under `reports/mindnode_outlines/`. The trace is a teaching/debug artifact over Tensor IR; the final Structural Region Tree remains authoritative and no models or pruning logic are modified.
 
 ## Structural Region Tree over Tensor IR
 

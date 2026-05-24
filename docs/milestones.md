@@ -488,3 +488,24 @@ python region_structure_api_server.py --model bert-base-uncased --port 8765
 ```
 
 These are visualization, browsing, and export tools only. They do not modify models, pruning logic, Tensor IR, RegionDimensionIR, or ONNX artifacts.
+
+## Milestone 21: Step-by-Step Dataflow Control-Tree Construction Trace
+
+Status: complete.
+
+Implemented:
+
+- Control-tree trace data model for active TensorOp/region graph snapshots
+- Working graph collapse operation that redirects dataflow edges through newly created abstract regions
+- Ordered trace candidates from semantic fusion, Structural Region Tree regions, or detector fallback
+- JSON, Markdown, textual `.ctrace`, DOT graph, and MindNode outline outputs
+- CLI workflow and synthetic tests for initialization, collapse, skip, DOT, text, and outline behavior
+
+Primary commands:
+
+```bash
+python scripts/build_control_tree_trace.py --model bert-base-uncased --format all --max-dot-steps 20 --verbose
+python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
+```
+
+This is an explanatory structural-analysis trace over Tensor IR. It does not modify models, execute pruning, rewrite ONNX, or evaluate quality.

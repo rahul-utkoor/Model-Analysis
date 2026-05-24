@@ -32,6 +32,10 @@ A symbolic IR derived from Structural Region Tree interfaces. It assigns dimensi
 
 A static query layer over Region-Aware Dimension IR that reports semantic-region propagation slices, blockers, unresolved axis mappings, and repair obligations for a requested dimension.
 
+## Dataflow control-tree trace
+
+An explanatory sequence showing how primitive TensorOps are collapsed into semantic Structural Region Tree nodes. It mirrors compiler structural-analysis reduction steps and is used for teaching/debugging, not as a model transformation.
+
 ## Prunable unit
 
 A module, graph node, or higher-level structure that might expose a prunable dimension, such as a Linear layer, embedding matrix, Conv node, MLP pair, or Q/K/V attention group.

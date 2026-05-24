@@ -139,6 +139,14 @@ reports/semantic_fusion/*
 !reports/semantic_fusion/.gitkeep
 reports/fused_region_patterns/*
 !reports/fused_region_patterns/.gitkeep
+reports/control_tree_steps/*
+!reports/control_tree_steps/.gitkeep
+reports/control_tree_step_graphs/*
+!reports/control_tree_step_graphs/.gitkeep
+reports/control_tree_step_dumps/*
+!reports/control_tree_step_dumps/.gitkeep
+reports/control_tree_step_summaries/*
+!reports/control_tree_step_summaries/.gitkeep
 reports/abstract_structures/*
 !reports/abstract_structures/.gitkeep
 reports/mindnode_outlines/*
