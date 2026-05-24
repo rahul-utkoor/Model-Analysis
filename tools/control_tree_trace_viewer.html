@@ -75,6 +75,8 @@
     .wide { grid-column: 1 / -1; }
     .checkrow { display: flex; gap: 8px; align-items: center; color: var(--muted); }
     .pager, .navrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+    .quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .quick button { font-size: 12px; padding: 5px 7px; }
     .summary {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -113,6 +115,18 @@
     .node text { font-size: 11px; fill: var(--text); }
     .edge { stroke: #687385; stroke-width: 1.3; fill: none; marker-end: url(#arrow); }
     .edge-label { font-size: 10px; fill: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; color: var(--muted); margin-top: 8px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); }
+    .teaching-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: #fbfcfe;
+      margin-bottom: 10px;
+    }
+    .teaching-card h3 { margin: 0 0 5px; font-size: 15px; }
+    .teaching-card p { margin: 4px 0; }
     .details dl { display: grid; grid-template-columns: 125px 1fr; gap: 6px 10px; }
     .details dt { color: var(--muted); }
     .details dd { margin: 0; word-break: break-word; }
@@ -160,6 +174,15 @@
         <input id="searchBox" class="wide" placeholder="search reason/pass/region">
         <label class="checkrow wide"><input type="checkbox" id="hideSkips"> hide skip steps</label>
       </div>
+      <div class="quick">
+        <button data-quick="gelu">Show GELU fusions</button>
+        <button data-quick="linear">Show Linear projections</button>
+        <button data-quick="ffn">Show Feed-forward regions</button>
+        <button data-quick="residual">Show Residual merges</button>
+        <button data-quick="attention">Show Attention skeletons</button>
+        <button data-quick="skips">Show skipped steps</button>
+        <button data-quick="clear">Clear filters</button>
+      </div>
       <div class="pager">
         <button id="prevPage">Previous page</button>
         <button id="nextPage">Next page</button>
@@ -178,9 +201,16 @@
           <button data-nav="nextResidual">Next ResidualMergeRegion</button>
           <button data-nav="nextAttention">Next AttentionSkeletonRegion</button>
         </div>
+        <div class="legend">
+          <span><i class="swatch" style="background:#fff3bf"></i> collapsed nodes</span>
+          <span><i class="swatch" style="background:#b7f4c2"></i> created region</span>
+          <span><i class="swatch" style="background:#e5dbff"></i> boundary/context</span>
+          <span><i class="swatch" style="background:#d0ebff"></i> incoming/outgoing flow</span>
+          <span><i class="swatch" style="background:#eceff3"></i> skipped/analysis context</span>
+        </div>
       </div>
       <div class="graph-wrap">
-        <svg id="graph" width="980" height="480" role="img" aria-label="local control-tree step graph"></svg>
+        <svg id="graph" width="1120" height="480" role="img" aria-label="local control-tree step graph"></svg>
       </div>
     </main>
 
@@ -188,7 +218,7 @@
       <div class="section-title">Selected Step</div>
       <div id="details">Select a step.</div>
       <div class="section-title">Node Metadata</div>
-      <pre id="nodeMeta">Click a node.</pre>
+      <pre id="nodeMeta">Click a node or edge.</pre>
       <details>
         <summary class="section-title">Local Graph JSON</summary>
         <pre id="rawGraph"></pre>
@@ -272,9 +302,9 @@
       $("stepList").innerHTML = state.steps.map(step => {
         const selected = state.selectedSummary && state.selectedSummary.step_id === step.step_id ? " selected" : "";
         return `<div class="step${selected}" data-step="${esc(step.step_id)}">
-          <div class="top"><span>#${esc(step.step_index)} ${esc(step.pass_name)}</span><span>${esc(step.action)}</span></div>
-          <div class="meta">${esc(step.created_region_type || "")} · active ${esc(step.before_active_node_count)} -> ${esc(step.after_active_node_count)} · conf ${esc(step.confidence || "")}</div>
-          <div class="reason">${esc(step.reason || "")}</div>
+          <div class="top"><span>#${esc(step.step_index)} ${esc(step.display_title || step.pass_name)}</span><span>${esc(step.action)}</span></div>
+          <div class="meta">${esc(step.display_subtitle || step.created_region_type || "")} · active ${esc(step.before_active_node_count)} -> ${esc(step.after_active_node_count)} · conf ${esc(step.confidence || "")}</div>
+          <div class="reason">${esc(step.display_reason_short || step.reason || "")}</div>
         </div>`;
       }).join("");
       document.querySelectorAll(".step").forEach(el => el.addEventListener("click", () => selectStep(el.dataset.step)));
@@ -291,23 +321,71 @@
       renderDetails();
       renderGraph();
       $("rawGraph").textContent = JSON.stringify(state.localGraph, null, 2);
-      $("nodeMeta").textContent = "Click a node.";
+      $("nodeMeta").textContent = "Click a node or edge.";
     }
 
     function renderDetails() {
       const s = state.selectedStep || {};
+      const teaching = s.teaching_explanation || state.localGraph?.teaching_explanation || {};
       const pills = (items) => (items || []).slice(0, 60).map(x => `<span class="pill">${esc(x)}</span>`).join("");
-      $("details").innerHTML = `<dl>
-        <dt>step</dt><dd>${esc(s.step_index)} / ${esc(s.step_id)}</dd>
-        <dt>pass</dt><dd>${esc(s.pass_name)}</dd>
-        <dt>action</dt><dd>${esc(s.action)}</dd>
-        <dt>created</dt><dd>${esc(s.created_region_type || "")}<br>${esc(s.created_region_id || "")}</dd>
-        <dt>confidence</dt><dd>${esc(s.confidence)}</dd>
-        <dt>active nodes</dt><dd>${esc(s.before_summary?.num_active_nodes)} -> ${esc(s.after_summary?.num_active_nodes)}</dd>
-        <dt>reason</dt><dd>${esc(s.reason)}</dd>
-        <dt>collapsed ops</dt><dd>${pills(s.collapsed_op_ids)}</dd>
-        <dt>collapsed regions</dt><dd>${pills(s.collapsed_region_ids)}</dd>
-      </dl>`;
+      $("details").innerHTML = `
+        <div class="teaching-card">
+          <h3>${esc(teaching.headline || s.pass_name || "Step")}</h3>
+          <p><strong>Step:</strong> ${esc(s.step_index)} / ${esc(s.step_id)}</p>
+          <p><strong>Action:</strong> ${esc(s.action)} · <strong>Confidence:</strong> ${esc(s.confidence)}</p>
+          <p><strong>Before/after:</strong> ${esc(teaching.before_after || "")}</p>
+        </div>
+        <div class="section-title">What happened?</div>
+        <p>${esc(teaching.what_happened || s.reason || "")}</p>
+        <div class="section-title">Why this matters</div>
+        <p>${esc(teaching.why_it_matters || "")}</p>
+        <div class="section-title">Compiler analogy</div>
+        <p>${esc(teaching.compiler_analogy || "")}</p>
+        <div class="section-title">Pruning relevance</div>
+        <p>${esc(teaching.pruning_relevance || "")}</p>
+        <div class="section-title">Collapsed operations</div>
+        <div>${pills(s.collapsed_op_ids) || "_None._"}</div>
+        <div class="section-title">Created region</div>
+        <dl>
+          <dt>type</dt><dd>${esc(s.created_region_type || "")}</dd>
+          <dt>id</dt><dd>${esc(s.created_region_id || "")}</dd>
+          <dt>pass</dt><dd>${esc(s.pass_name || "")}</dd>
+          <dt>reason</dt><dd>${esc(s.reason || "")}</dd>
+        </dl>
+        <div class="section-title">Collapsed regions</div>
+        <div>${pills(s.collapsed_region_ids) || "_None._"}</div>
+        <p class="meta">${esc(teaching.reading_hint || "")}</p>`;
+    }
+
+    function renderInspector(kind, item) {
+      if (!item) return;
+      if (kind === "edge") {
+        $("nodeMeta").textContent = [
+          `Edge: ${item.display_label || item.label || ""}`,
+          `Technical label: ${item.technical_label || ""}`,
+          `Role: ${item.role || ""}`,
+          `Edge kind: ${item.edge_kind || ""}`,
+          `Tensor/value: ${item.tensor_or_value_id || ""}`,
+          `Explanation: ${item.explanation || ""}`,
+          "",
+          JSON.stringify(item, null, 2)
+        ].join("\n");
+      } else {
+        $("nodeMeta").textContent = [
+          `Node: ${item.display_title || item.label || ""}`,
+          `Subtitle: ${item.display_subtitle || ""}`,
+          `Role: ${item.role || ""}`,
+          `Kind: ${item.node_kind || ""}`,
+          `Region type: ${item.region_type || ""}`,
+          `Op type: ${item.op_type || ""}`,
+          `Canonical op type: ${item.canonical_op_type || ""}`,
+          `Source ops: ${(item.source_op_ids || []).join(", ")}`,
+          `Technical label: ${item.technical_label || item.node_id || ""}`,
+          `Explanation: ${item.explanation || ""}`,
+          "",
+          JSON.stringify(item, null, 2)
+        ].join("\n");
+      }
     }
 
     function colorFor(node) {
@@ -321,9 +399,9 @@
 
     function lane(role) {
       if (role === "incoming_boundary") return 120;
-      if (role === "collapsed") return 355;
-      if (role === "created") return 585;
-      if (role === "outgoing_boundary") return 820;
+      if (role === "collapsed") return 330;
+      if (role === "created") return 590;
+      if (role === "outgoing_boundary") return 840;
       return 470;
     }
 
@@ -331,10 +409,10 @@
       const graph = state.localGraph || {nodes: [], edges: []};
       const svg = $("graph");
       const nodes = graph.nodes || [];
-      const groups = {};
-      for (const n of nodes) (groups[n.role] ||= []).push(n);
+      const groups = graph.groups || {};
       const pos = {};
-      for (const [role, items] of Object.entries(groups)) {
+      for (const role of ["incoming_boundary", "collapsed", "created", "outgoing_boundary", "context"]) {
+        const items = groups[role] || [];
         items.forEach((n, i) => pos[n.node_id] = {x: lane(role), y: 70 + i * 82});
       }
       const maxY = Math.max(460, ...Object.values(pos).map(p => p.y + 60));
@@ -346,15 +424,17 @@
         const y1 = a.y + 22, y2 = b.y + 22;
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", "edge");
-        path.setAttribute("d", `M${a.x + 130},${y1} C${a.x + 190},${y1} ${b.x - 60},${y2} ${b.x},${y2}`);
-        path.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = e.label || e.edge_kind || "";
+        path.setAttribute("d", `M${a.x + 175},${y1} C${a.x + 230},${y1} ${b.x - 60},${y2} ${b.x},${y2}`);
+        path.addEventListener("click", () => renderInspector("edge", e));
+        path.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = e.technical_label || e.label || e.edge_kind || "";
         svg.appendChild(path);
-        if (e.label) {
+        if (e.display_label) {
           const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
           t.setAttribute("class", "edge-label");
           t.setAttribute("x", (a.x + b.x) / 2);
           t.setAttribute("y", (y1 + y2) / 2 - 4);
-          t.textContent = String(e.label).slice(0, 32);
+          t.textContent = String(e.display_label).slice(0, 42);
+          t.addEventListener("click", () => renderInspector("edge", e));
           svg.appendChild(t);
         }
       }
@@ -363,19 +443,25 @@
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         g.setAttribute("class", "node");
         g.style.cursor = "pointer";
-        g.addEventListener("click", () => $("nodeMeta").textContent = JSON.stringify(n, null, 2));
+        g.addEventListener("click", () => renderInspector("node", n));
         const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        r.setAttribute("x", p.x); r.setAttribute("y", p.y); r.setAttribute("width", 150); r.setAttribute("height", 48);
+        r.setAttribute("x", p.x); r.setAttribute("y", p.y); r.setAttribute("width", 190); r.setAttribute("height", 64);
         r.setAttribute("fill", colorFor(n));
         g.appendChild(r);
         const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
         t1.setAttribute("x", p.x + 8); t1.setAttribute("y", p.y + 18);
-        t1.textContent = String(n.label || n.node_id).slice(0, 22);
+        t1.textContent = String(n.display_title || n.label || n.node_id).slice(0, 28);
         g.appendChild(t1);
         const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
         t2.setAttribute("x", p.x + 8); t2.setAttribute("y", p.y + 35);
-        t2.textContent = String(n.region_type || n.canonical_op_type || n.role || "").slice(0, 24);
+        t2.textContent = String(n.display_subtitle || n.region_type || n.canonical_op_type || "").slice(0, 30);
         g.appendChild(t2);
+        const t3 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t3.setAttribute("x", p.x + 8); t3.setAttribute("y", p.y + 52);
+        t3.setAttribute("fill", "#657084");
+        t3.textContent = String(n.role || "").slice(0, 26);
+        g.appendChild(t3);
+        g.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = n.technical_label || n.node_id || "";
         svg.appendChild(g);
       }
       if (!nodes.length) {
@@ -399,6 +485,21 @@
       if (result.match) await selectStep(result.match.step_id);
     }
 
+    function applyQuickFilter(kind) {
+      $("passFilter").value = "";
+      $("actionFilter").value = "";
+      $("regionFilter").value = "";
+      $("searchBox").value = "";
+      $("hideSkips").checked = false;
+      if (kind === "gelu") $("passFilter").value = "semantic_fusion_gelu";
+      if (kind === "linear") $("regionFilter").value = "LinearProjectionRegion";
+      if (kind === "ffn") $("regionFilter").value = "FeedForwardRegion";
+      if (kind === "residual") $("regionFilter").value = "ResidualMergeRegion";
+      if (kind === "attention") $("regionFilter").value = "AttentionSkeletonRegion";
+      if (kind === "skips") $("actionFilter").value = "skip";
+      loadSteps(0);
+    }
+
     async function loadTrace() {
       state.index = await fetchJson("/api/trace/index");
       renderIndex();
@@ -412,6 +513,7 @@
     for (const id of ["passFilter", "actionFilter", "regionFilter", "hideSkips"]) $(id).addEventListener("change", () => loadSteps(0));
     $("searchBox").addEventListener("keydown", e => { if (e.key === "Enter") loadSteps(0); });
     document.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => navigate(b.dataset.nav)));
+    document.querySelectorAll("[data-quick]").forEach(b => b.addEventListener("click", () => applyQuickFilter(b.dataset.quick)));
     fillSelect("actionFilter", {initialize: 0, collapse: 0, skip: 0, finalize: 0}, "all actions");
     loadTrace().catch(err => { $("details").textContent = String(err); });
   </script>

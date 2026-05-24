@@ -119,6 +119,38 @@ def synthetic_steps() -> list[dict]:
             "after_summary": {"num_active_nodes": 2},
             "graph_snapshot": {"nodes": [], "edges": []},
         },
+        {
+            "step_id": "step_000004",
+            "step_index": 4,
+            "pass_name": "semantic_fusion_gelu",
+            "action": "collapse",
+            "created_region_id": "region::gelu",
+            "created_region_type": "ActivationRegion",
+            "collapsed_node_ids": ["node::op::erf", "node::op::mul"],
+            "collapsed_op_ids": ["op::erf", "op::mul"],
+            "collapsed_region_ids": [],
+            "confidence": "high",
+            "reason": "Erf multiply-back GELU pattern",
+            "before_summary": {"num_active_nodes": 5},
+            "after_summary": {"num_active_nodes": 4},
+            "graph_snapshot": {"nodes": [], "edges": []},
+        },
+        {
+            "step_id": "step_000005",
+            "step_index": 5,
+            "pass_name": "collapse_residual_merge",
+            "action": "collapse",
+            "created_region_id": "region::residual",
+            "created_region_type": "ResidualMergeRegion",
+            "collapsed_node_ids": ["node::op::residual_add"],
+            "collapsed_op_ids": ["op::residual_add"],
+            "collapsed_region_ids": [],
+            "confidence": "medium",
+            "reason": "residual add join",
+            "before_summary": {"num_active_nodes": 4},
+            "after_summary": {"num_active_nodes": 4},
+            "graph_snapshot": {"nodes": [], "edges": []},
+        },
     ]
 
 
@@ -140,9 +172,9 @@ def test_filters_and_pagination() -> None:
     feedforward = api.filter_step_summaries(steps, region_type="FeedForwardRegion")
     page = api.paginate(collapses, 1, 1)
 
-    assert len(collapses) == 2
+    assert len(collapses) == 4
     assert feedforward[0]["step_id"] == "step_000003"
-    assert page["total"] == 2
+    assert page["total"] == 4
     assert page["items"][0]["step_id"] == "step_000003"
 
 
@@ -159,6 +191,9 @@ def test_local_graph_contains_created_collapsed_and_boundary_nodes() -> None:
     assert "abstraction" in edge_roles
     assert "incoming" in edge_roles
     assert "outgoing" in edge_roles
+    assert graph["groups"]["created"]
+    assert all("display_title" in node and "technical_label" in node for node in graph["nodes"])
+    assert all("display_label" in edge and "technical_label" in edge for edge in graph["edges"])
 
 
 def test_skip_step_local_graph_uses_candidate_nodes() -> None:
@@ -167,6 +202,7 @@ def test_skip_step_local_graph_uses_candidate_nodes() -> None:
 
     assert graph["mode"] == "local"
     assert any(node["role"] == "context" for node in graph["nodes"])
+    assert "teaching_explanation" in graph
 
 
 def test_next_prev_matching_step_search() -> None:
@@ -180,3 +216,29 @@ def test_next_prev_matching_step_search() -> None:
     assert next_collapse["step_id"] == "step_000001"
     assert next_ffn["step_id"] == "step_000003"
     assert prev_collapse["step_id"] == "step_000001"
+
+
+def test_step_summaries_include_display_labels() -> None:
+    api = load_api_module()
+    linear = api.make_step_summary(synthetic_steps()[1])
+    ffn = api.make_step_summary(synthetic_steps()[3])
+
+    assert linear["display_title"] == "Linear Projection collapse"
+    assert linear["display_subtitle"] == "LinearProjectionRegion"
+    assert "MatMul" in linear["display_reason_short"]
+    assert ffn["display_title"] == "Feed-Forward Block collapse"
+
+
+def test_teaching_explanations_for_core_passes() -> None:
+    api = load_api_module()
+    steps = synthetic_steps()
+
+    linear = api.build_local_step_graph(steps[1])["teaching_explanation"]
+    ffn = api.build_local_step_graph(steps[3])["teaching_explanation"]
+    gelu = api.build_local_step_graph(steps[4])["teaching_explanation"]
+    residual = api.build_local_step_graph(steps[5])["teaching_explanation"]
+
+    assert "Linear Projection" in linear["headline"]
+    assert "Feed-Forward" in ffn["headline"]
+    assert "GELU" in gelu["headline"]
+    assert "residual" in residual["headline"].lower()

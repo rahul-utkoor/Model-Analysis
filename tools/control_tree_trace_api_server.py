@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import mimetypes
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -37,7 +37,154 @@ def _int_arg(values: list[str] | None, default: int) -> int:
         return default
 
 
+def _clean_label(value: Any) -> str:
+    text = str(value or "").strip()
+    for prefix in ("node::op::", "region::", "region:", "trace::", "candidate::", "op::"):
+        text = text.replace(prefix, "")
+    text = re.sub(r"^/model/[^/]+/", "", text)
+    text = re.sub(r"^model_[a-zA-Z0-9]+_", "", text)
+    text = text.replace("/", ".")
+    text = text.replace("::", ".")
+    text = text.strip("._")
+    return text or str(value or "")
+
+
+def _split_words(value: str) -> str:
+    text = re.sub(r"(?<!^)([A-Z])", r" \1", value).replace("_", " ").replace("-", " ")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def humanize_op_name(node: dict[str, Any]) -> str:
+    metadata = node.get("metadata", {}) or {}
+    source_ids = node.get("source_op_ids") or []
+    for candidate in (
+        metadata.get("source_node_name"),
+        source_ids[0] if source_ids else None,
+        node.get("label"),
+        node.get("node_id"),
+    ):
+        cleaned = _clean_label(candidate)
+        if cleaned:
+            return cleaned
+    return "unknown"
+
+
+def humanize_region_type(region_type: str | None, metadata: dict[str, Any] | None = None) -> str:
+    metadata = metadata or {}
+    if region_type == "ActivationRegion" and metadata.get("activation_kind") == "gelu":
+        return "Activation / GELU"
+    return {
+        "LinearProjectionRegion": "Linear Projection",
+        "FeedForwardRegion": "Feed-Forward Block",
+        "ResidualMergeRegion": "Residual Merge",
+        "AttentionSkeletonRegion": "Attention Skeleton",
+        "AxisTransformRegion": "Axis Transform",
+        "ActivationRegion": "Activation",
+        "LayerNormRegion": "LayerNorm",
+        "PrimitiveRegion": "Primitive Op",
+        "BiasAddRegion": "Bias Add",
+        "ForkRegion": "Fork",
+        "JoinRegion": "Join",
+        "ProperAcyclicRegion": "Acyclic Region",
+        "ModelRegion": "Model Region",
+    }.get(region_type or "", _split_words(region_type or "Unknown"))
+
+
+def infer_semantic_node_title(node: dict[str, Any]) -> str:
+    region_type = node.get("region_type")
+    metadata = node.get("metadata", {}) or {}
+    if region_type:
+        return humanize_region_type(region_type, metadata)
+    name = humanize_op_name(node).lower()
+    canonical = node.get("canonical_op_type")
+    op_type = node.get("op_type")
+    if canonical in {"linear", "matmul"} or str(op_type).lower() in {"matmul", "gemm"}:
+        if "query" in name:
+            return "Query MatMul"
+        if "key" in name:
+            return "Key MatMul"
+        if "value" in name:
+            return "Value MatMul"
+        if "intermediate" in name:
+            return "Intermediate Projection"
+        if "output" in name:
+            return "Output Projection"
+        return "MatMul Projection"
+    if canonical == "softmax":
+        return "Softmax"
+    if canonical == "bias_add":
+        return "Bias Add"
+    if canonical == "residual_add":
+        return "Residual Add"
+    if canonical == "layer_norm":
+        return "LayerNorm"
+    if canonical == "activation" or str(op_type).lower() in {"erf", "gelu", "relu", "tanh", "sigmoid"}:
+        return "Activation / GELU" if metadata.get("activation_kind") == "gelu" or "erf" in name else "Activation"
+    if canonical in {"shape_op", "axis_transform", "reshape", "transpose"}:
+        return "Axis / Shape Transform"
+    return _split_words(op_type or humanize_op_name(node))
+
+
+def _node_explanation(node: dict[str, Any], role: str) -> str:
+    title = infer_semantic_node_title(node)
+    if role == "created":
+        return f"This is the new abstract {title} node created by this reduction step."
+    if role == "collapsed":
+        return f"This node is part of the concrete subgraph being collapsed into a higher-level {title if node.get('region_type') else 'region'}."
+    if role == "incoming_boundary":
+        return "This node provides data flowing into the region being collapsed."
+    if role == "outgoing_boundary":
+        return "This node consumes data produced by the newly created region."
+    return "This node gives local context for the selected trace step."
+
+
+def humanize_edge_label(edge: dict[str, Any], role: str) -> tuple[str, str]:
+    raw = edge.get("label") or edge.get("tensor_or_value_id") or ""
+    clean = _clean_label(raw)
+    base = {
+        "incoming": "input to collapsed region",
+        "internal": "internal dataflow",
+        "outgoing": "output from collapsed region",
+        "abstraction": "collapsed into",
+    }.get(role)
+    if not base:
+        base = {
+            "containment": "contains",
+            "dataflow": "tensor flow",
+            "dependency": "depends on",
+            "abstraction": "collapsed into",
+        }.get(edge.get("edge_kind"), "edge")
+    display = f"{base}: {clean}" if clean and role != "abstraction" else base
+    return display, clean or str(raw or edge.get("edge_kind", ""))
+
+
+def _edge_explanation(edge: dict[str, Any], role: str) -> str:
+    return {
+        "incoming": "This tensor dependency crosses from surrounding context into the region being collapsed.",
+        "internal": "This tensor dependency is internal to the region being collapsed.",
+        "outgoing": "This tensor dependency leaves the newly abstracted region and flows to later computation.",
+        "abstraction": "This shows that the selected concrete node is represented by the new abstract region after the collapse.",
+    }.get(role, "This edge is part of the selected step's local structural context.")
+
+
+def _step_display(pass_name: str | None, region_type: str | None, action: str | None) -> tuple[str, str]:
+    region = humanize_region_type(region_type)
+    if pass_name == "semantic_fusion_gelu":
+        return "GELU semantic fusion", "ActivationRegion"
+    if action == "skip":
+        return "Skipped candidate collapse", region_type or pass_name or ""
+    if region_type:
+        return f"{region} collapse", region_type
+    return _split_words(pass_name or action or "Step"), action or ""
+
+
+def _short_reason(reason: str | None, limit: int = 140) -> str:
+    text = str(reason or "")
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "..."
+
+
 def make_step_summary(step: dict[str, Any]) -> dict[str, Any]:
+    title, subtitle = _step_display(step.get("pass_name"), step.get("created_region_type"), step.get("action"))
     return {
         "step_id": step.get("step_id"),
         "step_index": step.get("step_index"),
@@ -50,6 +197,9 @@ def make_step_summary(step: dict[str, Any]) -> dict[str, Any]:
         "collapsed_region_count": len(step.get("collapsed_region_ids", []) or []),
         "confidence": step.get("confidence"),
         "reason": step.get("reason"),
+        "display_title": title,
+        "display_subtitle": subtitle,
+        "display_reason_short": _short_reason(step.get("reason")),
         "before_active_node_count": (step.get("before_summary") or {}).get("num_active_nodes"),
         "after_active_node_count": (step.get("after_summary") or {}).get("num_active_nodes"),
     }
@@ -64,6 +214,7 @@ def step_without_snapshot(step: dict[str, Any]) -> dict[str, Any]:
         "edge_count": len(snapshot.get("edges", []) or []),
         "truncated": snapshot.get("truncated", False),
     }
+    payload["teaching_explanation"] = build_step_teaching_explanation(step, build_local_step_graph(step))
     return payload
 
 
@@ -106,43 +257,179 @@ def paginate(items: list[dict[str, Any]], offset: int, limit: int) -> dict[str, 
 
 
 def _node_payload(node: dict[str, Any], role: str) -> dict[str, Any]:
+    metadata = node.get("metadata", {}) or {}
+    title = infer_semantic_node_title(node)
+    subtitle = humanize_op_name(node)
     return {
         "node_id": node.get("node_id"),
+        "display_title": title,
+        "display_subtitle": subtitle,
+        "technical_label": node.get("node_id"),
         "node_kind": "created_region" if role == "created" else node.get("node_kind", "boundary"),
         "label": node.get("label") or node.get("node_id"),
         "region_type": node.get("region_type"),
         "op_type": node.get("op_type"),
         "canonical_op_type": node.get("canonical_op_type"),
         "role": role,
+        "explanation": _node_explanation(node, role),
         "confidence": node.get("confidence"),
         "pruning_role": node.get("pruning_role"),
-        "metadata": node.get("metadata", {}),
+        "source_op_ids": node.get("source_op_ids", []),
+        "metadata": metadata,
     }
 
 
 def _synthetic_node(node_id: str, role: str, *, label: str | None = None) -> dict[str, Any]:
+    node = {
+        "node_id": node_id,
+        "label": label or node_id,
+        "region_type": None,
+        "op_type": None,
+        "canonical_op_type": None,
+        "metadata": {"synthetic": True},
+        "source_op_ids": [label or node_id] if role == "context" else [],
+    }
     return {
         "node_id": node_id,
+        "display_title": infer_semantic_node_title(node) if role != "created" else _split_words(label or node_id),
+        "display_subtitle": _clean_label(label or node_id),
+        "technical_label": node_id,
         "node_kind": "boundary" if "boundary" in role else "abstract_region",
         "label": label or node_id,
         "region_type": None,
         "op_type": None,
         "canonical_op_type": None,
         "role": role,
+        "explanation": _node_explanation(node, role),
         "confidence": None,
         "pruning_role": None,
+        "source_op_ids": node.get("source_op_ids", []),
         "metadata": {"synthetic": True},
     }
 
 
 def _edge_payload(edge: dict[str, Any], role: str) -> dict[str, Any]:
+    display, technical = humanize_edge_label(edge, role)
     return {
         "src": edge.get("src"),
         "dst": edge.get("dst"),
         "edge_kind": edge.get("edge_kind", "dataflow"),
         "label": edge.get("label") or edge.get("tensor_or_value_id"),
+        "display_label": display,
+        "technical_label": technical,
+        "tensor_or_value_id": edge.get("tensor_or_value_id"),
         "role": role,
+        "explanation": _edge_explanation(edge, role),
         "metadata": edge.get("metadata", {}),
+    }
+
+
+def _abstraction_edge(src: str, dst: str) -> dict[str, Any]:
+    edge = {
+        "src": src,
+        "dst": dst,
+        "edge_kind": "abstraction",
+        "label": "collapsed_into",
+        "tensor_or_value_id": None,
+        "metadata": {"synthetic": True},
+    }
+    return _edge_payload(edge, "abstraction")
+
+
+def _group_nodes(nodes: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    groups = {key: [] for key in ("incoming_boundary", "collapsed", "created", "outgoing_boundary", "context")}
+    for node in nodes:
+        groups.setdefault(node.get("role", "context"), []).append(node)
+    return groups
+
+
+def build_step_teaching_explanation(step: dict[str, Any], local_graph: dict[str, Any]) -> dict[str, str]:
+    pass_name = step.get("pass_name")
+    action = step.get("action")
+    region_type = step.get("created_region_type")
+    before = (step.get("before_summary") or {}).get("num_active_nodes")
+    after = (step.get("after_summary") or {}).get("num_active_nodes")
+    before_after = f"active nodes {before} -> {after}"
+    collapsed_count = len(step.get("collapsed_node_ids", []) or [])
+    if action == "skip":
+        return {
+            "headline": "Skip candidate collapse",
+            "what_happened": "The analyzer considered this candidate but did not create a new abstract node for it.",
+            "why_it_matters": "Skip steps make overlap and ambiguity visible instead of silently hiding detector decisions.",
+            "compiler_analogy": "This is like rejecting an interval candidate because it was already covered by an earlier reduction.",
+            "pruning_relevance": "No new pruning interface is introduced by this skipped candidate.",
+            "before_after": before_after,
+            "reading_hint": "Gray/context nodes show the candidate evidence when it is available.",
+        }
+    if pass_name == "semantic_fusion_gelu":
+        return {
+            "headline": "Recognize decomposed GELU activation",
+            "what_happened": "Several primitive arithmetic ops around Erf are collapsed into one ActivationRegion.",
+            "why_it_matters": "ONNX may decompose GELU into arithmetic; semantic fusion recovers the high-level operation.",
+            "compiler_analogy": "This is like recognizing an instruction idiom and replacing it with a semantic node.",
+            "pruning_relevance": "Recovering GELU exposes the feed-forward block that contains the MLP intermediate dimension.",
+            "before_after": before_after,
+            "reading_hint": "Yellow nodes are collapsed; the green node is the recovered activation region.",
+        }
+    if pass_name == "collapse_linear_projection" or region_type == "LinearProjectionRegion":
+        return {
+            "headline": "Collapse projection arithmetic into Linear Projection",
+            "what_happened": f"{collapsed_count} primitive or lower-level nodes are collapsed into a LinearProjectionRegion.",
+            "why_it_matters": "The tree now treats projection arithmetic as one semantic computation region.",
+            "compiler_analogy": "This is a local structural reduction from low-level operations to a higher-level IR node.",
+            "pruning_relevance": "The output feature dimension may become a prunable region dimension.",
+            "before_after": before_after,
+            "reading_hint": "Yellow nodes are the projection implementation; green is the abstract projection.",
+        }
+    if pass_name == "collapse_feedforward" or region_type == "FeedForwardRegion":
+        return {
+            "headline": "Collapse Linear + GELU + Linear into Feed-Forward Block",
+            "what_happened": "Projection, activation, and projection regions are grouped as one feed-forward block.",
+            "why_it_matters": "This recovers the semantic transformer MLP block from lower-level Tensor IR.",
+            "compiler_analogy": "This is a compound-region collapse: previously abstracted regions compose into a larger region.",
+            "pruning_relevance": "This is the canonical MLP pruning opportunity: prune intermediate_dim and propagate the same indices.",
+            "before_after": before_after,
+            "reading_hint": "Look for the two projection regions and the activation region feeding the new block.",
+        }
+    if pass_name == "collapse_residual_merge" or region_type == "ResidualMergeRegion":
+        return {
+            "headline": "Collapse residual branch merge",
+            "what_happened": "A branch merge is represented as a ResidualMergeRegion.",
+            "why_it_matters": "The region tree records that separate paths must agree at this join.",
+            "compiler_analogy": "This is analogous to identifying a join region in a control-flow graph.",
+            "pruning_relevance": "Residual hidden dimensions are usually protected or blocked because branches must agree.",
+            "before_after": before_after,
+            "reading_hint": "Boundary nodes show values entering or leaving the residual merge.",
+        }
+    if pass_name == "collapse_attention_skeleton" or region_type == "AttentionSkeletonRegion":
+        return {
+            "headline": "Collapse attention skeleton",
+            "what_happened": "MatMul/Softmax/MatMul and nearby axis transforms are grouped as an attention skeleton.",
+            "why_it_matters": "The tree records attention structure without claiming executable head pruning.",
+            "compiler_analogy": "This is recognition of a high-level dataflow idiom from lower-level operations.",
+            "pruning_relevance": "Attention pruning requires head-axis mapping before it can be considered executable.",
+            "before_after": before_after,
+            "reading_hint": "Attention skeletons often contain shape and axis context around the core attention MatMuls.",
+        }
+    if pass_name == "collapse_axis_transform" or region_type == "AxisTransformRegion":
+        return {
+            "headline": "Collapse axis/shape transform",
+            "what_happened": "Shape, reshape, transpose, or related axis operations are grouped as an AxisTransformRegion.",
+            "why_it_matters": "Axis movement is tracked as structural evidence instead of being hidden in primitive ops.",
+            "compiler_analogy": "This resembles preserving index-map information through layout transformations.",
+            "pruning_relevance": "Shape transforms carry axis-mapping constraints for pruning propagation.",
+            "before_after": before_after,
+            "reading_hint": "These regions are usually propagation evidence rather than direct pruning targets.",
+        }
+    region = humanize_region_type(region_type)
+    return {
+        "headline": f"Collapse into {region}",
+        "what_happened": f"The trace collapsed {collapsed_count} active nodes into a {region}.",
+        "why_it_matters": "This reduces low-level graph detail into a semantic structural region.",
+        "compiler_analogy": "This is one reduction step in a structural-analysis control-tree construction.",
+        "pruning_relevance": "The region may carry pruning roles, protected dimensions, or propagation constraints in later analysis.",
+        "before_after": before_after,
+        "reading_hint": "Yellow nodes are collapsed; green is the newly created abstract region.",
     }
 
 
@@ -158,18 +445,21 @@ def build_local_step_graph(step: dict[str, Any], radius: int = 1) -> dict[str, A
     local_edges: list[dict[str, Any]] = []
 
     if step.get("action") in {"initialize", "finalize"}:
-        return {
+        graph = {
             "step_id": step.get("step_id"),
             "step_index": step.get("step_index"),
             "mode": "summary",
             "nodes": [],
             "edges": [],
+            "groups": _group_nodes([]),
             "summary": {
                 "before": step.get("before_summary", {}),
                 "after": step.get("after_summary", {}),
                 "reason": step.get("reason"),
             },
         }
+        graph["teaching_explanation"] = build_step_teaching_explanation(step, graph)
+        return graph
 
     if created_id:
         selected_ids.add(created_id)
@@ -185,16 +475,7 @@ def build_local_step_graph(step: dict[str, Any], radius: int = 1) -> dict[str, A
         else:
             local_nodes[node_id] = _synthetic_node(node_id, "collapsed")
         if created_id:
-            local_edges.append(
-                {
-                    "src": node_id,
-                    "dst": created_id,
-                    "edge_kind": "abstraction",
-                    "label": "collapsed_into",
-                    "role": "abstraction",
-                    "metadata": {"synthetic": True},
-                }
-            )
+            local_edges.append(_abstraction_edge(node_id, created_id))
 
     if step.get("action") == "skip" and not collapsed_ids:
         for op_id in (step.get("collapsed_op_ids") or [])[:20]:
@@ -220,13 +501,15 @@ def build_local_step_graph(step: dict[str, Any], radius: int = 1) -> dict[str, A
         elif src in selected_ids and dst in selected_ids:
             local_edges.append(_edge_payload(edge, "internal"))
 
-    return {
+    nodes = sorted(local_nodes.values(), key=lambda item: (item.get("role", ""), item.get("node_id", "")))
+    graph = {
         "step_id": step.get("step_id"),
         "step_index": step.get("step_index"),
         "mode": "local",
         "radius": radius,
-        "nodes": sorted(local_nodes.values(), key=lambda item: (item.get("role", ""), item.get("node_id", ""))),
+        "nodes": nodes,
         "edges": local_edges,
+        "groups": _group_nodes(nodes),
         "summary": {
             "created_region_id": created_id,
             "created_region_type": step.get("created_region_type"),
@@ -235,6 +518,8 @@ def build_local_step_graph(step: dict[str, Any], radius: int = 1) -> dict[str, A
             "reason": step.get("reason"),
         },
     }
+    graph["teaching_explanation"] = build_step_teaching_explanation(step, graph)
+    return graph
 
 
 def find_matching_step(
