@@ -217,6 +217,16 @@ python tools/control_tree_trace_api_server.py --model bert-base-uncased --port 8
 
 Open `http://127.0.0.1:8766/`. The browser requests only the trace index, pages of step summaries, the selected step, and a small local collapse graph. It does not load the full trace JSON into browser memory and it does not modify models.
 
+## Ordered Dataflow Control-Tree Browser
+
+Browse the final Structural Region Tree as a lazy, ordered hierarchy:
+
+```bash
+python tools/ordered_control_tree_api_server.py --model bert-base-uncased --port 8767
+```
+
+Open `http://127.0.0.1:8767/`. This browser starts from the `ModelRegion`, expands children on demand, preserves Tensor IR/source operation order, and maps abstract regions down to primitive TensorOps. It complements the step trace viewer: the trace viewer explains how collapses happened; the ordered tree browser shows the final hierarchy in model order.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:

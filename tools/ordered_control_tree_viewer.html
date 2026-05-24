@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ordered Control Tree Browser</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #fff;
+      --line: #d8dee8;
+      --text: #172033;
+      --muted: #657084;
+      --accent: #0b6bcb;
+      --green: #d3f9d8;
+      --orange: #ffe8cc;
+      --red: #ffe3e3;
+      --gray: #edf0f4;
+      --blue: #d0ebff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 13px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) 340px auto;
+      gap: 12px;
+      padding: 10px 14px;
+      align-items: center;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { margin: 0; font-size: 17px; }
+    input, button {
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: white;
+      color: var(--text);
+    }
+    button { cursor: pointer; }
+    button:hover { border-color: #9aa6b2; }
+    .layout {
+      display: grid;
+      grid-template-columns: 330px minmax(560px, 1fr) 390px;
+      height: calc(100vh - 54px);
+      min-height: 650px;
+    }
+    aside, main {
+      overflow: auto;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+    }
+    main { background: #fbfcfe; }
+    .panel { padding: 12px; }
+    .section-title {
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fbfcfe;
+    }
+    .metric .label { color: var(--muted); font-size: 11px; }
+    .metric .value { font-size: 16px; font-weight: 700; }
+    .quick { display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick button { font-size: 12px; padding: 5px 7px; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+    .breadcrumb button { font-size: 12px; padding: 3px 6px; }
+    .search-result {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      background: white;
+    }
+    .tree { padding: 12px 10px 40px; }
+    .row {
+      display: grid;
+      grid-template-columns: 24px minmax(260px, 1fr) 95px 135px 92px 72px;
+      gap: 8px;
+      align-items: center;
+      min-height: 38px;
+      border-bottom: 1px solid #edf0f4;
+      padding: 5px 8px;
+      cursor: pointer;
+    }
+    .row:hover { background: #f3f7fb; }
+    .row.selected { background: #e7f5ff; box-shadow: inset 3px 0 0 var(--accent); }
+    .chev {
+      width: 22px;
+      height: 22px;
+      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: white;
+      line-height: 19px;
+      font-weight: 700;
+    }
+    .title { font-weight: 650; }
+    .subtitle { color: var(--muted); font-size: 12px; }
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 7px;
+      background: var(--gray);
+      color: #344054;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .role-directly_prunable { background: var(--green); }
+    .role-blocked { background: var(--red); }
+    .role-analysis_only, .role-propagation_only { background: var(--blue); }
+    .role-constraint_carrier { background: var(--orange); }
+    .details dl { display: grid; grid-template-columns: 125px 1fr; gap: 6px 10px; }
+    .details dt { color: var(--muted); }
+    .details dd { margin: 0; word-break: break-word; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8fafc;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .pill {
+      display: inline-block;
+      margin: 2px 3px 2px 0;
+      padding: 2px 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    @media (max-width: 1120px) {
+      header { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; height: auto; }
+      aside, main { border-right: none; border-bottom: 1px solid var(--line); min-height: 420px; }
+      .row { grid-template-columns: 24px 1fr; }
+      .row > :nth-child(n+3) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="title">Ordered Control Tree Browser</h1>
+    <input id="apiBase" placeholder="API base, blank for same origin">
+    <button id="loadBtn">Load tree</button>
+  </header>
+
+  <div class="layout">
+    <aside class="panel">
+      <div class="summary" id="summary"></div>
+      <div class="section-title">Search</div>
+      <input id="searchBox" style="width:100%" placeholder="feed-forward, residual, query, layer0">
+      <div class="quick" style="margin-top:8px">
+        <button data-filter="FeedForwardRegion">FeedForwardRegion</button>
+        <button data-filter="ResidualMergeRegion">ResidualMergeRegion</button>
+        <button data-filter="AttentionSkeletonRegion">AttentionSkeletonRegion</button>
+        <button data-filter="AxisTransformRegion">AxisTransformRegion</button>
+        <button data-filter="LinearProjectionRegion">LinearProjectionRegion</button>
+        <button data-filter="PrimitiveRegion">PrimitiveRegion</button>
+      </div>
+      <div class="section-title">Breadcrumb</div>
+      <div class="breadcrumb" id="breadcrumb"></div>
+      <div class="section-title">Search Results</div>
+      <div id="searchResults"></div>
+    </aside>
+
+    <main>
+      <div class="panel quick">
+        <button id="expandOne">Expand one level</button>
+        <button id="expandTwo">Expand 2 levels</button>
+        <button id="collapseSubtree">Collapse subtree</button>
+        <button id="revealLeaves">Reveal leaves</button>
+      </div>
+      <div class="tree" id="tree"></div>
+    </main>
+
+    <aside class="panel details">
+      <div class="section-title">Selected Node</div>
+      <div id="details">Select a node.</div>
+      <div class="section-title">Ordered Primitive Leaves</div>
+      <div id="leaves">Use Reveal leaves.</div>
+      <details>
+        <summary class="section-title">Raw JSON</summary>
+        <pre id="rawJson"></pre>
+      </details>
+    </aside>
+  </div>
+
+  <script>
+    const state = {
+      index: null,
+      nodes: new Map(),
+      expanded: new Set(),
+      selected: null,
+      root: null
+    };
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const api = path => $("apiBase").value.trim().replace(/\/$/, "") + path;
+    async function fetchJson(path) {
+      const res = await fetch(api(path), {cache: "no-store"});
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    }
+    function metric(label, value) {
+      return `<div class="metric"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div></div>`;
+    }
+    function roleClass(role) {
+      return `badge role-${String(role || "unknown").replace(/[^a-zA-Z0-9_]/g, "_")}`;
+    }
+    function renderIndex() {
+      const idx = state.index || {};
+      $("title").textContent = `Ordered Control Tree: ${idx.model_name || ""}`;
+      $("summary").innerHTML = [
+        metric("regions", idx.num_regions ?? 0),
+        metric("frontend", idx.source_frontend || "unknown"),
+        metric("root", idx.root_region_id || ""),
+        metric("tensor ir", idx.has_tensor_ir ? "yes" : "no")
+      ].join("");
+    }
+    async function loadTree() {
+      state.index = await fetchJson("/api/tree/index");
+      renderIndex();
+      state.root = state.index.root_region_id;
+      const rootPayload = await fetchJson(`/api/tree/node/${encodeURIComponent(state.root)}`);
+      state.nodes.set(state.root, {summary: rootPayload.display, payload: rootPayload, children: null, depth: 0, parent: null});
+      state.selected = state.root;
+      renderTree();
+      renderDetails(rootPayload);
+      renderBreadcrumb(state.root);
+    }
+    async function loadChildren(regionId) {
+      const node = state.nodes.get(regionId);
+      if (!node) return [];
+      if (node.children) return node.children;
+      const payload = await fetchJson(`/api/tree/children/${encodeURIComponent(regionId)}`);
+      node.children = payload.children || [];
+      for (const child of node.children) {
+        if (!state.nodes.has(child.region_id)) {
+          state.nodes.set(child.region_id, {summary: child, payload: null, children: null, depth: node.depth + 1, parent: regionId});
+        }
+      }
+      return node.children;
+    }
+    async function selectNode(regionId) {
+      const node = state.nodes.get(regionId);
+      if (!node) return;
+      state.selected = regionId;
+      const payload = await fetchJson(`/api/tree/node/${encodeURIComponent(regionId)}`);
+      node.payload = payload;
+      node.summary = payload.display;
+      renderTree();
+      renderDetails(payload);
+      renderBreadcrumb(regionId);
+      $("leaves").innerHTML = "Use Reveal leaves.";
+    }
+    async function toggle(regionId) {
+      if (state.expanded.has(regionId)) {
+        collapse(regionId);
+      } else {
+        await loadChildren(regionId);
+        state.expanded.add(regionId);
+      }
+      renderTree();
+    }
+    function collapse(regionId) {
+      state.expanded.delete(regionId);
+      const node = state.nodes.get(regionId);
+      if (!node || !node.children) return;
+      const stack = node.children.map(c => c.region_id);
+      while (stack.length) {
+        const id = stack.pop();
+        state.expanded.delete(id);
+        const child = state.nodes.get(id);
+        if (child && child.children) stack.push(...child.children.map(c => c.region_id));
+      }
+    }
+    function visibleRows() {
+      const rows = [];
+      function walk(id) {
+        const node = state.nodes.get(id);
+        if (!node) return;
+        rows.push({id, node});
+        if (state.expanded.has(id) && node.children) {
+          for (const child of node.children) walk(child.region_id);
+        }
+      }
+      if (state.root) walk(state.root);
+      return rows;
+    }
+    function renderTree() {
+      $("tree").innerHTML = visibleRows().map(({id, node}) => {
+        const s = node.summary;
+        const selected = id === state.selected ? " selected" : "";
+        const expanded = state.expanded.has(id);
+        const indent = node.depth * 18;
+        const chev = s.leaf ? "" : (expanded ? "−" : "+");
+        return `<div class="row${selected}" data-id="${esc(id)}">
+          <button class="chev" data-expand="${esc(id)}">${chev}</button>
+          <div style="padding-left:${indent}px">
+            <div class="title">${esc(s.display_title)}</div>
+            <div class="subtitle">${esc(s.display_subtitle)}</div>
+          </div>
+          <div>${esc(s.source_op_range)}</div>
+          <div><span class="${roleClass(s.pruning_role)}">${esc(s.pruning_role)}</span></div>
+          <div><span class="badge">${esc(s.confidence)}</span></div>
+          <div>${esc(s.child_count)} child</div>
+        </div>`;
+      }).join("");
+      document.querySelectorAll(".row").forEach(row => row.addEventListener("click", e => {
+        if (e.target.dataset.expand) return;
+        selectNode(row.dataset.id);
+      }));
+      document.querySelectorAll("[data-expand]").forEach(btn => btn.addEventListener("click", e => {
+        e.stopPropagation();
+        toggle(btn.dataset.expand);
+      }));
+    }
+    function pills(items) {
+      return (items || []).slice(0, 80).map(x => `<span class="pill">${esc(x.display_name || x)}</span>`).join("");
+    }
+    function renderDetails(payload) {
+      const s = payload.display || {};
+      const dims = payload.dimensions || [];
+      const iface = payload.interface || {};
+      $("details").innerHTML = `<dl>
+        <dt>title</dt><dd>${esc(s.display_title)}</dd>
+        <dt>type</dt><dd>${esc(s.region_type)}</dd>
+        <dt>role</dt><dd>${esc(s.pruning_role)}</dd>
+        <dt>confidence</dt><dd>${esc(s.confidence)}</dd>
+        <dt>source order</dt><dd>${esc(s.source_op_range)} (${esc(s.source_op_count)} ops)</dd>
+        <dt>children</dt><dd>${esc(s.child_count)}</dd>
+        <dt>dimensions</dt><dd>${esc(s.dimension_summary?.count || 0)} total, ${esc(s.dimension_summary?.prunable_count || 0)} prunable, ${esc(s.dimension_summary?.blocked_count || 0)} blocked</dd>
+        <dt>reason</dt><dd>${esc(s.reason)}</dd>
+        <dt>compiler analogy</dt><dd>${esc(s.compiler_analogy)}</dd>
+        <dt>pruning relevance</dt><dd>${esc(s.pruning_relevance)}</dd>
+      </dl>
+      <div class="section-title">Source ops</div>
+      <div>${pills(payload.source_ops)}</div>
+      <div class="section-title">Dimensions</div>
+      <div>${dims.length ? dims.map(d => `<span class="pill">${esc(d.dim_name)}:${esc(d.axis_role)} ${d.prunable ? "prunable" : ""} ${d.blocked ? "blocked" : ""}</span>`).join("") : "_None._"}</div>
+      <div class="section-title">Interface</div>
+      <pre>${esc(JSON.stringify(iface, null, 2))}</pre>`;
+      $("rawJson").textContent = JSON.stringify(payload, null, 2);
+    }
+    async function renderBreadcrumb(regionId) {
+      const payload = await fetchJson(`/api/tree/path/${encodeURIComponent(regionId)}`);
+      $("breadcrumb").innerHTML = (payload.path || []).map(item => `<button data-path="${esc(item.region_id)}">${esc(item.display_title)}</button>`).join(" > ");
+      document.querySelectorAll("[data-path]").forEach(btn => btn.addEventListener("click", () => revealPath(btn.dataset.path)));
+    }
+    async function revealPath(regionId) {
+      const payload = await fetchJson(`/api/tree/path/${encodeURIComponent(regionId)}`);
+      for (const item of payload.path || []) {
+        if (!state.nodes.has(item.region_id)) {
+          state.nodes.set(item.region_id, {summary: item, payload: null, children: null, depth: 0, parent: null});
+        }
+      }
+      for (let i = 0; i < payload.path.length - 1; i++) {
+        const id = payload.path[i].region_id;
+        await loadChildren(id);
+        state.expanded.add(id);
+      }
+      await selectNode(regionId);
+    }
+    async function expandToDepth(regionId, depth) {
+      if (depth <= 0) return;
+      const children = await loadChildren(regionId);
+      state.expanded.add(regionId);
+      for (const child of children) await expandToDepth(child.region_id, depth - 1);
+      renderTree();
+    }
+    async function revealLeaves() {
+      if (!state.selected) return;
+      const payload = await fetchJson(`/api/tree/leaf-ops/${encodeURIComponent(state.selected)}`);
+      $("leaves").innerHTML = (payload.leaf_ops || []).slice(0, 300).map(item =>
+        `<div class="search-result" data-leaf="${esc(item.region_id)}"><strong>${esc(item.display_title)}</strong><div class="subtitle">${esc(item.display_subtitle)}</div></div>`
+      ).join("") || "_None._";
+      document.querySelectorAll("[data-leaf]").forEach(el => el.addEventListener("click", () => revealPath(el.dataset.leaf)));
+    }
+    async function search(q) {
+      const payload = await fetchJson(`/api/tree/search?q=${encodeURIComponent(q)}&limit=80`);
+      $("searchResults").innerHTML = (payload.hits || []).map(hit =>
+        `<div class="search-result" data-hit="${esc(hit.region_id)}"><strong>${esc(hit.display_title)}</strong><div class="subtitle">${esc(hit.display_subtitle)}</div><div class="subtitle">${esc((hit.path || []).map(p => p.display_title).join(" > "))}</div></div>`
+      ).join("") || "_No matches._";
+      document.querySelectorAll("[data-hit]").forEach(el => el.addEventListener("click", () => revealPath(el.dataset.hit)));
+    }
+    $("loadBtn").addEventListener("click", () => loadTree().catch(err => $("details").textContent = String(err)));
+    $("searchBox").addEventListener("keydown", e => { if (e.key === "Enter") search($("searchBox").value.trim()); });
+    document.querySelectorAll("[data-filter]").forEach(btn => btn.addEventListener("click", () => search(btn.dataset.filter)));
+    $("expandOne").addEventListener("click", () => state.selected && expandToDepth(state.selected, 1));
+    $("expandTwo").addEventListener("click", () => state.selected && expandToDepth(state.selected, 2));
+    $("collapseSubtree").addEventListener("click", () => { if (state.selected) { collapse(state.selected); renderTree(); } });
+    $("revealLeaves").addEventListener("click", revealLeaves);
+    loadTree().catch(err => $("details").textContent = String(err));
+  </script>
+</body>
+</html>

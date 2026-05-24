@@ -529,3 +529,23 @@ python tools/control_tree_trace_api_server.py --model bert-base-uncased --port 8
 ```
 
 Open `http://127.0.0.1:8766/`. This viewer is an explanatory structural-analysis browser and does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
+
+## Milestone 23: Ordered Dataflow Control-Tree Browser
+
+Status: complete.
+
+Implemented:
+
+- Standard-library lazy API server for final Structural Region Tree browsing
+- Ordered child summaries using Tensor IR/source operation order rather than alphabetical region type
+- Human-readable region and primitive TensorOp labels with pruning-role and source-order context
+- Expandable standalone HTML tree browser with breadcrumb, search, quick filters, lazy children, and ordered leaf reveal
+- Synthetic tests for ordering, labels, paths, leaf extraction, search, teaching text, and dimension summaries
+
+Primary command:
+
+```bash
+python tools/ordered_control_tree_api_server.py --model bert-base-uncased --port 8767
+```
+
+Open `http://127.0.0.1:8767/`. This is visualization/reporting only and does not modify models, execute pruning, rewrite ONNX, export ONNX, or evaluate quality.

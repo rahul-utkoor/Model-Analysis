@@ -494,6 +494,12 @@ The trace viewer is API-backed because full traces can contain hundreds of steps
 
 The local graph is intentionally small: created region, collapsed nodes, immediate incoming boundary nodes, immediate outgoing boundary nodes, and relevant dataflow/abstraction edges. It is an explanation tool, not a full graph renderer.
 
+## Ordered Dataflow Control-Tree Browser
+
+The ordered tree browser presents the final Structural Region Tree as the neural-model analogue of a compiler control tree. It preserves containment and Tensor IR/source order rather than grouping by region type or rendering a force-directed graph. Children are sorted by explicit region order when present, then by minimum source TensorOp index, then by stable numeric/id fallback.
+
+The frontend lazy-loads root, immediate children, selected-node details, paths, search results, and primitive leaf lists. This makes the final hierarchy readable while keeping browser memory small for BERT-sized trees.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

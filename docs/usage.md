@@ -204,6 +204,24 @@ http://127.0.0.1:8766/
 
 The final Structural Region Tree shows what was found; the control-tree trace shows how structures were collapsed step by step. The viewer fetches only local step neighborhoods and is visualization only.
 
+## Ordered Dataflow Control-Tree Browser
+
+Run the ordered hierarchy browser:
+
+```bash
+python tools/ordered_control_tree_api_server.py \
+  --model bert-base-uncased \
+  --port 8767
+```
+
+Open:
+
+```text
+http://127.0.0.1:8767/
+```
+
+This viewer shows the final Structural Region Tree as an expandable dataflow control tree. It preserves Tensor IR / ONNX-like source order, expands one node at a time, and lets a selected abstract region reveal ordered primitive leaves. It is different from the step trace viewer: the trace viewer shows how reductions happened step by step, while this browser shows the final hierarchy in model order.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:
