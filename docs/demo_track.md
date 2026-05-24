@@ -27,6 +27,7 @@ Model checkpoint
   -> Region-Aware Dimension IR
   -> Region Pruning Semantics
   -> Op Semantics
+  -> Pruning Opportunity Ranking
   -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
@@ -72,13 +73,14 @@ Executable backend dry run
 | 21 | Stepwise Control-Tree Trace | Collapse trace, DOT snapshots, MindNode outline | Explaining structural-analysis reductions |
 | 25 | Region Pruning Semantics | `.rpsem` and explanation reports | Region-level pruning flow, repairs, and blockers |
 | 25.4 | Op Semantics | `.opsem` and explanation reports | Primitive TensorOp pruning behavior |
+| 26 | Pruning Opportunity Ranking | `.rank` and explanation reports | Prioritized safe/constrained/blocked candidates |
 
 ## Mainline vs Backend
 
 The main research path is:
 
 ```text
-1 -> 2 -> 16 -> 20 -> 17 -> 21 -> 18 -> 25 -> 25.4 -> 19 -> 3 -> 5 -> 13 -> 14 -> 15 -> 9 -> 10 -> 11
+1 -> 2 -> 16 -> 20 -> 17 -> 21 -> 18 -> 25 -> 25.4 -> 26 -> 19 -> 3 -> 5 -> 13 -> 14 -> 15 -> 9 -> 10 -> 11
 ```
 
 Milestones 6, 7, and 8 are experimental execution backends. They are useful for validating structural ideas, but they are not the primary contribution. New analysis work should operate on Tensor IR, Structural Region Tree, Region-Aware Dimension IR, and region-aware legality analysis before expanding executable pruning.
@@ -88,7 +90,7 @@ Milestones 6, 7, and 8 are experimental execution backends. They are useful for 
 1. Start with `demos/README.md` to frame pruning as compiler analysis.
 2. Run `demo_scripts/run_demo_01_setup_check.sh`.
 3. If model files are not present, run the download and ONNX export commands manually.
-4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
+4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, pruning opportunity ranking, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
 5. Open the reports in the artifact ladder order.
 6. Mention backend demos only as optional lowering experiments.
 

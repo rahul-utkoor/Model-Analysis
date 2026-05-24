@@ -26,6 +26,7 @@ run_cmd "${PYTHON_BIN}" scripts/build_structural_region_tree.py --model "${MODEL
 run_cmd "${PYTHON_BIN}" scripts/build_region_dimension_ir.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_region_pruning_semantics.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_op_semantics.py --model "${MODEL}" --verbose
+run_cmd "${PYTHON_BIN}" scripts/rank_pruning_opportunities.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/list_region_dimensions.py --model "${MODEL}" --contains intermediate --limit 10
 run_cmd "${PYTHON_BIN}" scripts/explain_region_blocked_dimensions.py --model "${MODEL}"
 run_cmd "${PYTHON_BIN}" scripts/build_dependency_graph.py --model "${MODEL}" --require-onnx --verbose
@@ -52,6 +53,8 @@ echo "  reports/region_pruning_semantics_explanations/${MODEL}.md"
 echo "  reports/region_pruning_semantics_dumps/${MODEL}.rpsem"
 echo "  reports/op_semantics_explanations/${MODEL}.md"
 echo "  reports/op_semantics_dumps/${MODEL}.opsem"
+echo "  reports/pruning_opportunity_explanations/${MODEL}.md"
+echo "  reports/pruning_opportunity_ranking_dumps/${MODEL}.rank"
 echo "  reports/region_blocked_analysis/${MODEL}__blocked_dimensions.md"
 echo "  reports/dependency_graphs/${MODEL}.md"
 echo "  reports/correspondence/${MODEL}.md"

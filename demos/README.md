@@ -29,14 +29,15 @@ Main research path:
 8. [Milestone 19: Region-Aware Legality Analysis](milestone_19_region_legality_analysis.md)
 9. [Milestone 25: Region Pruning Semantics](milestone_25_region_pruning_semantics.md)
 10. [Milestone 25.4: Op Semantics](milestone_25_4_op_semantics.md)
-11. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
-12. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
-13. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
-14. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
-15. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
-16. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
-17. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
-18. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
+11. [Milestone 26: Pruning Opportunity Ranking](milestone_26_pruning_opportunity_ranking.md)
+12. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
+13. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
+14. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
+15. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
+16. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
+17. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
+18. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
+19. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
 
 Optional backend path:
 

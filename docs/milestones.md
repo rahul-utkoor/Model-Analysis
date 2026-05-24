@@ -620,3 +620,27 @@ Primary commands:
 ```
 
 This is static reporting/analysis only and does not modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.
+
+## Milestone 26: Region Pruning Opportunity Ranking
+
+Status: complete.
+
+Implemented:
+
+- Pruning Opportunity Ranking IR over Region Pruning Semantics and optional Op Semantics
+- JSON, Markdown, and `.rank` text reports
+- Build, explain, and compare CLIs
+- Deterministic conservative ranking into safe, constrained, blocked, auxiliary, and unknown candidates
+- Op-semantics evidence attachment, missing-evidence warnings, and op-region disagreement warnings
+- Synthetic tests for ranking policy, text reports, Markdown auxiliary suppression, and comparison summaries
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/rank_pruning_opportunities.py --model bert-base-uncased --verbose
+./conda-env/bin/python scripts/explain_pruning_opportunity.py --model bert-base-uncased --class safe --limit 20
+./conda-env/bin/python scripts/explain_pruning_opportunity.py --model bert-base-uncased --contains "Attention Score MatMul"
+./conda-env/bin/python scripts/compare_pruning_opportunities.py --models all
+```
+
+This is static reporting/analysis only and does not modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.

@@ -330,6 +330,45 @@ reports/op_semantics_compare/summary.md
 
 Op Semantics annotates primitive Tensor IR operations with local pruning-relevant behavior. It distinguishes learned projection MatMuls from attention score/context contractions, bias adds from residual adds, GELU elementwise pieces from axis/metadata flow, and unknown ops that need future classifier work. This is static reporting only.
 
+## Pruning Opportunity Ranking
+
+Rank pruning candidates from Region Pruning Semantics and Op Semantics:
+
+```bash
+./conda-env/bin/python scripts/rank_pruning_opportunities.py \
+  --model bert-base-uncased \
+  --verbose
+```
+
+Explain candidate classes:
+
+```bash
+./conda-env/bin/python scripts/explain_pruning_opportunity.py \
+  --model bert-base-uncased \
+  --class safe \
+  --limit 20
+
+./conda-env/bin/python scripts/explain_pruning_opportunity.py \
+  --model bert-base-uncased \
+  --class constrained \
+  --limit 20
+
+./conda-env/bin/python scripts/explain_pruning_opportunity.py \
+  --model bert-base-uncased \
+  --contains "Attention Score MatMul"
+```
+
+Generated outputs:
+
+```text
+reports/pruning_opportunity_rankings/<model>.json
+reports/pruning_opportunity_ranking_dumps/<model>.rank
+reports/pruning_opportunity_explanations/<model>.md
+reports/pruning_opportunity_compare/summary.md
+```
+
+The ranking classifies candidates as `safe`, `constrained`, `blocked`, `auxiliary`, or `unknown`. Safe candidates prioritize feed-forward `intermediate_dim` pruning. Q/K/V projections are constrained by attention head-axis mapping, attention score/context contractions are blocked, and shape/mask/axis flow is auxiliary. This is static reporting only.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

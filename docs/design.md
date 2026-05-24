@@ -545,6 +545,18 @@ Op Semantics is the primitive-operation companion to Region Pruning Semantics. I
 
 The artifact is intentionally local. It does not replace the Structural Region Tree or Region Pruning Semantics; future opportunity ranking can combine local op behavior with region-level roles, repairs, and blockers. It does not modify models or execute pruning.
 
+## Pruning Opportunity Ranking
+
+Pruning Opportunity Ranking consumes Region Pruning Semantics and, when available, Op Semantics. It converts static semantics into an ordered candidate table:
+
+- `safe`: clean opportunities such as feed-forward `intermediate_dim` pruning
+- `constrained`: visible opportunities that need missing proofs or axis mappings, such as Q/K/V projection pruning
+- `blocked`: residual hidden dimensions, LayerNorm hidden dimensions, and attention contractions
+- `auxiliary`: shape, mask, axis, and metadata flow
+- `unknown`: insufficient semantic evidence
+
+The ranking does not choose concrete indices or mutate weights. It is a prioritization layer for future opportunity selection and legality-check workflows.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

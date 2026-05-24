@@ -179,6 +179,14 @@ reports/op_semantics_explanations/*
 !reports/op_semantics_explanations/.gitkeep
 reports/op_semantics_compare/*
 !reports/op_semantics_compare/.gitkeep
+reports/pruning_opportunity_rankings/*
+!reports/pruning_opportunity_rankings/.gitkeep
+reports/pruning_opportunity_ranking_dumps/*
+!reports/pruning_opportunity_ranking_dumps/.gitkeep
+reports/pruning_opportunity_explanations/*
+!reports/pruning_opportunity_explanations/.gitkeep
+reports/pruning_opportunity_compare/*
+!reports/pruning_opportunity_compare/.gitkeep
 viewer_data/
 
 *.onnx

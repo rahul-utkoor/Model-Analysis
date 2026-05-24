@@ -284,6 +284,23 @@ Build pruning-relevant annotations for primitive Tensor IR operations:
 
 Outputs include `reports/op_semantics/<model>.json`, `reports/op_semantics_dumps/<model>.opsem`, and `reports/op_semantics_explanations/<model>.md`. Op Semantics is the primitive-op companion to Region Pruning Semantics: it says whether a Tensor IR op is a learned projection, bias add, attention contraction, residual merge, GELU elementwise op, axis transform, or metadata-only helper. It is static reporting only and does not modify models.
 
+## Pruning Opportunity Ranking
+
+Rank static pruning opportunities by combining Region Pruning Semantics with Op Semantics:
+
+```bash
+./conda-env/bin/python scripts/rank_pruning_opportunities.py \
+  --model bert-base-uncased \
+  --verbose
+
+./conda-env/bin/python scripts/explain_pruning_opportunity.py \
+  --model bert-base-uncased \
+  --class safe \
+  --limit 20
+```
+
+Outputs include `reports/pruning_opportunity_rankings/<model>.json`, `reports/pruning_opportunity_ranking_dumps/<model>.rank`, and `reports/pruning_opportunity_explanations/<model>.md`. The ranking separates safe FFN intermediate pruning, constrained attention projections, blocked residual/LayerNorm/attention contractions, auxiliary metadata flow, and unknown candidates. It is static reporting only.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:
