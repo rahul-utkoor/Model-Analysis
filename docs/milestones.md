@@ -571,3 +571,26 @@ Primary commands:
 ```
 
 This is reporting/visualization only and does not modify models, execute pruning, rewrite ONNX, export ONNX, or evaluate quality.
+
+## Milestone 25: Region-Level Pruning Propagation Semantics
+
+Status: complete.
+
+Implemented:
+
+- Region Pruning Semantics IR
+- JSON, Markdown, and `.rpsem` text reports
+- Build, explain, and compare CLIs
+- Conservative semantics for projection, GELU, feed-forward, attention, residual, LayerNorm, and shape/mask regions
+- Synthetic tests for opportunities, repairs, blockers, text dumps, and comparison summaries
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/build_region_pruning_semantics.py --model bert-base-uncased --verbose
+./conda-env/bin/python scripts/explain_region_pruning_semantics.py --model bert-base-uncased --contains "Feed Forward" --limit 5
+./conda-env/bin/python scripts/explain_region_pruning_semantics.py --model bert-base-uncased --blocked-only --limit 10
+./conda-env/bin/python scripts/compare_region_pruning_semantics.py --models all
+```
+
+This is static reporting/analysis only and does not modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.

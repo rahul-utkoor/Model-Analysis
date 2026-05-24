@@ -163,6 +163,14 @@ reports/learner_hierarchical_dataflow/*
 !reports/learner_hierarchical_dataflow/.gitkeep
 reports/topological_region_tree_graphviz/*
 !reports/topological_region_tree_graphviz/.gitkeep
+reports/region_pruning_semantics/*
+!reports/region_pruning_semantics/.gitkeep
+reports/region_pruning_semantics_dumps/*
+!reports/region_pruning_semantics_dumps/.gitkeep
+reports/region_pruning_semantics_explanations/*
+!reports/region_pruning_semantics_explanations/.gitkeep
+reports/region_pruning_semantics_compare/*
+!reports/region_pruning_semantics_compare/.gitkeep
 viewer_data/
 
 *.onnx

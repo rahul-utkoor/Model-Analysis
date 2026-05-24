@@ -212,6 +212,7 @@ def max_topo_ops(ops: set[str], tm: dict[str, Any]) -> int:
 
 SHAPE_OP_TYPES = {
     "shape",
+    "shapeop",
     "reshape",
     "transpose",
     "slice",
@@ -227,6 +228,8 @@ SHAPE_OP_TYPES = {
     "expand",
 }
 
+NORMALIZED_SHAPE_OP_TYPES = {op_type.replace("_", "") for op_type in SHAPE_OP_TYPES}
+
 MASK_BOOL_OP_TYPES = {
     "equal",
     "greater",
@@ -239,6 +242,8 @@ MASK_BOOL_OP_TYPES = {
     "where",
     "isnan",
 }
+
+NORMALIZED_MASK_BOOL_OP_TYPES = {op_type.replace("_", "") for op_type in MASK_BOOL_OP_TYPES}
 
 
 def op_text(op_id: str, tm: dict[str, Any]) -> str:
@@ -303,11 +308,17 @@ def region_layer(rid: str, region_by_id: dict[str, dict[str, Any]], leaf_ops: di
 
 def is_shape_helper_op(op_id: str, tm: dict[str, Any]) -> bool:
     op = tm["op_by_id"].get(op_id, {})
-    typ = op_type_of(op).lower()
+    typ = op_type_of(op).lower().replace("_", "")
     t = op_text(op_id, tm)
 
     if is_embedding_op(op_id, tm):
         return False
+
+    if typ in NORMALIZED_SHAPE_OP_TYPES:
+        return True
+
+    if typ in NORMALIZED_MASK_BOOL_OP_TYPES:
+        return True
 
     if "attention.self.matmul" in t or "attention.self.softmax" in t:
         return False
@@ -317,12 +328,6 @@ def is_shape_helper_op(op_id: str, tm: dict[str, Any]) -> bool:
 
     if "layernormalization" in typ.lower() or "layernormalization" in t:
         return False
-
-    if typ in SHAPE_OP_TYPES:
-        return True
-
-    if typ in MASK_BOOL_OP_TYPES:
-        return True
 
     if any(x in t for x in [
         "attention.mask",
@@ -623,13 +628,22 @@ def collect_best_region_items_for_ops(
         if not ops:
             continue
 
+        rt = region_by_id[rid].get("region_type", "")
+
+        if (
+            view == "main"
+            and rt in {"ForkRegion", "JoinRegion", "AxisTransformRegion"}
+            and ops
+            and all(is_shape_helper_op(op, tm) for op in ops)
+        ):
+            continue
+
         if view == "main" and is_shape_helper_region(rid, region_by_id, leaf_ops, tm):
             continue
 
         if compress_single_op_wrappers and is_single_op_wrapper(rid, region_by_id, leaf_ops):
             continue
 
-        rt = region_by_id[rid].get("region_type", "")
         if rt in {
             "FeedForwardRegion",
             "AttentionSkeletonRegion",
@@ -790,6 +804,7 @@ def build_learner_tree(
 
     # Candidate regions are all regions. The collector will filter by section.
     all_rids = list(region_by_id.keys())
+    emitted_region_node_ids: set[str] = set()
 
     for sec in sorted(section_ops.keys(), key=section_key):
         if not section_ops[sec]:
@@ -821,6 +836,14 @@ def build_learner_tree(
         )
 
         children = dependency_sort(children, tm)
+        deduped_children: list[LNode] = []
+        for child in children:
+            if child.id.startswith("region::"):
+                if child.id in emitted_region_node_ids:
+                    continue
+                emitted_region_node_ids.add(child.id)
+            deduped_children.append(child)
+        children = deduped_children
         s.children = children
 
         root.children.append(s)

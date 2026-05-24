@@ -245,6 +245,23 @@ Generate learner-facing expansion reports for the final structural hierarchy:
 
 The report complements the learner hierarchical dataflow PDF. It separates `immediate_expansion` from `recursive_primitive_leaves`, so the reader can distinguish direct abstract children from source ONNX/TensorIR evidence. Main view hides auxiliary shape/mask flow; shape view groups that flow into `ShapeMotifRegion` records. Debug flags expose root leaves and raw one-op shape regions when needed.
 
+## Region Pruning Semantics
+
+Build static pruning-flow semantics over learner structural regions:
+
+```bash
+./conda-env/bin/python scripts/build_region_pruning_semantics.py \
+  --model bert-base-uncased \
+  --verbose
+
+./conda-env/bin/python scripts/explain_region_pruning_semantics.py \
+  --model bert-base-uncased \
+  --contains "Feed Forward" \
+  --limit 5
+```
+
+Outputs include `reports/region_pruning_semantics/<model>.json`, `reports/region_pruning_semantics_dumps/<model>.rpsem`, and `reports/region_pruning_semantics_explanations/<model>.md`. This layer explains which region dimensions are prunable, propagated, protected, repair-required, or blocked. It is static analysis only and does not modify models or invoke pruning backends.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:

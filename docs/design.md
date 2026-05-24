@@ -509,6 +509,18 @@ The abstract-node expansion report is a learner-facing companion to the ordered 
 
 Root-like records (`ModelRegion`, virtual `SectionRegion`, and grouped `ShapeMotifRegion`) hide recursive primitive leaves by default so reports stay readable. Semantic regions such as feed-forward, attention, residual merge, layer norm, and linear projection still show primitive leaves as evidence. Auxiliary predicate, mask, and shape construction operations are grouped into shape motifs so the main compute report is not dominated by scalar and axis plumbing.
 
+## Region Pruning Semantics
+
+Region Pruning Semantics sits above the Structural Region Tree and Region-Aware Dimension IR. It does not decide concrete indices or transform weights. Instead, it assigns conservative pruning-flow meaning to each learner region:
+
+- Feed-forward regions expose an `intermediate_dim` opportunity and same-index MLP repair obligations.
+- GELU and elementwise activation regions propagate index sets without changing them.
+- Residual merges and LayerNorm regions protect hidden dimensions and explain branch/parameter repair blockers.
+- Attention skeletons recognize score/context structure but block executable head pruning until head and axis mappings are proven.
+- Shape and mask regions carry axis/metadata propagation obligations rather than direct pruning choices.
+
+The `.rpsem` text dump is intended to make these semantics readable as a compiler-style analysis artifact.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

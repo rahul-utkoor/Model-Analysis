@@ -68,13 +68,14 @@ Executable backend dry run
 | 19 | Region-Aware Legality Analysis | Region slices and repair obligations | Static semantic-region legality oracle |
 | 20 | Semantic Fusion | GELU/feed-forward fusion reports | Idiom recovery from decomposed Tensor IR |
 | 21 | Stepwise Control-Tree Trace | Collapse trace, DOT snapshots, MindNode outline | Explaining structural-analysis reductions |
+| 25 | Region Pruning Semantics | `.rpsem` and explanation reports | Region-level pruning flow, repairs, and blockers |
 
 ## Mainline vs Backend
 
 The main research path is:
 
 ```text
-1 -> 2 -> 16 -> 20 -> 17 -> 21 -> 18 -> 19 -> 3 -> 5 -> 13 -> 14 -> 15 -> 9 -> 10 -> 11
+1 -> 2 -> 16 -> 20 -> 17 -> 21 -> 18 -> 25 -> 19 -> 3 -> 5 -> 13 -> 14 -> 15 -> 9 -> 10 -> 11
 ```
 
 Milestones 6, 7, and 8 are experimental execution backends. They are useful for validating structural ideas, but they are not the primary contribution. New analysis work should operate on Tensor IR, Structural Region Tree, Region-Aware Dimension IR, and region-aware legality analysis before expanding executable pruning.
@@ -84,7 +85,7 @@ Milestones 6, 7, and 8 are experimental execution backends. They are useful for 
 1. Start with `demos/README.md` to frame pruning as compiler analysis.
 2. Run `demo_scripts/run_demo_01_setup_check.sh`.
 3. If model files are not present, run the download and ONNX export commands manually.
-4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
+4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
 5. Open the reports in the artifact ladder order.
 6. Mention backend demos only as optional lowering experiments.
 
@@ -104,6 +105,8 @@ For a `bert-base-uncased` walkthrough, the key reports are:
 - `reports/control_tree_step_dumps/bert-base-uncased.ctrace`
 - `reports/region_dimension_ir/bert-base-uncased.md`
 - `reports/region_pruning_ir_dumps/bert-base-uncased.rdim`
+- `reports/region_pruning_semantics_explanations/bert-base-uncased.md`
+- `reports/region_pruning_semantics_dumps/bert-base-uncased.rpsem`
 - `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
 - `reports/region_legality_checks/`
 - `reports/dependency_graphs/bert-base-uncased.md`

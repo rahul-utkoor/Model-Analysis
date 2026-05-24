@@ -267,6 +267,7 @@ def find_model_region(region_by_id: dict[str, dict[str, Any]]) -> str | None:
 AUX_OP_TYPES = {
     "and",
     "shape",
+    "shapeop",
     "shape_op",
     "reshape",
     "transpose",
@@ -293,6 +294,8 @@ AUX_OP_TYPES = {
     "expand",
     "flatten",
 }
+
+NORMALIZED_AUX_OP_TYPES = {op_type.replace("_", "") for op_type in AUX_OP_TYPES}
 
 AUX_PATH_WORDS = {
     "attention_mask",
@@ -380,7 +383,7 @@ def is_auxiliary_op(op_id: str, tm: dict[str, Any]) -> bool:
             return True
         return False
 
-    if typ in AUX_OP_TYPES:
+    if typ in NORMALIZED_AUX_OP_TYPES:
         return True
 
     return any(w in path for w in AUX_PATH_WORDS)
@@ -731,6 +734,9 @@ def shape_motif_key(op_id: str, tm: dict[str, Any]) -> tuple[str, str]:
         if layer is not None and "/attention/self/" in path:
             return (f"Encoder Layer {layer}", f"Layer {layer} attention mask application")
         return ("Auxiliary Shape / Mask Flow", "Global predicate / mask preprocessing")
+
+    if is_auxiliary_op(op_id, tm) and layer is None:
+        return ("Auxiliary Shape / Mask Flow", "Miscellaneous auxiliary shape/mask flow")
 
     if "/embeddings/" in path:
         if "position" in path or "slice" in path or "gather" in path:

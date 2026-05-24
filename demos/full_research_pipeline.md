@@ -14,6 +14,8 @@ python scripts/build_structural_region_tree.py --model bert-base-uncased --verbo
 python scripts/build_control_tree_trace.py --model bert-base-uncased --format all --max-dot-steps 20 --verbose
 python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
 python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
+python scripts/build_region_pruning_semantics.py --model bert-base-uncased --verbose
+python scripts/explain_region_pruning_semantics.py --model bert-base-uncased --contains "Feed Forward" --limit 5
 python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 10
 python scripts/explain_region_blocked_dimensions.py --model bert-base-uncased
 python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx --verbose
@@ -49,6 +51,7 @@ Model checkpoint
   -> Structural Region Tree
   -> Stepwise Control-Tree Construction Trace
   -> Region-Aware Dimension IR
+  -> Region Pruning Semantics
   -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
@@ -84,19 +87,21 @@ Read these reports in order:
 8. `reports/control_tree_step_dumps/bert-base-uncased.ctrace`
 9. `reports/region_dimension_ir/bert-base-uncased.md`
 10. `reports/region_pruning_ir_dumps/bert-base-uncased.rdim`
-11. `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
-12. `reports/region_legality_checks/`
-13. `reports/dependency_graphs/bert-base-uncased.md`
-14. `reports/correspondence/bert-base-uncased.md`
-15. `reports/join_subgraphs/bert-base-uncased.md`
-16. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
-17. `reports/dag_regions/bert-base-uncased.md`
-18. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
-19. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
-20. `reports/model_pruning_maps/bert-base-uncased.md`
-21. `reports/dimension_ir/bert-base-uncased.md`
-22. `reports/pruning_ir_dumps/bert-base-uncased.pir`
-23. `reports/legality_checks/`
+11. `reports/region_pruning_semantics_explanations/bert-base-uncased.md`
+12. `reports/region_pruning_semantics_dumps/bert-base-uncased.rpsem`
+13. `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
+14. `reports/region_legality_checks/`
+15. `reports/dependency_graphs/bert-base-uncased.md`
+16. `reports/correspondence/bert-base-uncased.md`
+17. `reports/join_subgraphs/bert-base-uncased.md`
+18. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
+19. `reports/dag_regions/bert-base-uncased.md`
+20. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
+21. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
+22. `reports/model_pruning_maps/bert-base-uncased.md`
+23. `reports/dimension_ir/bert-base-uncased.md`
+24. `reports/pruning_ir_dumps/bert-base-uncased.pir`
+25. `reports/legality_checks/`
 
 ## Mainline vs backend
 

@@ -59,6 +59,7 @@ def synthetic_inputs() -> tuple[dict, dict]:
             _op("op_where", "/model/bert/encoder/layer.0/attention/self/Where", "Where", ["and", "score"], ["where"]),
             _op("op_isnan", "/model/bert/attention_mask/IsNaN", "IsNaN", ["mask"], ["isnan"]),
             _op("op_cos", "/model/bert/attention_mask/ConstantOfShape", "ConstantOfShape", ["mask"], ["cos"]),
+            _op("op_shapeop", "/utility/shape_helper/Shape", "shape_op", ["fln"], ["shape"]),
         ]
     }
 
@@ -95,6 +96,7 @@ def synthetic_inputs() -> tuple[dict, dict]:
                 "r_cls",
                 "r_shape",
                 "r_predicate",
+                "r_fork_shape",
             ],
         ),
         region("r_emb_add", "ResidualMergeRegion", ["op_emb_gather", "op_emb_add"]),
@@ -129,6 +131,7 @@ def synthetic_inputs() -> tuple[dict, dict]:
         region("r_cls", "LinearProjectionRegion", ["op_cls_mm"]),
         region("r_shape", "AxisTransformRegion", ["op_reshape"]),
         region("r_predicate", "JoinRegion", ["op_ge"]),
+        region("r_fork_shape", "ForkRegion", ["op_shapeop"]),
     ]
     tree = {
         "regions": regions,
@@ -212,15 +215,25 @@ def test_main_view_excludes_auxiliary_only_shape_regions() -> None:
 
     assert "r_shape" not in region_ids
     assert "r_predicate" not in region_ids
+    assert "r_fork_shape" not in region_ids
+
+
+def test_main_view_has_no_fork_region_records_with_only_shape_op_leaves() -> None:
+    records = build_records("main")
+    fork_records = [r for r in records if r["region_type"] == "ForkRegion"]
+
+    assert not fork_records
 
 
 def test_shape_view_includes_motifs_and_suppresses_single_op_shape_regions_by_default() -> None:
     records = build_records("shape")
     region_types = {r["region_type"] for r in records}
     region_ids = {r["region_id"] for r in records}
+    sections = {r["section"] for r in records}
 
     assert "ShapeMotifRegion" in region_types
     assert "r_shape" not in region_ids
+    assert "Other Main Flow" not in sections
 
     debug_records = build_records("shape", include_single_op_shape_regions=True)
     assert "r_shape" in {r["region_id"] for r in debug_records}
@@ -246,5 +259,5 @@ def test_predicate_mask_ops_classify_as_auxiliary_shape_mask_flow() -> None:
     tensor_ir, _tree = synthetic_inputs()
     tm = mod.build_tensor_maps(tensor_ir)
 
-    for op_id in ["op_ge", "op_equal", "op_and", "op_where", "op_isnan", "op_cos"]:
+    for op_id in ["op_ge", "op_equal", "op_and", "op_where", "op_isnan", "op_cos", "op_shapeop"]:
         assert mod.op_section(op_id, tm) == "Auxiliary Shape / Mask Flow"

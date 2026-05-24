@@ -249,6 +249,47 @@ Generate the grouped shape/mask report:
 
 The main view hides auxiliary shape/mask flow. The shape view groups those operations into `ShapeMotifRegion` records by default. Use `--include-single-op-shape-regions` and `--include-root-leaves` for debugging raw one-op shape regions and root/section/motif primitive leaves.
 
+## Region Pruning Semantics
+
+Build a conservative region-level semantics report:
+
+```bash
+./conda-env/bin/python scripts/build_region_pruning_semantics.py \
+  --model bert-base-uncased \
+  --verbose
+```
+
+Explain specific opportunities or blockers:
+
+```bash
+./conda-env/bin/python scripts/explain_region_pruning_semantics.py \
+  --model bert-base-uncased \
+  --contains "Feed Forward" \
+  --limit 5
+
+./conda-env/bin/python scripts/explain_region_pruning_semantics.py \
+  --model bert-base-uncased \
+  --blocked-only \
+  --limit 10
+```
+
+Compare available reports:
+
+```bash
+./conda-env/bin/python scripts/compare_region_pruning_semantics.py --models all
+```
+
+Generated outputs:
+
+```text
+reports/region_pruning_semantics/<model>.json
+reports/region_pruning_semantics_dumps/<model>.rpsem
+reports/region_pruning_semantics_explanations/<model>.md
+reports/region_pruning_semantics_compare/summary.md
+```
+
+This layer explains pruning information flow through semantic regions. It records prunable dimensions, propagated dimensions, protected dimensions, required repairs, and blockers such as residual hidden equality, LayerNorm hidden width, and unproven attention head-axis mapping.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:
