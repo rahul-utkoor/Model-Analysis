@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Abstract Structure Graph Browser</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root{
+  --bg:#08111f;
+  --panel:#0d1728;
+  --panel2:#111f36;
+  --border:#26354f;
+  --text:#e8eef9;
+  --muted:#98a7c2;
+  --green:#22c55e;
+  --blue:#38bdf8;
+  --orange:#f59e0b;
+  --red:#ef4444;
+  --gray:#94a3b8;
+  --yellow:#facc15;
+  --purple:#a78bfa;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;
+}
+header{
+  height:60px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 14px;
+  background:#020817;
+  border-bottom:1px solid var(--border);
+}
+header h1{
+  margin:0;
+  font-size:15px;
+  white-space:nowrap;
+}
+input,button,select{
+  background:#0c1830;
+  color:var(--text);
+  border:1px solid #385071;
+  border-radius:8px;
+  padding:8px 10px;
+}
+button{cursor:pointer}
+button:hover{background:#13233f}
+#layout{
+  display:grid;
+  grid-template-columns:300px 1fr 360px;
+  height:calc(100vh - 60px);
+}
+#left,#right{
+  background:var(--panel);
+  overflow:auto;
+}
+#left{border-right:1px solid var(--border)}
+#right{border-left:1px solid var(--border)}
+#center{
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  overflow:hidden;
+}
+.section{
+  padding:12px;
+  border-bottom:1px solid var(--border);
+}
+.section h2{
+  margin:0 0 8px;
+  font-size:13px;
+}
+.small{font-size:12px;color:var(--muted);line-height:1.45}
+.mini{font-size:11px;color:var(--muted)}
+.card{
+  background:linear-gradient(180deg,#0f1c31,#0c1728);
+  border:1px solid #2b3f5b;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:10px;
+}
+.card.active{
+  border-color:var(--yellow);
+  box-shadow:0 0 0 1px rgba(250,204,21,.25);
+}
+.row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.pill{
+  display:inline-block;
+  border:1px solid #405472;
+  border-radius:999px;
+  padding:2px 8px;
+  font-size:11px;
+  color:#dbe6f7;
+  background:#0f1b30;
+}
+.pill.role-propagation_only{color:var(--blue);border-color:rgba(56,189,248,.6)}
+.pill.role-directly_prunable{color:var(--green);border-color:rgba(34,197,94,.6)}
+.pill.role-constraint_carrier{color:var(--orange);border-color:rgba(245,158,11,.6)}
+.pill.role-blocked{color:var(--red);border-color:rgba(239,68,68,.6)}
+.pill.role-analysis_only{color:var(--gray);border-color:rgba(148,163,184,.6)}
+.list-scroll{
+  max-height:calc(100vh - 220px);
+  overflow:auto;
+}
+pre{
+  white-space:pre-wrap;
+  word-break:break-word;
+  background:#07111f;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px;
+  font-size:11px;
+  max-height:280px;
+  overflow:auto;
+}
+#graphWrap{
+  position:relative;
+  height:100%;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(148,163,184,0.14) 1px, transparent 0);
+  background-size:24px 24px;
+}
+#graphSvg{
+  width:100%;
+  height:100%;
+  display:block;
+}
+.toolbar{
+  position:absolute;
+  top:10px;
+  left:10px;
+  display:flex;
+  gap:8px;
+  z-index:2;
+}
+.graph-caption{
+  position:absolute;
+  right:12px;
+  top:12px;
+  z-index:2;
+  background:rgba(4,10,22,.65);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:8px 10px;
+  font-size:12px;
+  color:var(--muted);
+}
+.stat-grid{
+  display:grid;
+  grid-template-columns:130px 1fr;
+  gap:6px 12px;
+  font-size:12px;
+}
+.stat-grid div:nth-child(odd){color:var(--muted)}
+.node rect{
+  rx:12; ry:12;
+  stroke-width:2;
+  filter:drop-shadow(0px 3px 4px rgba(0,0,0,.30));
+}
+.node text{
+  fill:#f8fbff;
+  font-size:12px;
+  pointer-events:none;
+}
+.node .subtext{
+  fill:#c2d2ec;
+  font-size:10px;
+}
+.edge{
+  stroke:#7a8fae;
+  stroke-width:1.5;
+  fill:none;
+  opacity:.75;
+}
+.edge.parent{
+  stroke:var(--purple);
+}
+.edge.child{
+  stroke:#7a8fae;
+}
+.node.focus rect{
+  stroke:#ffffff !important;
+  stroke-width:3;
+}
+.node.parent rect{
+  stroke:var(--purple) !important;
+}
+.node.child rect{
+  stroke:#7dd3fc !important;
+}
+.node.search-hit rect{
+  stroke:var(--yellow) !important;
+  stroke-width:3;
+}
+.dim-card{
+  background:#091525;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px;
+  margin:8px 0;
+  font-size:12px;
+}
+#status{
+  color:var(--muted);
+  font-size:12px;
+}
+hr.sep{
+  border:none;
+  border-top:1px solid var(--border);
+  margin:12px 0;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Abstract Structure Graph Browser</h1>
+  <span class="small">API</span>
+  <input id="apiBase" value="/api" size="18" />
+  <button id="loadBtn">Load catalog</button>
+  <button id="resetBtn">Reset</button>
+  <span id="status">Waiting.</span>
+</header>
+
+<div id="layout">
+  <aside id="left">
+    <div class="section">
+      <h2>Structures</h2>
+      <input id="structureSearch" placeholder="Filter structure type / role..." style="width:100%" />
+      <p class="small">Choose a structure type. Then pick one of its instances.</p>
+    </div>
+    <div class="section list-scroll" id="structureList">
+      <div class="small">No catalog loaded.</div>
+    </div>
+  </aside>
+
+  <main id="center">
+    <div class="section">
+      <h2>Structure Summary</h2>
+      <div id="structureSummary" class="small">No structure selected.</div>
+    </div>
+
+    <div id="graphWrap">
+      <div class="toolbar">
+        <button id="upBtn">Go to parent</button>
+        <button id="reloadFocusBtn">Reload focus</button>
+      </div>
+      <div class="graph-caption">
+        Connected neighborhood graph:
+        <br>parent → focused region → children
+        <br>click any node to re-center
+      </div>
+      <svg id="graphSvg"></svg>
+    </div>
+
+    <div class="section">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div>
+          <h2>Instances</h2>
+          <div id="instanceList" class="small">No instances loaded.</div>
+        </div>
+        <div>
+          <h2>Focused Region</h2>
+          <div id="focusedCard" class="small">No focused region.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside id="right">
+    <div class="section">
+      <h2>Region Details</h2>
+      <div id="details" class="small">No region selected.</div>
+    </div>
+    <div class="section">
+      <h2>Region Dimensions</h2>
+      <div id="dims" class="small">No dimensions loaded.</div>
+    </div>
+    <div class="section">
+      <h2>Raw payload</h2>
+      <pre id="raw">{}</pre>
+    </div>
+  </aside>
+</div>
+
+<script>
+let apiBase = "/api";
+let catalog = [];
+let selectedStructure = null;
+let selectedInstance = null;
+let focusedRegionId = null;
+let focusedPayload = null;
+let structuresById = new Map();
+let regionCache = new Map();
+let childrenCache = new Map();
+
+function esc(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+function trunc(s, n){
+  s = String(s ?? "");
+  return s.length > n ? s.slice(0,n-1) + "…" : s;
+}
+function setStatus(msg, err=false){
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.style.color = err ? "#f87171" : "#98a7c2";
+}
+function roleClass(role){
+  return "role-" + String(role || "unknown");
+}
+function roleColor(role){
+  switch(String(role || "").toLowerCase()){
+    case "directly_prunable": return "#22c55e";
+    case "propagation_only": return "#38bdf8";
+    case "constraint_carrier": return "#f59e0b";
+    case "blocked": return "#ef4444";
+    case "analysis_only": return "#94a3b8";
+    default: return "#cbd5e1";
+  }
+}
+async function fetchJson(url){
+  const r = await fetch(url);
+  if(!r.ok){
+    throw new Error(`HTTP ${r.status} for ${url}`);
+  }
+  return await r.json();
+}
+function normalizeApiBase(){
+  apiBase = document.getElementById("apiBase").value.trim().replace(/\/+$/,"");
+  if(!apiBase.startsWith("/")) apiBase = "/" + apiBase;
+  return apiBase;
+}
+async function loadCatalog(){
+  try{
+    normalizeApiBase();
+    setStatus("Loading structures...");
+    const data = await fetchJson(`${apiBase}/structures`);
+    catalog = data.structures || data || [];
+    structuresById = new Map(catalog.map(s => [s.structure_id, s]));
+    renderStructureList();
+    setStatus(`Loaded ${catalog.length} structures.`);
+  }catch(err){
+    console.error(err);
+    setStatus(String(err.message || err), true);
+    alert(String(err.message || err));
+  }
+}
+function renderStructureList(){
+  const q = document.getElementById("structureSearch").value.trim().toLowerCase();
+  const filtered = catalog.filter(s => JSON.stringify(s).toLowerCase().includes(q));
+  const el = document.getElementById("structureList");
+  if(!filtered.length){
+    el.innerHTML = `<div class="small">No matching structures.</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(s => `
+    <div class="card ${selectedStructure && selectedStructure.structure_id === s.structure_id ? "active":""}"
+         data-structure-id="${esc(s.structure_id)}"
+         style="cursor:pointer">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700">${esc(s.structure_type || "Structure")} ×${esc(s.count ?? 1)}</div>
+          <div class="row" style="margin-top:4px">
+            <span class="pill ${roleClass(s.pruning_role)}">${esc(s.pruning_role || "unknown")}</span>
+            <span class="pill">${esc(s.confidence || "-")}</span>
+          </div>
+        </div>
+      </div>
+      <div class="mini" style="margin-top:8px">${esc(s.structure_id)}</div>
+    </div>
+  `).join("");
+
+  el.querySelectorAll("[data-structure-id]").forEach(card => {
+    card.addEventListener("click", async () => {
+      const sid = card.getAttribute("data-structure-id");
+      await selectStructure(sid);
+    });
+  });
+}
+async function selectStructure(structureId){
+  selectedStructure = structuresById.get(structureId);
+  selectedInstance = null;
+  focusedRegionId = null;
+  focusedPayload = null;
+  renderStructureList();
+  renderStructureSummary();
+  await loadInstances(structureId);
+  renderGraph([]);
+  renderFocusedCard();
+  renderDetails(null);
+}
+function renderStructureSummary(){
+  const el = document.getElementById("structureSummary");
+  if(!selectedStructure){
+    el.innerHTML = "No structure selected.";
+    return;
+  }
+  el.innerHTML = `
+    <div class="card" style="margin:0">
+      <div style="font-size:18px;font-weight:800;margin-bottom:10px">${esc(selectedStructure.structure_type)}</div>
+      <div class="stat-grid">
+        <div>structure id</div><div>${esc(selectedStructure.structure_id)}</div>
+        <div>count</div><div>${esc(selectedStructure.count ?? 1)}</div>
+        <div>role</div><div><span class="pill ${roleClass(selectedStructure.pruning_role)}">${esc(selectedStructure.pruning_role || "unknown")}</span></div>
+        <div>confidence</div><div>${esc(selectedStructure.confidence || "-")}</div>
+        <div>dimension roles</div><div>${esc((selectedStructure.dimension_roles || []).join(", ") || "none")}</div>
+        <div>constraint types</div><div>${esc((selectedStructure.constraint_types || []).join(", ") || "none")}</div>
+      </div>
+      <hr class="sep">
+      <pre>${esc(JSON.stringify(selectedStructure, null, 2))}</pre>
+    </div>
+  `;
+}
+async function loadInstances(structureId){
+  try{
+    setStatus("Loading instances...");
+    const data = await fetchJson(`${apiBase}/structures/${encodeURIComponent(structureId)}/instances?offset=0&limit=100`);
+    const instances = data.instances || [];
+    const el = document.getElementById("instanceList");
+    if(!instances.length){
+      el.innerHTML = `<div class="small">No instances.</div>`;
+      return;
+    }
+    el.innerHTML = instances.map(inst => `
+      <div class="card ${selectedInstance && selectedInstance.region_id === inst.region_id ? "active":""}"
+           data-region-id="${esc(inst.region_id)}"
+           style="cursor:pointer">
+        <div style="font-weight:700">${esc(inst.region_type || "Region")}</div>
+        <div class="mini">${esc(inst.region_id)}</div>
+        <div class="row" style="margin-top:6px">
+          <span class="pill ${roleClass(inst.pruning_role)}">${esc(inst.pruning_role || "unknown")}</span>
+          <span class="pill">${esc(inst.confidence || "-")}</span>
+        </div>
+      </div>
+    `).join("");
+
+    el.querySelectorAll("[data-region-id]").forEach(card => {
+      card.addEventListener("click", async () => {
+        const rid = card.getAttribute("data-region-id");
+        selectedInstance = instances.find(x => x.region_id === rid) || null;
+        await focusRegion(rid);
+        renderInstanceSelection(instances);
+      });
+    });
+
+    if(instances.length){
+      selectedInstance = instances[0];
+      await focusRegion(instances[0].region_id);
+      renderInstanceSelection(instances);
+    }
+    setStatus(`Loaded ${instances.length} instance(s).`);
+  }catch(err){
+    console.error(err);
+    setStatus(String(err.message || err), true);
+  }
+}
+function renderInstanceSelection(instances){
+  const el = document.getElementById("instanceList");
+  el.innerHTML = instances.map(inst => `
+    <div class="card ${selectedInstance && selectedInstance.region_id === inst.region_id ? "active":""}"
+         data-region-id="${esc(inst.region_id)}"
+         style="cursor:pointer">
+      <div style="font-weight:700">${esc(inst.region_type || "Region")}</div>
+      <div class="mini">${esc(inst.region_id)}</div>
+      <div class="row" style="margin-top:6px">
+        <span class="pill ${roleClass(inst.pruning_role)}">${esc(inst.pruning_role || "unknown")}</span>
+        <span class="pill">${esc(inst.confidence || "-")}</span>
+      </div>
+    </div>
+  `).join("");
+  el.querySelectorAll("[data-region-id]").forEach(card => {
+    card.addEventListener("click", async () => {
+      const rid = card.getAttribute("data-region-id");
+      selectedInstance = instances.find(x => x.region_id === rid) || null;
+      await focusRegion(rid);
+      renderInstanceSelection(instances);
+    });
+  });
+}
+async function getRegion(regionId){
+  if(regionCache.has(regionId)) return regionCache.get(regionId);
+  const payload = await fetchJson(`${apiBase}/region/${encodeURIComponent(regionId)}`);
+  regionCache.set(regionId, payload);
+  return payload;
+}
+async function getChildren(regionId){
+  if(childrenCache.has(regionId)) return childrenCache.get(regionId);
+  const payload = await fetchJson(`${apiBase}/children/${encodeURIComponent(regionId)}`);
+  const kids = payload.children || payload || [];
+  childrenCache.set(regionId, kids);
+  return kids;
+}
+async function focusRegion(regionId){
+  try{
+    setStatus(`Loading region ${regionId} ...`);
+    focusedRegionId = regionId;
+    focusedPayload = await getRegion(regionId);
+    const region = focusedPayload.region || focusedPayload;
+    const parentId = region.parent || null;
+    const children = await getChildren(regionId);
+
+    let parentPayload = null;
+    if(parentId){
+      try { parentPayload = await getRegion(parentId); } catch(e) { console.warn(e); }
+    }
+
+    renderDetails(focusedPayload);
+    renderFocusedCard();
+    renderGraph({
+      parent: parentPayload ? (parentPayload.region || parentPayload) : null,
+      focus: region,
+      children: children
+    });
+    setStatus(`Focused ${regionId}`);
+  }catch(err){
+    console.error(err);
+    setStatus(String(err.message || err), true);
+  }
+}
+function renderFocusedCard(){
+  const el = document.getElementById("focusedCard");
+  if(!focusedPayload){
+    el.innerHTML = "No focused region.";
+    return;
+  }
+  const r = focusedPayload.region || focusedPayload;
+  el.innerHTML = `
+    <div class="card" style="margin:0">
+      <div style="font-weight:800;font-size:18px">${esc(r.region_type || "Region")}</div>
+      <div class="mini" style="margin:4px 0 8px">${esc(r.region_id)}</div>
+      <div class="stat-grid">
+        <div>role</div><div><span class="pill ${roleClass(focusedPayload.interface?.pruning_role || "unknown")}">${esc(focusedPayload.interface?.pruning_role || "unknown")}</span></div>
+        <div>confidence</div><div>${esc(r.confidence || "-")}</div>
+        <div>ops</div><div>${esc((r.op_ids || []).length)}</div>
+        <div>children</div><div>${esc((r.children || []).length)}</div>
+        <div>contains fork</div><div>${esc(r.contains_fork)}</div>
+        <div>contains join</div><div>${esc(r.contains_join)}</div>
+      </div>
+      <hr class="sep">
+      <div class="small"><b>Reason:</b> ${esc(r.reason || "-")}</div>
+      <div class="small" style="margin-top:8px"><b>Interface:</b> ${esc(focusedPayload.interface?.reason || "-")}</div>
+    </div>
+  `;
+}
+function renderDetails(payload){
+  const det = document.getElementById("details");
+  const dims = document.getElementById("dims");
+  const raw = document.getElementById("raw");
+
+  if(!payload){
+    det.innerHTML = "No region selected.";
+    dims.innerHTML = "No dimensions loaded.";
+    raw.textContent = "{}";
+    return;
+  }
+
+  const r = payload.region || payload;
+  const iface = payload.interface || {};
+  const dvars = payload.dimensions || [];
+
+  det.innerHTML = `
+    <div class="stat-grid">
+      <div>region id</div><div>${esc(r.region_id)}</div>
+      <div>type</div><div>${esc(r.region_type)}</div>
+      <div>role</div><div><span class="pill ${roleClass(iface.pruning_role || "unknown")}">${esc(iface.pruning_role || "unknown")}</span></div>
+      <div>confidence</div><div>${esc(r.confidence || "-")}</div>
+      <div>contains fork</div><div>${esc(r.contains_fork)}</div>
+      <div>contains join</div><div>${esc(r.contains_join)}</div>
+      <div>ops</div><div>${esc((r.op_ids || []).length)}</div>
+      <div>children</div><div>${esc((r.children || []).length)}</div>
+    </div>
+    <hr class="sep">
+    <div class="small"><b>Reason:</b><br>${esc(r.reason || "-")}</div>
+    <div class="small" style="margin-top:8px"><b>Interface:</b><br>${esc(iface.reason || "-")}</div>
+  `;
+
+  if(!dvars.length){
+    dims.innerHTML = `<div class="small">No dimensions for this region.</div>`;
+  }else{
+    dims.innerHTML = dvars.map(d => `
+      <div class="dim-card">
+        <div style="font-weight:700">${esc(d.dim_name || "dimension")}</div>
+        <div class="mini">${esc(d.var_id || "")}</div>
+        <div class="small" style="margin-top:6px">
+          axis=${esc(d.axis_role)}&nbsp;&nbsp;
+          prunable=${esc(d.prunable)}&nbsp;&nbsp;
+          protected=${esc(d.protected)}&nbsp;&nbsp;
+          blocked=${esc(d.blocked)}
+        </div>
+        <div class="small" style="margin-top:6px">${esc(d.reason || "")}</div>
+      </div>
+    `).join("");
+  }
+
+  raw.textContent = JSON.stringify(payload, null, 2);
+}
+function nodePayload(region, role){
+  return {
+    id: region.region_id,
+    label: region.region_type || "Region",
+    sublabel: region.region_id,
+    role: role,
+    color: role === "focus" ? "#ffffff" :
+           role === "parent" ? "#a78bfa" :
+           "#7dd3fc",
+    pruningRole: focusedPayload && focusedPayload.interface && role === "focus"
+      ? (focusedPayload.interface.pruning_role || "unknown")
+      : "unknown",
+    region: region
+  };
+}
+function renderGraph(graph){
+  const svg = document.getElementById("graphSvg");
+  svg.innerHTML = "";
+  if(!graph || !graph.focus){
+    return;
+  }
+
+  const width = svg.clientWidth || 900;
+  const height = svg.clientHeight || 520;
+
+  const NS = "http://www.w3.org/2000/svg";
+  function make(tag, attrs={}){
+    const el = document.createElementNS(NS, tag);
+    for(const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  }
+
+  const g = make("g");
+  svg.appendChild(g);
+
+  const focus = graph.focus;
+  const parent = graph.parent;
+  const children = graph.children || [];
+
+  const fx = width * 0.44;
+  const fy = height * 0.50;
+
+  const pw = 220, ph = 74;
+  const cw = 220, ch = 74;
+
+  const nodes = [];
+  const edges = [];
+
+  if(parent){
+    nodes.push({ ...nodePayload(parent, "parent"), x: width * 0.12, y: fy - ph/2, w: pw, h: ph });
+    edges.push({ from: parent.region_id, to: focus.region_id, cls: "parent" });
+  }
+
+  nodes.push({
+    ...nodePayload(focus, "focus"),
+    x: fx, y: fy - 42, w: 240, h: 84
+  });
+
+  const focusChildIds = new Set((focus.children || []));
+  const childRegions = children.filter(c => focusChildIds.has(c.region_id) || true);
+
+  const maxChildren = Math.min(childRegions.length, 14);
+  const showChildren = childRegions.slice(0, maxChildren);
+
+  let startY = 60;
+  if(showChildren.length){
+    const totalH = showChildren.length * 92;
+    startY = Math.max(30, (height - totalH) / 2);
+  }
+
+  showChildren.forEach((child, i) => {
+    nodes.push({
+      ...nodePayload(child, "child"),
+      x: width * 0.72,
+      y: startY + i * 92,
+      w: cw,
+      h: ch
+    });
+    edges.push({ from: focus.region_id, to: child.region_id, cls: "child" });
+  });
+
+  if(childRegions.length > maxChildren){
+    nodes.push({
+      id: "__more__",
+      label: `+ ${childRegions.length - maxChildren} more children`,
+      sublabel: "Use focused details / API to inspect more",
+      role: "child",
+      color: "#64748b",
+      region: null,
+      x: width * 0.72,
+      y: startY + maxChildren * 92,
+      w: 220,
+      h: 62
+    });
+  }
+
+  const pos = new Map(nodes.map(n => [n.id, n]));
+  for(const e of edges){
+    const a = pos.get(e.from);
+    const b = pos.get(e.to);
+    if(!a || !b) continue;
+    const x1 = a.x + a.w;
+    const y1 = a.y + a.h/2;
+    const x2 = b.x;
+    const y2 = b.y + b.h/2;
+    const mid = (x1 + x2) / 2;
+    const path = make("path", {
+      d: `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`,
+      class: `edge ${e.cls}`
+    });
+    g.appendChild(path);
+  }
+
+  const searchQ = document.getElementById("structureSearch").value.trim().toLowerCase();
+
+  for(const n of nodes){
+    const ng = make("g", {
+      class: `node ${n.role} ${(searchQ && JSON.stringify(n.region || n).toLowerCase().includes(searchQ)) ? "search-hit" : ""}`,
+      transform: `translate(${n.x},${n.y})`
+    });
+    ng.style.cursor = n.region ? "pointer" : "default";
+
+    const rect = make("rect", {
+      width: n.w,
+      height: n.h,
+      fill: "#111c30",
+      stroke: n.role === "focus"
+        ? roleColor(focusedPayload?.interface?.pruning_role || "unknown")
+        : n.color
+    });
+    ng.appendChild(rect);
+
+    const t1 = make("text", { x: 12, y: 22 });
+    t1.textContent = trunc(n.label, 26);
+    ng.appendChild(t1);
+
+    const t2 = make("text", { x: 12, y: 40, class: "subtext" });
+    t2.textContent = trunc(n.sublabel, 34);
+    ng.appendChild(t2);
+
+    const roleText = n.region
+      ? (n.role === "focus"
+          ? `${focusedPayload?.interface?.pruning_role || "unknown"} | kids ${(n.region.children || []).length}`
+          : `${n.role} | kids ${(n.region.children || []).length}`)
+      : n.sublabel;
+
+    const t3 = make("text", { x: 12, y: n.h - 12, class: "subtext" });
+    t3.textContent = trunc(roleText, 35);
+    ng.appendChild(t3);
+
+    if(n.region){
+      ng.addEventListener("click", async () => {
+        await focusRegion(n.region.region_id);
+      });
+    }
+
+    g.appendChild(ng);
+  }
+}
+async function goToParent(){
+  if(!focusedPayload) return;
+  const region = focusedPayload.region || focusedPayload;
+  if(region.parent){
+    await focusRegion(region.parent);
+  }
+}
+function resetAll(){
+  selectedStructure = null;
+  selectedInstance = null;
+  focusedRegionId = null;
+  focusedPayload = null;
+  catalog = [];
+  structuresById.clear();
+  regionCache.clear();
+  childrenCache.clear();
+  document.getElementById("structureList").innerHTML = `<div class="small">No catalog loaded.</div>`;
+  document.getElementById("structureSummary").innerHTML = `No structure selected.`;
+  document.getElementById("instanceList").innerHTML = `No instances loaded.`;
+  document.getElementById("focusedCard").innerHTML = `No focused region.`;
+  renderGraph(null);
+  renderDetails(null);
+  setStatus("Reset.");
+}
+document.getElementById("loadBtn").addEventListener("click", loadCatalog);
+document.getElementById("resetBtn").addEventListener("click", resetAll);
+document.getElementById("upBtn").addEventListener("click", goToParent);
+document.getElementById("reloadFocusBtn").addEventListener("click", async () => {
+  if(focusedRegionId) await focusRegion(focusedRegionId);
+});
+document.getElementById("structureSearch").addEventListener("input", () => {
+  renderStructureList();
+  if(focusedPayload){
+    const region = focusedPayload.region || focusedPayload;
+    const parent = region.parent && regionCache.get(region.parent)
+      ? (regionCache.get(region.parent).region || regionCache.get(region.parent))
+      : null;
+    const kids = childrenCache.get(region.region_id) || [];
+    renderGraph({ parent, focus: region, children: kids });
+  }
+});
+</script>
+</body>
+</html>

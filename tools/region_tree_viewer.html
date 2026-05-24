@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Model Structural Region Tree Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #111827;
+    --panel2: #1f2937;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --edge: #64748b;
+    --green: #22c55e;
+    --blue: #38bdf8;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --purple: #a78bfa;
+    --gray: #94a3b8;
+    --unknown: #cbd5e1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 8px 16px;
+    background: #020617;
+    border-bottom: 1px solid #334155;
+  }
+
+  header h1 {
+    font-size: 16px;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  header label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  input[type="file"] {
+    color: var(--muted);
+    max-width: 280px;
+  }
+
+  button {
+    background: #1e293b;
+    border: 1px solid #475569;
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  button:hover { background: #334155; }
+
+  #layout {
+    display: grid;
+    grid-template-columns: 300px 1fr 380px;
+    height: calc(100vh - 56px);
+  }
+
+  #left, #right {
+    background: var(--panel);
+    overflow: auto;
+    border-color: #334155;
+  }
+
+  #left { border-right: 1px solid #334155; }
+  #right { border-left: 1px solid #334155; }
+
+  #center {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(148,163,184,0.15) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  .panel-section {
+    padding: 12px;
+    border-bottom: 1px solid #334155;
+  }
+
+  .panel-section h2 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: #f8fafc;
+  }
+
+  .small {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin: 4px 0;
+  }
+
+  .stat span:first-child { color: var(--muted); }
+
+  #search {
+    width: 100%;
+    background: #020617;
+    border: 1px solid #475569;
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px;
+    outline: none;
+  }
+
+  #search:focus { border-color: #60a5fa; }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin: 6px 0;
+  }
+
+  .swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  #treeSvg {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+
+  #treeSvg:active { cursor: grabbing; }
+
+  .edge {
+    stroke: var(--edge);
+    stroke-width: 1.4;
+    fill: none;
+    opacity: 0.75;
+  }
+
+  .node rect {
+    stroke-width: 1.8;
+    rx: 10;
+    ry: 10;
+    filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.35));
+  }
+
+  .node text {
+    fill: #f8fafc;
+    font-size: 11px;
+    pointer-events: none;
+  }
+
+  .node .subtext {
+    fill: #cbd5e1;
+    font-size: 9px;
+  }
+
+  .node.selected rect {
+    stroke: #f8fafc !important;
+    stroke-width: 3;
+  }
+
+  .node.search-hit rect {
+    stroke: #facc15 !important;
+    stroke-width: 3;
+  }
+
+  .node.collapsed rect {
+    stroke-dasharray: 4 3;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #020617;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 11px;
+    color: #d1d5db;
+    max-height: 240px;
+    overflow: auto;
+  }
+
+  .pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    margin: 2px;
+    border: 1px solid #475569;
+    color: #e5e7eb;
+    background: #0f172a;
+  }
+
+  .dim-card {
+    background: #020617;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px;
+    margin: 6px 0;
+    font-size: 12px;
+  }
+
+  .dim-card b { color: #f8fafc; }
+  .dim-card .flags { color: #cbd5e1; font-size: 11px; margin-top: 4px; }
+
+  .toolbar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 8px;
+    z-index: 3;
+  }
+
+  .empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    text-align: center;
+    padding: 24px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Structural Region Tree Viewer</h1>
+
+  <label>
+    Region tree JSON
+    <input id="treeFile" type="file" accept=".json" />
+  </label>
+
+  <label>
+    Optional Region Dimension IR JSON
+    <input id="dimFile" type="file" accept=".json" />
+  </label>
+
+  <button id="renderBtn">Render</button>
+  <button id="resetBtn">Reset view</button>
+</header>
+
+<div id="layout">
+  <aside id="left">
+    <div class="panel-section">
+      <h2>Search</h2>
+      <input id="search" placeholder="region type, id, name, role..." />
+      <p class="small">Click a node to inspect and expand/collapse it. Use mouse wheel to pan. Use Ctrl/Cmd + wheel or +/- buttons to zoom.</p>
+    </div>
+
+    <div class="panel-section">
+      <h2>Summary</h2>
+      <div id="summary" class="small">Load a Structural Region Tree JSON file.</div>
+    </div>
+
+    <div class="panel-section">
+      <h2>Legend</h2>
+      <div class="legend-row"><span class="swatch" style="background: var(--green)"></span> directly prunable</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--blue)"></span> propagation only</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--orange)"></span> constraint carrier</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--red)"></span> blocked</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--gray)"></span> analysis only</div>
+      <div class="legend-row"><span class="swatch" style="background: var(--unknown)"></span> unknown</div>
+    </div>
+
+    <div class="panel-section">
+      <h2>Notes</h2>
+      <p class="small">
+        This viewer is for structural inspection only. It does not modify models,
+        execute pruning, or rewrite ONNX. The tree is a compiler-inspired region hierarchy over Tensor IR.
+      </p>
+    </div>
+  </aside>
+
+  <main id="center">
+    <div class="toolbar">
+      <button id="zoomIn">+</button>
+      <button id="zoomOut">−</button>
+      <button id="expandAll">Expand all</button>
+      <button id="collapsePrimitives">Collapse primitives</button>
+    </div>
+    <svg id="treeSvg"></svg>
+    <div id="empty" class="empty">
+      <div>
+        <h2>Load a region tree JSON</h2>
+        <p>Example: reports/structural_region_trees/bert-base-uncased.json</p>
+      </div>
+    </div>
+  </main>
+
+  <aside id="right">
+    <div class="panel-section">
+      <h2>Selected Region</h2>
+      <div id="details" class="small">No region selected.</div>
+    </div>
+
+    <div class="panel-section">
+      <h2>Region Dimensions</h2>
+      <div id="dims" class="small">Load Region Dimension IR JSON to see region-scoped dimensions.</div>
+    </div>
+
+    <div class="panel-section">
+      <h2>Raw Region JSON</h2>
+      <pre id="raw">{}</pre>
+    </div>
+  </aside>
+</div>
+
+<script>
+let treeData = null;
+let dimData = null;
+let regions = [];
+let regionById = new Map();
+let childrenByParent = new Map();
+let interfacesByRegion = new Map();
+let dimsByRegion = new Map();
+let rootId = null;
+let collapsed = new Set();
+let selectedId = null;
+let scale = 1;
+let offsetX = 40;
+let offsetY = 40;
+let isPanning = false;
+let panStart = null;
+
+const svg = document.getElementById("treeSvg");
+const empty = document.getElementById("empty");
+
+function roleColor(role) {
+  switch ((role || "unknown").toLowerCase()) {
+    case "directly_prunable": return "#22c55e";
+    case "propagation_only": return "#38bdf8";
+    case "constraint_carrier": return "#f59e0b";
+    case "blocked": return "#ef4444";
+    case "analysis_only": return "#94a3b8";
+    default: return "#cbd5e1";
+  }
+}
+
+function regionShape(region) {
+  const t = region.region_type || "";
+  if (t === "ModelRegion") return "model";
+  if (t === "ResidualMergeRegion" || t === "JoinRegion") return "diamond";
+  if (t === "AttentionSkeletonRegion") return "octagon";
+  if (t === "FeedForwardRegion") return "folder";
+  if (t === "PrimitiveRegion") return "ellipse";
+  return "box";
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function sanitizeId(s) {
+  return String(s || "").replace(/[^a-zA-Z0-9_:-]/g, "_");
+}
+
+function readJsonFile(input) {
+  const file = input.files[0];
+  if (!file) return Promise.resolve(null);
+  return file.text().then(txt => JSON.parse(txt));
+}
+
+async function loadFiles() {
+  const tree = await readJsonFile(document.getElementById("treeFile"));
+  const dim = await readJsonFile(document.getElementById("dimFile"));
+
+  if (!tree) {
+    alert("Please select a Structural Region Tree JSON file.");
+    return;
+  }
+
+  treeData = tree;
+  dimData = dim;
+  buildIndexes();
+  renderSummary();
+  renderTree();
+}
+
+function buildIndexes() {
+  regions = treeData.regions || [];
+  regionById = new Map(regions.map(r => [r.region_id, r]));
+
+  childrenByParent = new Map();
+  for (const r of regions) {
+    const p = r.parent || null;
+    if (!childrenByParent.has(p)) childrenByParent.set(p, []);
+    childrenByParent.get(p).push(r.region_id);
+  }
+
+  for (const [p, kids] of childrenByParent.entries()) {
+    kids.sort((a, b) => {
+      const ra = regionById.get(a) || {};
+      const rb = regionById.get(b) || {};
+      return (ra.region_type || "").localeCompare(rb.region_type || "") ||
+             (ra.region_id || "").localeCompare(rb.region_id || "");
+    });
+  }
+
+  rootId = treeData.root_region_id || (childrenByParent.get(null) || [])[0];
+
+  interfacesByRegion = new Map();
+  for (const i of (treeData.interfaces || [])) {
+    interfacesByRegion.set(i.region_id, i);
+  }
+
+  dimsByRegion = new Map();
+  if (dimData && dimData.dimension_variables) {
+    for (const d of dimData.dimension_variables) {
+      const rid = d.region_id;
+      if (!dimsByRegion.has(rid)) dimsByRegion.set(rid, []);
+      dimsByRegion.get(rid).push(d);
+    }
+  }
+
+  collapsed = new Set();
+
+  // Closed-by-default behavior:
+  // keep only the root expanded, collapse every region that has children.
+  for (const r of regions) {
+    const kids = childrenByParent.get(r.region_id) || r.children || [];
+    if (r.region_id !== rootId && kids.length > 0) {
+      collapsed.add(r.region_id);
+    }
+  }
+
+  selectedId = rootId;
+}
+
+function renderSummary() {
+  const s = treeData.summary || {};
+  const model = treeData.model_name || "unknown";
+  const frontend = treeData.source_frontend || "unknown";
+  const html = [
+    ["model", model],
+    ["frontend", frontend],
+    ["regions", regions.length],
+    ["root", rootId],
+    ["primitive regions", s.num_primitive_regions],
+    ["feed-forward", s.num_feedforward_regions],
+    ["residual merges", s.num_residual_merge_regions],
+    ["attention skeletons", s.num_attention_skeleton_regions],
+    ["directly prunable", s.num_directly_prunable_regions],
+    ["blocked", s.num_blocked_regions],
+  ].map(([k, v]) => `<div class="stat"><span>${escapeHtml(k)}</span><b>${escapeHtml(v ?? "-")}</b></div>`).join("");
+  document.getElementById("summary").innerHTML = html;
+}
+
+function visibleTree() {
+  const nodes = [];
+  const edges = [];
+
+  function walk(id, depth) {
+    const r = regionById.get(id);
+    if (!r) return;
+    nodes.push({ id, depth, region: r });
+
+    if (collapsed.has(id)) return;
+
+    const kids = childrenByParent.get(id) || r.children || [];
+    for (const k of kids) {
+      if (!regionById.has(k)) continue;
+      edges.push({ from: id, to: k });
+      walk(k, depth + 1);
+    }
+  }
+
+  walk(rootId, 0);
+  return { nodes, edges };
+}
+
+function computeLayout(nodes) {
+  // Subtree-aware tidy layout.
+  //
+  // The older layout grouped all nodes by depth, so expanding a node could place
+  // its children near the top of the column instead of near the parent. This
+  // layout recursively allocates vertical space per subtree, so children stay
+  // visually adjacent to the node that was expanded.
+  const nodeW = 230;
+  const nodeH = 66;
+  const xGap = 330;
+  const yGap = 26;
+  const leafStep = nodeH + yGap;
+
+  const visible = new Set(nodes.map(n => n.id));
+  const positions = new Map();
+  let cursorY = 0;
+
+  function visibleChildren(id) {
+    const r = regionById.get(id) || {};
+    const kids = childrenByParent.get(id) || r.children || [];
+    return kids.filter(k => visible.has(k));
+  }
+
+  function layoutSubtree(id, depth) {
+    const kids = collapsed.has(id) ? [] : visibleChildren(id);
+
+    if (kids.length === 0) {
+      const y = cursorY;
+      positions.set(id, {
+        x: depth * xGap,
+        y,
+        w: nodeW,
+        h: nodeH,
+      });
+      cursorY += leafStep;
+      return { top: y, bottom: y + nodeH, center: y + nodeH / 2 };
+    }
+
+    const childBoxes = [];
+    for (const k of kids) {
+      childBoxes.push(layoutSubtree(k, depth + 1));
+    }
+
+    const top = childBoxes[0].top;
+    const bottom = childBoxes[childBoxes.length - 1].bottom;
+    const center = (childBoxes[0].center + childBoxes[childBoxes.length - 1].center) / 2;
+    const y = center - nodeH / 2;
+
+    positions.set(id, {
+      x: depth * xGap,
+      y,
+      w: nodeW,
+      h: nodeH,
+    });
+
+    return { top: Math.min(top, y), bottom: Math.max(bottom, y + nodeH), center };
+  }
+
+  if (rootId && visible.has(rootId)) {
+    layoutSubtree(rootId, 0);
+  } else {
+    // Fallback for malformed trees.
+    nodes.forEach((n, idx) => {
+      positions.set(n.id, {
+        x: n.depth * xGap,
+        y: idx * leafStep,
+        w: nodeW,
+        h: nodeH,
+      });
+    });
+  }
+
+  return positions;
+}
+
+function roleOf(region) {
+  const iface = interfacesByRegion.get(region.region_id);
+  return iface?.pruning_role || region.metadata?.pruning_role || "unknown";
+}
+
+function renderTree() {
+  if (!treeData) return;
+
+  empty.style.display = "none";
+
+  const { nodes, edges } = visibleTree();
+  const positions = computeLayout(nodes);
+  const search = document.getElementById("search").value.trim().toLowerCase();
+
+  svg.innerHTML = "";
+
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("transform", `translate(${offsetX},${offsetY}) scale(${scale})`);
+  svg.appendChild(g);
+
+  for (const e of edges) {
+    const a = positions.get(e.from);
+    const b = positions.get(e.to);
+    if (!a || !b) continue;
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const x1 = a.x + a.w;
+    const y1 = a.y + a.h / 2;
+    const x2 = b.x;
+    const y2 = b.y + b.h / 2;
+    const mid = (x1 + x2) / 2;
+    path.setAttribute("d", `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`);
+    path.setAttribute("class", "edge");
+    g.appendChild(path);
+  }
+
+  for (const n of nodes) {
+    const r = n.region;
+    const p = positions.get(n.id);
+    const role = roleOf(r);
+    const color = roleColor(role);
+
+    const nodeG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    nodeG.setAttribute("class", [
+      "node",
+      selectedId === n.id ? "selected" : "",
+      collapsed.has(n.id) ? "collapsed" : "",
+      search && JSON.stringify(r).toLowerCase().includes(search) ? "search-hit" : ""
+    ].join(" "));
+    nodeG.setAttribute("transform", `translate(${p.x},${p.y})`);
+    nodeG.style.cursor = "pointer";
+
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("width", p.w);
+    rect.setAttribute("height", p.h);
+    rect.setAttribute("fill", "#111827");
+    rect.setAttribute("stroke", color);
+    nodeG.appendChild(rect);
+
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    title.setAttribute("x", 12);
+    title.setAttribute("y", 20);
+    title.textContent = truncate(r.region_type || "Region", 28);
+    nodeG.appendChild(title);
+
+    const idText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    idText.setAttribute("x", 12);
+    idText.setAttribute("y", 38);
+    idText.setAttribute("class", "subtext");
+    idText.textContent = truncate(r.region_id || "", 34);
+    nodeG.appendChild(idText);
+
+    const roleText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    roleText.setAttribute("x", 12);
+    roleText.setAttribute("y", 55);
+    roleText.setAttribute("class", "subtext");
+    roleText.textContent = truncate(`${role} | ${r.confidence || "?"}`, 34);
+    nodeG.appendChild(roleText);
+
+    nodeG.addEventListener("click", () => {
+      selectedId = n.id;
+      showDetails(n.id);
+
+      // Single-click toggles expand/collapse if this region has children.
+      const kids = childrenByParent.get(n.id) || r.children || [];
+      if (kids.length > 0) {
+        if (collapsed.has(n.id)) collapsed.delete(n.id);
+        else collapsed.add(n.id);
+      }
+
+      renderTree();
+    });
+
+    nodeG.addEventListener("dblclick", () => {
+      // Double-click kept for compatibility, but single-click already toggles.
+      const kids = childrenByParent.get(n.id) || r.children || [];
+      if (kids.length > 0) {
+        if (collapsed.has(n.id)) collapsed.delete(n.id);
+        else collapsed.add(n.id);
+      }
+      renderTree();
+    });
+
+    g.appendChild(nodeG);
+  }
+
+  showDetails(selectedId);
+}
+
+function truncate(s, n) {
+  s = String(s ?? "");
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function showDetails(id) {
+  const r = regionById.get(id);
+  if (!r) return;
+
+  const iface = interfacesByRegion.get(id);
+  const dims = dimsByRegion.get(id) || [];
+
+  document.getElementById("details").innerHTML = `
+    <div class="stat"><span>region id</span><b>${escapeHtml(r.region_id)}</b></div>
+    <div class="stat"><span>type</span><b>${escapeHtml(r.region_type)}</b></div>
+    <div class="stat"><span>name</span><b>${escapeHtml(r.name || "-")}</b></div>
+    <div class="stat"><span>role</span><b>${escapeHtml(roleOf(r))}</b></div>
+    <div class="stat"><span>confidence</span><b>${escapeHtml(r.confidence || "-")}</b></div>
+    <div class="stat"><span>ops</span><b>${escapeHtml((r.op_ids || []).length)}</b></div>
+    <div class="stat"><span>children</span><b>${escapeHtml((r.children || []).length)}</b></div>
+    <div class="stat"><span>contains fork</span><b>${escapeHtml(r.contains_fork)}</b></div>
+    <div class="stat"><span>contains join</span><b>${escapeHtml(r.contains_join)}</b></div>
+    <div style="margin-top:8px;">
+      <span class="pill">${escapeHtml(r.single_entry ? "single-entry" : "multi-entry/unknown")}</span>
+      <span class="pill">${escapeHtml(r.single_exit ? "single-exit" : "multi-exit/unknown")}</span>
+    </div>
+    <p class="small"><b>Reason:</b><br>${escapeHtml(r.reason || "-")}</p>
+    ${iface ? `<p class="small"><b>Interface:</b><br>${escapeHtml(iface.reason || "-")}</p>` : ""}
+  `;
+
+  if (!dimData) {
+    document.getElementById("dims").innerHTML = "Load Region Dimension IR JSON to see dimensions.";
+  } else if (!dims.length) {
+    document.getElementById("dims").innerHTML = "No region dimensions attached to this region.";
+  } else {
+    document.getElementById("dims").innerHTML = dims.map(d => `
+      <div class="dim-card">
+        <b>${escapeHtml(d.dim_name)}</b>
+        <div>${escapeHtml(d.var_id)}</div>
+        <div class="flags">
+          axis=${escapeHtml(d.axis_role)}
+          prunable=${escapeHtml(d.prunable)}
+          protected=${escapeHtml(d.protected)}
+          blocked=${escapeHtml(d.blocked)}
+        </div>
+        <div class="small">${escapeHtml(d.reason || "")}</div>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("raw").textContent = JSON.stringify(r, null, 2);
+}
+
+function expandAllNodes() {
+  collapsed.clear();
+  renderTree();
+}
+
+function collapsePrimitiveNodes() {
+  // PrimitiveRegion nodes are leaves, so collapsing them directly has no visual effect.
+  // Instead, collapse any parent region that has PrimitiveRegion children.
+  collapsed.clear();
+
+  for (const r of regions) {
+    const kids = childrenByParent.get(r.region_id) || r.children || [];
+    const hasPrimitiveChild = kids.some(k => {
+      const child = regionById.get(k);
+      return child && child.region_type === "PrimitiveRegion";
+    });
+
+    if (r.region_id !== rootId && hasPrimitiveChild) {
+      collapsed.add(r.region_id);
+    }
+  }
+
+  renderTree();
+}
+
+function resetView() {
+  scale = 1;
+  offsetX = 40;
+  offsetY = 40;
+  renderTree();
+}
+
+document.getElementById("renderBtn").addEventListener("click", loadFiles);
+document.getElementById("resetBtn").addEventListener("click", resetView);
+document.getElementById("expandAll").addEventListener("click", expandAllNodes);
+document.getElementById("collapsePrimitives").addEventListener("click", collapsePrimitiveNodes);
+document.getElementById("search").addEventListener("input", renderTree);
+document.getElementById("zoomIn").addEventListener("click", () => { scale *= 1.15; renderTree(); });
+document.getElementById("zoomOut").addEventListener("click", () => { scale /= 1.15; renderTree(); });
+
+svg.addEventListener("mousedown", e => {
+  isPanning = true;
+  panStart = { x: e.clientX, y: e.clientY, ox: offsetX, oy: offsetY };
+});
+
+window.addEventListener("mouseup", () => { isPanning = false; });
+
+window.addEventListener("mousemove", e => {
+  if (!isPanning || !panStart) return;
+  offsetX = panStart.ox + (e.clientX - panStart.x);
+  offsetY = panStart.oy + (e.clientY - panStart.y);
+  renderTree();
+});
+
+svg.addEventListener("wheel", e => {
+  e.preventDefault();
+
+  // Normal wheel scroll should pan the canvas, not zoom.
+  // Use Ctrl/Cmd + wheel for zoom. Buttons also still zoom.
+  if (e.ctrlKey || e.metaKey) {
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    scale *= factor;
+  } else {
+    offsetX -= e.deltaX;
+    offsetY -= e.deltaY;
+  }
+
+  renderTree();
+}, { passive: false });
+</script>
+</body>
+</html>

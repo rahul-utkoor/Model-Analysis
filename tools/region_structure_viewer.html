@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Abstract Structure Focus Browser</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root{
+  --bg:#0b1220;--panel:#111827;--panel2:#162033;--panel3:#0f172a;
+  --text:#e5e7eb;--muted:#94a3b8;--border:#334155;--accent:#60a5fa;
+  --green:#22c55e;--blue:#38bdf8;--orange:#f59e0b;--red:#ef4444;--gray:#94a3b8;--purple:#a78bfa;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+header{height:58px;background:#020617;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:8px 14px}
+header h1{font-size:16px;margin:0;white-space:nowrap}
+button,input,select{background:#0f172a;color:var(--text);border:1px solid #475569;border-radius:10px;padding:8px 10px}
+button{cursor:pointer} button:hover{background:#1e293b}
+#layout{height:calc(100vh - 58px);display:grid;grid-template-columns:330px 1fr 420px}
+aside,#main{min-height:0}
+#left,#right{background:var(--panel);overflow:auto}
+#left{border-right:1px solid var(--border)} #right{border-left:1px solid var(--border)}
+#main{overflow:auto;background:radial-gradient(circle at 1px 1px,rgba(148,163,184,.10) 1px,transparent 0);background-size:24px 24px;padding:14px}
+.section{padding:12px;border-bottom:1px solid var(--border)}
+.section h2{font-size:13px;margin:0 0 10px}
+.small{font-size:12px;color:var(--muted);line-height:1.45}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stat{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin:5px 0}.stat span:first-child{color:var(--muted)}
+.card{background:rgba(15,23,42,.92);border:1px solid var(--border);border-radius:12px;padding:10px;margin:8px 0}
+.card.clickable{cursor:pointer}.card.clickable:hover{border-color:var(--accent);background:#132038}
+.card.selected{border-color:#facc15;box-shadow:0 0 0 1px #facc15 inset}
+.badge{display:inline-flex;align-items:center;gap:4px;border:1px solid #475569;border-radius:999px;padding:2px 8px;font-size:11px;margin:2px;background:#0b1220}
+.badge.green{color:var(--green);border-color:#166534}.badge.blue{color:var(--blue);border-color:#075985}
+.badge.orange{color:var(--orange);border-color:#92400e}.badge.red{color:var(--red);border-color:#991b1b}
+.badge.gray{color:var(--gray)}.badge.purple{color:var(--purple);border-color:#6d28d9}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+#structureList,#instanceList,#childGroups,#childList{padding:0 8px 10px}
+pre{background:#020617;border:1px solid var(--border);border-radius:10px;padding:10px;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto;font-size:11px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.focus{border:1px solid #475569;background:linear-gradient(180deg,rgba(17,24,39,.98),rgba(15,23,42,.94));border-radius:16px;padding:16px;margin-bottom:14px}
+.focus h2{margin:0 0 6px;font-size:18px}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;font-size:12px}.kv div:nth-child(odd){color:var(--muted)}
+.tabs{display:flex;gap:8px;margin:12px 0}.tab.active{border-color:var(--accent);background:#1e293b}
+.empty{color:var(--muted);padding:16px;text-align:center;border:1px dashed #475569;border-radius:12px;background:rgba(15,23,42,.55)}
+.dim{border:1px solid var(--border);border-radius:10px;padding:8px;margin:6px 0;background:#020617}
+.child-group{display:flex;justify-content:space-between;align-items:center;gap:8px}
+hr{border:0;border-top:1px solid var(--border);margin:12px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Abstract Structure Focus Browser</h1>
+  <span class="small">API</span>
+  <input id="apiBase" value="/api" size="18">
+  <button id="loadBtn">Load catalog</button>
+  <button id="resetBtn">Reset</button>
+  <span id="status" class="small">Waiting.</span>
+</header>
+
+<div id="layout">
+  <aside id="left">
+    <div class="section">
+      <h2>Structure Catalog</h2>
+      <input id="structureFilter" placeholder="filter structure type, role, axis..." style="width:100%">
+      <div class="small" style="margin-top:8px">Click a structure type to load its instances. This view avoids drawing the whole tree.</div>
+    </div>
+    <div id="structureList"></div>
+  </aside>
+
+  <main id="main">
+    <div class="focus">
+      <h2 id="title">No structure loaded</h2>
+      <div id="overview" class="small">Load the catalog, then choose an abstract structure on the left.</div>
+    </div>
+
+    <div class="grid2">
+      <section class="card">
+        <h2 style="margin-top:0">Instances</h2>
+        <div id="instanceMeta" class="small">None.</div>
+        <div id="instanceList"></div>
+        <button id="loadMoreBtn" style="display:none">Load more</button>
+      </section>
+
+      <section class="card">
+        <h2 style="margin-top:0">Focused Region</h2>
+        <div id="focusRegion" class="empty">Click an instance or child region.</div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2 style="margin-top:0">Children grouped by abstract structure</h2>
+      <div id="childGroups" class="small">No focused region.</div>
+      <div id="childList"></div>
+    </section>
+  </main>
+
+  <aside id="right">
+    <div class="section">
+      <h2>Region Details</h2>
+      <div id="details" class="small">No region selected.</div>
+    </div>
+    <div class="section">
+      <h2>Region Dimensions</h2>
+      <div id="dims" class="small">No dimensions loaded.</div>
+    </div>
+    <div class="section">
+      <h2>Raw payload</h2>
+      <pre id="raw">{}</pre>
+    </div>
+  </aside>
+</div>
+
+<script>
+let apiBase = "/api";
+let catalog = [];
+let activeStructure = null;
+let activeInstances = [];
+let instanceOffset = 0;
+let instanceLimit = 50;
+let focusedRegionId = null;
+let focusedPayload = null;
+let childPayload = [];
+const regionCache = new Map();
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}
+function trunc(s,n){s=String(s??"");return s.length>n?s.slice(0,n-1)+"…":s}
+function setStatus(s,err=false){$("status").textContent=s;$("status").style.color=err?"#f87171":"#94a3b8"}
+function roleClass(role){
+  switch(String(role||"").toLowerCase()){
+    case "directly_prunable": return "green";
+    case "propagation_only": return "blue";
+    case "constraint_carrier": return "orange";
+    case "blocked": return "red";
+    case "analysis_only": return "gray";
+    default: return "";
+  }
+}
+function badge(text, cls=""){return `<span class="badge ${cls}">${esc(text)}</span>`}
+
+async function api(path){
+  let base = $("apiBase").value.trim() || "/api";
+  if(base === "/api" && location.protocol === "file:") base = "http://127.0.0.1:8765/api";
+  apiBase = base.replace(/\/+$/,"");
+  const r = await fetch(apiBase + path);
+  if(!r.ok) throw new Error(`${r.status} ${r.statusText}: ${apiBase+path}`);
+  return await r.json();
+}
+function normList(x){
+  if(Array.isArray(x)) return x;
+  if(Array.isArray(x?.structures)) return x.structures;
+  if(Array.isArray(x?.items)) return x.items;
+  if(Array.isArray(x?.instances)) return x.instances;
+  if(Array.isArray(x?.children)) return x.children;
+  return [];
+}
+function structureId(s){return s.structure_id || s.abstract_structure_id || s.id || s.signature || s.key}
+function structureName(s){return s.region_type || s.structure_type || s.type || s.name || "UnknownStructure"}
+function structureCount(s){return s.count ?? s.instances ?? s.instance_count ?? 0}
+function structureRole(s){return s.pruning_role || s.role || "unknown"}
+function instanceRegionId(x){return x.region_id || x.id || x.region?.region_id}
+function payloadRegion(p){return p.region || p}
+
+async function loadCatalog(){
+  try{
+    setStatus("Loading catalog...");
+    const idx = await api("/index").catch(()=>({}));
+    const data = await api("/structures");
+    catalog = normList(data);
+    if(!catalog.length && data.structure_catalog) catalog = normList(data.structure_catalog);
+    renderCatalog();
+    $("title").textContent = `Catalog loaded`;
+    $("overview").innerHTML = `
+      ${badge(`structures ${catalog.length}`,"purple")}
+      ${idx.model_name ? badge(`model ${idx.model_name}`) : ""}
+      <div class="small" style="margin-top:8px">Choose a structure type on the left. Instances are loaded only when requested.</div>`;
+    setStatus(`Loaded ${catalog.length} structures.`);
+  }catch(e){console.error(e);setStatus(e.message,true);alert(e.message)}
+}
+
+function renderCatalog(){
+  const q = $("structureFilter").value.toLowerCase().trim();
+  const list = catalog.filter(s => JSON.stringify(s).toLowerCase().includes(q));
+  $("structureList").innerHTML = list.map(s=>{
+    const sid = structureId(s);
+    return `<div class="card clickable ${activeStructure&&structureId(activeStructure)===sid?"selected":""}" onclick="selectStructure('${encodeURIComponent(sid)}')">
+      <b>${esc(structureName(s))}</b> <span class="small">×${esc(structureCount(s))}</span><br>
+      ${badge(structureRole(s),roleClass(structureRole(s)))} ${s.confidence?badge(s.confidence):""}<br>
+      <span class="small">${esc(trunc(sid,60))}</span>
+    </div>`;
+  }).join("") || `<div class="empty">No matching structures.</div>`;
+}
+
+async function selectStructure(encodedId){
+  const sid = decodeURIComponent(encodedId);
+  activeStructure = catalog.find(s=>structureId(s)===sid);
+  activeInstances = [];
+  instanceOffset = 0;
+  focusedRegionId = null;
+  focusedPayload = null;
+  childPayload = [];
+  renderCatalog();
+  $("childGroups").innerHTML = "No focused region.";
+  $("childList").innerHTML = "";
+  $("focusRegion").innerHTML = `<div class="empty">Loading instances...</div>`;
+  $("title").textContent = structureName(activeStructure);
+  $("overview").innerHTML = renderStructureSummary(activeStructure);
+  await loadMoreInstances(true);
+}
+
+function renderStructureSummary(s){
+  return `<div class="kv">
+    <div>structure id</div><div class="mono">${esc(structureId(s))}</div>
+    <div>region type</div><div>${esc(structureName(s))}</div>
+    <div>instances</div><div>${esc(structureCount(s))}</div>
+    <div>role</div><div>${badge(structureRole(s),roleClass(structureRole(s)))}</div>
+    <div>confidence</div><div>${esc(s.confidence ?? "-")}</div>
+  </div>
+  <hr><pre>${esc(JSON.stringify(s,null,2))}</pre>`;
+}
+
+async function loadMoreInstances(reset=false){
+  if(!activeStructure) return;
+  try{
+    const sid = structureId(activeStructure);
+    const data = await api(`/structures/${encodeURIComponent(sid)}/instances?offset=${instanceOffset}&limit=${instanceLimit}`);
+    const items = normList(data);
+    if(reset) activeInstances = [];
+    activeInstances.push(...items);
+    instanceOffset += items.length;
+    renderInstances();
+    $("loadMoreBtn").style.display = items.length === instanceLimit ? "inline-block" : "none";
+  }catch(e){console.error(e);setStatus(e.message,true);alert(e.message)}
+}
+
+function renderInstances(){
+  $("instanceMeta").innerHTML = `loaded ${activeInstances.length} instance(s)`;
+  $("instanceList").innerHTML = activeInstances.map((x,i)=>{
+    const rid = instanceRegionId(x);
+    return `<div class="card clickable ${focusedRegionId===rid?"selected":""}" onclick="focusRegion('${encodeURIComponent(rid)}')">
+      <b>${esc(x.region_type || x.region?.region_type || structureName(activeStructure))}</b><br>
+      <span class="small mono">${esc(trunc(rid,80))}</span><br>
+      ${x.pruning_role?badge(x.pruning_role,roleClass(x.pruning_role)):""} ${x.confidence?badge(x.confidence):""}
+    </div>`;
+  }).join("") || `<div class="empty">No instances returned.</div>`;
+}
+
+async function fetchRegion(rid){
+  if(regionCache.has(rid)) return regionCache.get(rid);
+  const p = await api(`/region/${encodeURIComponent(rid)}`);
+  regionCache.set(rid,p);
+  return p;
+}
+async function fetchChildren(rid){
+  const data = await api(`/children/${encodeURIComponent(rid)}`);
+  return normList(data);
+}
+
+async function focusRegion(encodedRid){
+  const rid = decodeURIComponent(encodedRid);
+  try{
+    setStatus(`Loading region ${rid}...`);
+    focusedRegionId = rid;
+    focusedPayload = await fetchRegion(rid);
+    childPayload = await fetchChildren(rid);
+    renderInstances();
+    renderFocusedRegion();
+    renderRightPanel();
+    renderChildGroups();
+    setStatus(`Focused ${rid}`);
+  }catch(e){console.error(e);setStatus(e.message,true);alert(e.message)}
+}
+
+function renderFocusedRegion(){
+  const r = payloadRegion(focusedPayload);
+  const iface = focusedPayload.interface || {};
+  $("focusRegion").innerHTML = `
+    <div class="kv">
+      <div>region id</div><div class="mono">${esc(r.region_id)}</div>
+      <div>type</div><div>${esc(r.region_type)}</div>
+      <div>role</div><div>${badge(iface.pruning_role || r.pruning_role || "unknown", roleClass(iface.pruning_role || r.pruning_role))}</div>
+      <div>confidence</div><div>${esc(r.confidence ?? "-")}</div>
+      <div>ops</div><div>${esc((r.op_ids||[]).length)}</div>
+      <div>children</div><div>${esc((r.children||[]).length)}</div>
+    </div>
+    <hr>
+    <div class="small"><b>Reason:</b><br>${esc(r.reason || "-")}</div>
+    <div class="small" style="margin-top:8px"><b>Interface:</b><br>${esc(iface.reason || "-")}</div>`;
+}
+
+function renderRightPanel(){
+  const r = payloadRegion(focusedPayload);
+  const iface = focusedPayload.interface || {};
+  const dims = focusedPayload.dimensions || [];
+  $("details").innerHTML = `
+    <div class="stat"><span>region id</span><b class="mono">${esc(r.region_id)}</b></div>
+    <div class="stat"><span>type</span><b>${esc(r.region_type)}</b></div>
+    <div class="stat"><span>role</span><b>${esc(iface.pruning_role || "-")}</b></div>
+    <div class="stat"><span>contains fork</span><b>${esc(r.contains_fork)}</b></div>
+    <div class="stat"><span>contains join</span><b>${esc(r.contains_join)}</b></div>`;
+  $("dims").innerHTML = dims.length ? dims.map(d=>`
+    <div class="dim">
+      <b>${esc(d.dim_name)}</b> ${badge(d.axis_role||"unknown")}
+      <div class="small mono">${esc(d.var_id)}</div>
+      <div class="small">
+        prunable=${esc(d.prunable)} protected=${esc(d.protected)} blocked=${esc(d.blocked)}
+      </div>
+      <div class="small">${esc(d.reason || "")}</div>
+    </div>`).join("") : "No dimensions for this region.";
+  $("raw").textContent = JSON.stringify(focusedPayload,null,2);
+}
+
+function groupChildren(children){
+  const m = new Map();
+  for(const c of children){
+    const t = c.region_type || c.region?.region_type || "UnknownRegion";
+    if(!m.has(t)) m.set(t,[]);
+    m.get(t).push(c);
+  }
+  return [...m.entries()].sort((a,b)=>b[1].length-a[1].length || a[0].localeCompare(b[0]));
+}
+function renderChildGroups(){
+  if(!focusedPayload){$("childGroups").innerHTML="No focused region.";return}
+  const groups = groupChildren(childPayload);
+  if(!groups.length){
+    $("childGroups").innerHTML = `<div class="empty">This region has no loaded children.</div>`;
+    $("childList").innerHTML = "";
+    return;
+  }
+  $("childGroups").innerHTML = groups.map(([t,items],idx)=>`
+    <div class="card clickable child-group" onclick="showChildGroup('${encodeURIComponent(t)}')">
+      <div><b>${esc(t)}</b><br><span class="small">${items.length} child region(s)</span></div>
+      <div>${badge("open","blue")}</div>
+    </div>`).join("");
+  showChildGroup(encodeURIComponent(groups[0][0]));
+}
+function showChildGroup(encodedType){
+  const type = decodeURIComponent(encodedType);
+  const items = childPayload.filter(c => (c.region_type || c.region?.region_type || "UnknownRegion") === type);
+  $("childList").innerHTML = `<h3 style="font-size:13px">${esc(type)} children</h3>` + items.map(c=>{
+    const rid = c.region_id || c.region?.region_id;
+    return `<div class="card clickable" onclick="focusRegion('${encodeURIComponent(rid)}')">
+      <b>${esc(c.region_type || type)}</b><br>
+      <span class="small mono">${esc(trunc(rid,90))}</span><br>
+      ${c.pruning_role?badge(c.pruning_role,roleClass(c.pruning_role)):""} ${c.confidence?badge(c.confidence):""}
+    </div>`
+  }).join("");
+}
+
+$("loadBtn").addEventListener("click",loadCatalog);
+$("resetBtn").addEventListener("click",()=>{activeStructure=null;activeInstances=[];focusedRegionId=null;focusedPayload=null;childPayload=[];regionCache.clear();renderCatalog();$("instanceList").innerHTML="";$("focusRegion").innerHTML='<div class="empty">Click an instance or child region.</div>'});
+$("structureFilter").addEventListener("input",renderCatalog);
+$("loadMoreBtn").addEventListener("click",()=>loadMoreInstances(false));
+</script>
+</body>
+</html>
+```
+
+</script>
+</body>
+</html>

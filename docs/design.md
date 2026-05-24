@@ -494,6 +494,14 @@ Milestone 19 queries RegionDimensionIR directly. Given a region dimension and sy
 
 Region equations currently omit explicit direction because their relation type encodes the intended semantics. This analysis conservatively infers bidirectional traversal for equality-like and unresolved mappings and forward traversal for fanout propagation. The result is a diagnostic legality oracle only; it does not modify models or invoke experimental backends.
 
+## Region Tree Browsing and Export Tools
+
+The Structural Region Tree can be too large for direct browser-side loading. The local API browsers treat reports as static analysis data and expose lazy GET endpoints for indexes, focused regions, direct children, blocked regions, search results, abstract structure catalogs, and paginated structure instances. Collapsed subtrees can be discarded from frontend memory and re-fetched later.
+
+The abstract structure collector groups concrete regions by semantic signature: region type, pruning role, child-type multiset, op-type multiset, dimension roles, and constraint types. This supports browsing structure classes such as feed-forward, residual merge, fork, layer norm, axis transform, attention skeleton, and primitive regions before drilling into instances.
+
+The MindNode exporter walks from `root_region_id` and preserves structural child order where available, falling back to source/topological operation order. Primitive leaves are omitted by default so the outline remains readable. These tools do not change Tensor IR, region trees, Dimension IR, model weights, ONNX files, or pruning behavior.
+
 ## Dimension-IR Legality Analysis
 
 Milestone 11 adds static analysis over the Dimension IR. Given a root dimension and symbolic or concrete pruning request, the analyzer determines whether the request is locally legal, legal with structural repairs, ambiguous, or rejected.

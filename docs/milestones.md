@@ -465,3 +465,26 @@ python scripts/list_region_dimensions.py --model bert-base-uncased --contains in
 ```
 
 Semantic fusion recovers high-level activation/feed-forward regions without modifying models, rewriting ONNX, executing pruning, or evaluating quality.
+
+## Local Region Tree Browsing and Export Tools
+
+Status: complete.
+
+Added after Milestone 20:
+
+- Lazy API-backed Structural Region Tree browser
+- Abstract structure collector and focused structure browser
+- Optional graph-heavy structure viewer for exploratory use
+- Lazy region-tree export/viewer for static HTTP serving
+- MindNode tab-indented and OPML outline exporter
+- Ignore rules for generated `viewer_data/`, abstract-structure reports, and MindNode outlines
+
+Primary commands:
+
+```bash
+python abstract_structure_collector.py --model bert-base-uncased --write
+python region_structure_api_server.py --model bert-base-uncased --port 8765
+./conda-env/bin/python tools/export_region_tree_mindnode.py --model bert-base-uncased --label-mode semantic --include-counts --max-depth 3
+```
+
+These are visualization, browsing, and export tools only. They do not modify models, pruning logic, Tensor IR, RegionDimensionIR, or ONNX artifacts.

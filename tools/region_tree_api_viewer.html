@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>API Structural Region Tree Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root {
+  --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --edge:#64748b;
+  --green:#22c55e; --blue:#38bdf8; --orange:#f59e0b; --red:#ef4444; --gray:#94a3b8; --unknown:#cbd5e1;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+header { height:58px; display:flex; align-items:center; gap:12px; padding:8px 14px; background:#020617; border-bottom:1px solid #334155; }
+header h1 { font-size:16px; margin:0; white-space:nowrap; }
+button,input { background:#0f172a; color:var(--text); border:1px solid #475569; border-radius:8px; padding:7px 9px; }
+button { cursor:pointer; } button:hover { background:#1e293b; }
+#layout { display:grid; grid-template-columns:310px 1fr 420px; height:calc(100vh - 58px); }
+aside { background:var(--panel); overflow:auto; }
+#left { border-right:1px solid #334155; } #right { border-left:1px solid #334155; }
+#center { position:relative; overflow:hidden; background:radial-gradient(circle at 1px 1px, rgba(148,163,184,.14) 1px, transparent 0); background-size:24px 24px; }
+.section { padding:12px; border-bottom:1px solid #334155; }
+.section h2 { font-size:13px; margin:0 0 8px; }
+.small { color:var(--muted); font-size:12px; line-height:1.45; }
+.stat { display:flex; justify-content:space-between; gap:10px; font-size:12px; margin:4px 0; }
+.stat span:first-child { color:var(--muted); }
+#search { width:100%; }
+.toolbar { position:absolute; top:12px; left:12px; z-index:2; display:flex; gap:8px; flex-wrap:wrap; }
+#svg { width:100%; height:100%; cursor:grab; }
+.edge { stroke:var(--edge); stroke-width:1.4; fill:none; opacity:.75; }
+.node rect { stroke-width:1.8; rx:10; ry:10; filter:drop-shadow(0 3px 4px rgba(0,0,0,.35)); }
+.node text { fill:#f8fafc; font-size:11px; pointer-events:none; }
+.node .subtext { fill:#cbd5e1; font-size:9px; }
+.node.selected rect { stroke:#f8fafc !important; stroke-width:3; }
+.node.search-hit rect { stroke:#facc15 !important; stroke-width:3; }
+.node.collapsed rect { stroke-dasharray:4 3; }
+pre { white-space:pre-wrap; word-break:break-word; background:#020617; border:1px solid #334155; border-radius:8px; padding:8px; font-size:11px; max-height:320px; overflow:auto; }
+.dim-card { background:#020617; border:1px solid #334155; border-radius:8px; padding:8px; margin:6px 0; font-size:12px; }
+.pill { display:inline-block; border:1px solid #475569; border-radius:999px; padding:2px 8px; margin:2px; font-size:11px; }
+.empty { height:100%; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--muted); padding:24px; }
+.hit { padding:6px; border-bottom:1px solid #334155; cursor:pointer; font-size:12px; }
+.hit:hover { background:#1e293b; }
+</style>
+</head>
+<body>
+<header>
+  <h1>API Region Tree Viewer</h1>
+  <button id="loadBtn">Load model index</button>
+  <button id="resetBtn">Reset view</button>
+  <span class="small">Backend serves only requested regions. Collapsed subtrees are removed from browser state.</span>
+</header>
+
+<div id="layout">
+  <aside id="left">
+    <div class="section">
+      <h2>Search</h2>
+      <input id="search" placeholder="region type, id, role..." />
+      <div style="margin-top:8px; display:flex; gap:8px;"><button id="searchBtn">Search API</button><button id="clearSearch">Clear</button></div>
+      <div id="searchResults" class="small" style="margin-top:8px;"></div>
+    </div>
+    <div class="section"><h2>Summary</h2><div id="summary" class="small">Click Load model index.</div></div>
+    <div class="section"><h2>Status</h2><div id="status" class="small">Waiting.</div></div>
+    <div class="section">
+      <h2>Legend</h2>
+      <div class="small">
+        <div><span style="color:var(--green)">●</span> directly prunable</div>
+        <div><span style="color:var(--blue)">●</span> propagation only</div>
+        <div><span style="color:var(--orange)">●</span> constraint carrier</div>
+        <div><span style="color:var(--red)">●</span> blocked</div>
+        <div><span style="color:var(--gray)">●</span> analysis only</div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="center">
+    <div class="toolbar">
+      <button id="zoomIn">+</button>
+      <button id="zoomOut">−</button>
+      <button id="collapseAll">Collapse all</button>
+      <button id="blockedBtn">Load blocked list</button>
+    </div>
+    <svg id="svg"></svg>
+    <div id="empty" class="empty"><div><h2>API lazy loading</h2><p>Start the Python backend and click Load model index.</p></div></div>
+  </main>
+
+  <aside id="right">
+    <div class="section"><h2>Selected Region</h2><div id="details" class="small">None.</div></div>
+    <div class="section"><h2>Region Dimensions</h2><div id="dims" class="small">None.</div></div>
+    <div class="section"><h2>Raw Loaded Payload</h2><pre id="raw">{}</pre></div>
+  </aside>
+</div>
+
+<script>
+let indexData = null;
+let summaries = new Map();      // region_id -> summary
+let loadedPayloads = new Map(); // region_id -> full payload currently retained
+let expanded = new Set();       // expanded region ids
+let selectedId = null;
+let scale = 1, offsetX = 40, offsetY = 40;
+let isPanning = false, panStart = null;
+const svg = document.getElementById("svg");
+const empty = document.getElementById("empty");
+
+function setStatus(msg, err=false) {
+  const el = document.getElementById("status");
+  el.style.color = err ? "#f87171" : "#9ca3af";
+  el.textContent = msg;
+}
+function esc(s) { return String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+function trunc(s,n) { s=String(s??""); return s.length>n ? s.slice(0,n-1)+"…" : s; }
+function roleColor(role) {
+  switch ((role || "unknown").toLowerCase()) {
+    case "directly_prunable": return "#22c55e";
+    case "propagation_only": return "#38bdf8";
+    case "constraint_carrier": return "#f59e0b";
+    case "blocked": return "#ef4444";
+    case "analysis_only": return "#94a3b8";
+    default: return "#cbd5e1";
+  }
+}
+async function api(path) {
+  const r = await fetch(path, {cache:"no-store"});
+  if (!r.ok) {
+    let msg = `${path}: HTTP ${r.status}`;
+    try { const j = await r.json(); if (j.error) msg = j.error; } catch(e) {}
+    throw new Error(msg);
+  }
+  return await r.json();
+}
+
+async function loadIndex() {
+  try {
+    setStatus("Loading /api/index ...");
+    indexData = await api("/api/index");
+    summaries.clear(); loadedPayloads.clear(); expanded.clear();
+    selectedId = indexData.root_region_id;
+    renderSummary();
+    await expandRegion(selectedId);
+    await selectRegion(selectedId);
+    setStatus(`Loaded ${indexData.model_name}: ${indexData.num_regions} regions. Browser currently holds ${loadedPayloads.size} full region payload(s).`);
+    render();
+  } catch (e) { console.error(e); setStatus(e.message, true); alert(e.message); }
+}
+function renderSummary() {
+  const s = indexData.summary || {};
+  document.getElementById("summary").innerHTML = [
+    ["model", indexData.model_name], ["frontend", indexData.source_frontend], ["regions", indexData.num_regions],
+    ["root", indexData.root_region_id], ["primitive", s.num_primitive_regions], ["feed-forward", s.num_feedforward_regions],
+    ["residual merges", s.num_residual_merge_regions], ["attention", s.num_attention_skeleton_regions],
+    ["direct prunable", s.num_directly_prunable_regions], ["blocked", s.num_blocked_regions]
+  ].map(([k,v]) => `<div class="stat"><span>${esc(k)}</span><b>${esc(v ?? "-")}</b></div>`).join("");
+}
+async function fetchRegion(id) {
+  if (loadedPayloads.has(id)) return loadedPayloads.get(id);
+  const p = await api(`/api/region/${encodeURIComponent(id)}`);
+  loadedPayloads.set(id, p);
+  summaries.set(id, p.summary);
+  for (const c of p.children || []) summaries.set(c.region_id, c);
+  return p;
+}
+async function expandRegion(id) {
+  const p = await fetchRegion(id);
+  expanded.add(id);
+  for (const c of p.children || []) summaries.set(c.region_id, c);
+}
+function removeDescendantsFromBrowser(id) {
+  const p = loadedPayloads.get(id);
+  if (!p) return;
+  for (const c of p.children || []) {
+    removeDescendantsFromBrowser(c.region_id);
+    loadedPayloads.delete(c.region_id);
+    summaries.delete(c.region_id);
+    expanded.delete(c.region_id);
+  }
+}
+function collapseRegion(id) {
+  removeDescendantsFromBrowser(id);
+  expanded.delete(id);
+}
+async function selectRegion(id) {
+  selectedId = id;
+  const p = await fetchRegion(id);
+  const r = p.region || p.summary || {};
+  const iface = p.interface;
+  const dims = p.dimensions || [];
+  document.getElementById("details").innerHTML = `
+    <div class="stat"><span>region id</span><b>${esc(r.region_id)}</b></div>
+    <div class="stat"><span>type</span><b>${esc(r.region_type)}</b></div>
+    <div class="stat"><span>name</span><b>${esc(r.name || "-")}</b></div>
+    <div class="stat"><span>role</span><b>${esc(iface?.pruning_role || p.summary?.pruning_role || "-")}</b></div>
+    <div class="stat"><span>confidence</span><b>${esc(r.confidence || "-")}</b></div>
+    <div class="stat"><span>ops</span><b>${esc((r.op_ids || []).length)}</b></div>
+    <div class="stat"><span>children</span><b>${esc((r.children || []).length)}</b></div>
+    <div style="margin-top:8px"><span class="pill">${esc(r.single_entry ? "single-entry" : "multi-entry/unknown")}</span><span class="pill">${esc(r.single_exit ? "single-exit" : "multi-exit/unknown")}</span></div>
+    <p class="small"><b>Reason:</b><br>${esc(r.reason || "-")}</p>
+    ${iface ? `<p class="small"><b>Interface:</b><br>${esc(iface.reason || "-")}</p>` : ""}
+  `;
+  document.getElementById("dims").innerHTML = dims.length ? dims.map(d => `
+    <div class="dim-card"><b>${esc(d.dim_name)}</b><div class="small">${esc(d.var_id)}</div><div class="small">axis=${esc(d.axis_role)} prunable=${esc(d.prunable)} protected=${esc(d.protected)} blocked=${esc(d.blocked)}</div><div class="small">${esc(d.reason || "")}</div></div>
+  `).join("") : "No region dimensions attached to this region.";
+  document.getElementById("raw").textContent = JSON.stringify(p, null, 2);
+}
+function treeNodes() {
+  const nodes = [], edges = [];
+  if (!indexData) return {nodes, edges};
+  function walk(id, depth) {
+    const s = summaries.get(id); if (!s) return;
+    nodes.push({id, depth, region:s});
+    if (!expanded.has(id)) return;
+    const p = loadedPayloads.get(id); if (!p) return;
+    for (const c of p.children || []) { edges.push({from:id, to:c.region_id}); walk(c.region_id, depth+1); }
+  }
+  walk(indexData.root_region_id, 0);
+  return {nodes, edges};
+}
+function computeLayout(nodes) {
+  const pos = new Map(); let cursorY=0;
+  const nodeW=230,nodeH=66,xGap=330,yGap=26,leaf=nodeH+yGap;
+  const nodeIds = new Set(nodes.map(n=>n.id));
+  function kids(id) {
+    if (!expanded.has(id)) return [];
+    const p = loadedPayloads.get(id);
+    return (p?.children || []).map(c=>c.region_id).filter(k=>nodeIds.has(k));
+  }
+  function layout(id, depth) {
+    const ks = kids(id);
+    if (!ks.length) { const y=cursorY; pos.set(id,{x:depth*xGap,y,w:nodeW,h:nodeH}); cursorY+=leaf; return {top:y,bottom:y+nodeH,center:y+nodeH/2}; }
+    const boxes = ks.map(k=>layout(k,depth+1));
+    const center=(boxes[0].center+boxes[boxes.length-1].center)/2, y=center-nodeH/2;
+    pos.set(id,{x:depth*xGap,y,w:nodeW,h:nodeH});
+    return {top:Math.min(boxes[0].top,y),bottom:Math.max(boxes[boxes.length-1].bottom,y+nodeH),center};
+  }
+  if (indexData?.root_region_id) layout(indexData.root_region_id, 0);
+  return pos;
+}
+function render() {
+  if (!indexData) return;
+  empty.style.display = "none";
+  const {nodes, edges} = treeNodes();
+  const pos = computeLayout(nodes);
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  svg.innerHTML = "";
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("transform", `translate(${offsetX},${offsetY}) scale(${scale})`);
+  svg.appendChild(g);
+  for (const e of edges) {
+    const a=pos.get(e.from), b=pos.get(e.to); if (!a || !b) continue;
+    const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+    const x1=a.x+a.w,y1=a.y+a.h/2,x2=b.x,y2=b.y+b.h/2,mid=(x1+x2)/2;
+    path.setAttribute("d",`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`); path.setAttribute("class","edge"); g.appendChild(path);
+  }
+  for (const n of nodes) {
+    const r=n.region,p=pos.get(n.id),hasKids=(r.child_count||0)>0,color=roleColor(r.pruning_role);
+    const hit=q && JSON.stringify(r).toLowerCase().includes(q);
+    const ng=document.createElementNS("http://www.w3.org/2000/svg","g");
+    ng.setAttribute("class", ["node", selectedId===n.id?"selected":"", hit?"search-hit":"", hasKids&&!expanded.has(n.id)?"collapsed":""].join(" "));
+    ng.setAttribute("transform",`translate(${p.x},${p.y})`); ng.style.cursor="pointer";
+    const rect=document.createElementNS("http://www.w3.org/2000/svg","rect"); rect.setAttribute("width",p.w); rect.setAttribute("height",p.h); rect.setAttribute("fill","#111827"); rect.setAttribute("stroke",color); ng.appendChild(rect);
+    const title=document.createElementNS("http://www.w3.org/2000/svg","text"); title.setAttribute("x",12); title.setAttribute("y",20); title.textContent=trunc(r.region_type,30); ng.appendChild(title);
+    const idt=document.createElementNS("http://www.w3.org/2000/svg","text"); idt.setAttribute("x",12); idt.setAttribute("y",38); idt.setAttribute("class","subtext"); idt.textContent=trunc(r.region_id,34); ng.appendChild(idt);
+    const sub=document.createElementNS("http://www.w3.org/2000/svg","text"); sub.setAttribute("x",12); sub.setAttribute("y",55); sub.setAttribute("class","subtext"); sub.textContent=`${hasKids?(expanded.has(n.id)?"−":"+"):"·"} ${trunc(r.pruning_role||"unknown",18)} | ${r.confidence||"?"} | kids ${r.child_count||0}`; ng.appendChild(sub);
+    ng.addEventListener("click", async () => {
+      await selectRegion(n.id);
+      if (hasKids) { if (expanded.has(n.id)) collapseRegion(n.id); else await expandRegion(n.id); }
+      setStatus(`Browser holds ${loadedPayloads.size} loaded full region payload(s).`);
+      render();
+    });
+    g.appendChild(ng);
+  }
+}
+async function doSearch() {
+  try {
+    const q = document.getElementById("search").value.trim();
+    const res = await api(`/api/search?q=${encodeURIComponent(q)}&limit=40`);
+    document.getElementById("searchResults").innerHTML = res.hits.length ? res.hits.map(h => `<div class="hit" data-id="${esc(h.region_id)}"><b>${esc(h.region_type)}</b><br><span class="small">${esc(h.region_id)} | ${esc(h.pruning_role)}</span></div>`).join("") : "No hits.";
+    document.querySelectorAll(".hit").forEach(el => el.addEventListener("click", async () => {
+      const id = el.getAttribute("data-id"); summaries.set(id, res.hits.find(h => h.region_id === id)); await selectRegion(id); render();
+    }));
+  } catch(e) { setStatus(e.message,true); }
+}
+async function loadBlocked() {
+  const res = await api("/api/blocked?limit=80");
+  document.getElementById("searchResults").innerHTML = `<div class="small">Blocked regions: ${res.count}</div>` + res.hits.map(h => `<div class="hit" data-id="${esc(h.region_id)}"><b>${esc(h.region_type)}</b><br><span class="small">${esc(h.region_id)}</span></div>`).join("");
+  document.querySelectorAll(".hit").forEach(el => el.addEventListener("click", async () => { const id=el.getAttribute("data-id"); const h=res.hits.find(x=>x.region_id===id); summaries.set(id,h); await selectRegion(id); render(); }));
+}
+function resetView(){scale=1;offsetX=40;offsetY=40;render();}
+document.getElementById("loadBtn").addEventListener("click", loadIndex);
+document.getElementById("resetBtn").addEventListener("click", resetView);
+document.getElementById("zoomIn").addEventListener("click",()=>{scale*=1.15;render();});
+document.getElementById("zoomOut").addEventListener("click",()=>{scale/=1.15;render();});
+document.getElementById("collapseAll").addEventListener("click",()=>{ if(indexData){ for(const id of Array.from(expanded)) if(id!==indexData.root_region_id) collapseRegion(id); render(); }});
+document.getElementById("searchBtn").addEventListener("click", doSearch);
+document.getElementById("clearSearch").addEventListener("click",()=>{document.getElementById("searchResults").innerHTML="";document.getElementById("search").value="";render();});
+document.getElementById("blockedBtn").addEventListener("click", loadBlocked);
+document.getElementById("search").addEventListener("input", render);
+svg.addEventListener("mousedown",e=>{isPanning=true;panStart={x:e.clientX,y:e.clientY,ox:offsetX,oy:offsetY};});
+window.addEventListener("mouseup",()=>{isPanning=false;});
+window.addEventListener("mousemove",e=>{if(!isPanning||!panStart)return;offsetX=panStart.ox+(e.clientX-panStart.x);offsetY=panStart.oy+(e.clientY-panStart.y);render();});
+svg.addEventListener("wheel",e=>{e.preventDefault();if(e.ctrlKey||e.metaKey)scale*=e.deltaY<0?1.1:.9;else{offsetX-=e.deltaX;offsetY-=e.deltaY;}render();},{passive:false});
+</script>
+</body>
+</html>

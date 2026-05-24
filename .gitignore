@@ -139,6 +139,11 @@ reports/semantic_fusion/*
 !reports/semantic_fusion/.gitkeep
 reports/fused_region_patterns/*
 !reports/fused_region_patterns/.gitkeep
+reports/abstract_structures/*
+!reports/abstract_structures/.gitkeep
+reports/mindnode_outlines/*
+!reports/mindnode_outlines/.gitkeep
+viewer_data/
 
 *.onnx
 .DS_Store

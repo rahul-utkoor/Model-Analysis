@@ -252,6 +252,38 @@ reports/region_blocked_analysis/<model>__blocked_dimensions.md
 
 This query layer operates on semantic region dimensions, infers constraint traversal conservatively, and reports repair obligations without applying them. It does not modify models.
 
+## Region Tree Browsing and Outline Export
+
+Build a catalog of unique abstract structures from a Structural Region Tree and Region-Aware Dimension IR:
+
+```bash
+python abstract_structure_collector.py \
+  --model bert-base-uncased \
+  --write
+```
+
+Start the focused API-backed browser:
+
+```bash
+python region_structure_api_server.py \
+  --model bert-base-uncased \
+  --port 8765
+```
+
+Open `http://127.0.0.1:8765/`. The browser fetches catalog entries, selected instances, focused region details, direct children, and dimensions through GET requests instead of loading the complete tree JSON.
+
+Export a compact MindNode outline:
+
+```bash
+./conda-env/bin/python tools/export_region_tree_mindnode.py \
+  --model bert-base-uncased \
+  --label-mode semantic \
+  --include-counts \
+  --max-depth 3
+```
+
+Generated outputs are under `reports/abstract_structures/`, `reports/mindnode_outlines/`, and `viewer_data/`; those generated artifacts are ignored by git except `.gitkeep` placeholders.
+
 ## Quick Inspection
 
 Print a lightweight local model summary and write a Markdown summary:

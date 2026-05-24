@@ -247,6 +247,38 @@ python scripts/check_region_pruning_legality.py \
 
 Outputs include `reports/region_legality_checks/`, `reports/region_propagation_slices/`, `reports/region_repair_sets/`, and `reports/region_blocked_analysis/`. The analyzer computes semantic-region propagation obligations, protected dimensions, unresolved mappings, and blockers; it is static analysis only.
 
+## Region Tree Browsing and MindNode Export
+
+Large Structural Region Trees are easier to inspect through lazy browsing tools than by opening the full JSON. Build an abstract structure catalog:
+
+```bash
+python abstract_structure_collector.py \
+  --model bert-base-uncased \
+  --write
+```
+
+Run the API-backed structure browser:
+
+```bash
+python region_structure_api_server.py \
+  --model bert-base-uncased \
+  --port 8765
+```
+
+The server exposes lazy endpoints such as `/api/index`, `/api/region/<region_id>`, `/api/children/<region_id>`, `/api/search`, `/api/blocked`, `/api/structures`, and `/api/structures/<structure_id>/instances?offset=0&limit=100`. The focused viewer shows a structure catalog, selected instances, and one region's dimensions/children without loading the full tree into browser memory.
+
+Export a MindNode-friendly outline:
+
+```bash
+./conda-env/bin/python tools/export_region_tree_mindnode.py \
+  --model bert-base-uncased \
+  --label-mode semantic \
+  --include-counts \
+  --max-depth 3
+```
+
+Generated viewer data, abstract-structure reports, and MindNode outlines are ignored by git. These tools are for visualization and exploration only; they do not modify models or pruning logic.
+
 ## Dependency Graph Construction
 
 Build a conservative pruning-dependency graph from existing structural inventory reports:
