@@ -65,3 +65,4 @@ Important interpretation:
 - Attention mask add applies score bias/masking, not residual hidden-state merging.
 - Attention pruning remains blocked until head-axis mapping is proven.
 - `source_region_type` says what the Structural Region Tree found; `semantic_category` says how pruning semantics interprets that region.
+- Auxiliary attention-mask Axis/Fork/Join flow is separated from the true `attention_mask_add` score-bias operation.

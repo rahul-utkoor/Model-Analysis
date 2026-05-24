@@ -47,6 +47,8 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
             op("softmax", "/model/bert/encoder/layer.0/attention/self/Softmax", "Softmax", ["s"], ["p"]),
             op("ctx", "/model/bert/encoder/layer.0/attention/self/MatMul_1", "MatMul", ["p"], ["ctx"]),
             op("shape", "/model/bert/encoder/layer.0/attention/self/Reshape", "Reshape", ["q"], ["qr"]),
+            op("mask_shape", "/model/bert/encoder/layer.0/attention/self/attention_mask/Reshape", "Reshape", ["mask"], ["mask_r"]),
+            op("mask_where", "/model/bert/encoder/layer.0/attention/self/Where_1", "Where", ["mask_r"], ["mask_w"]),
         ],
     }
     tree = {
@@ -54,7 +56,7 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
         "source_frontend": "onnx",
         "root_region_id": "model",
         "regions": [
-            region("model", "ModelRegion", [item["op_id"] for item in tensor_ir["ops"]], children=["ffn", "ffn_int", "gelu", "ffn_out", "res", "ln", "q", "k", "v", "score_region", "ctx_region", "mask_add_region", "attn", "shape"], parent=None),
+            region("model", "ModelRegion", [item["op_id"] for item in tensor_ir["ops"]], children=["ffn", "ffn_int", "gelu", "ffn_out", "res", "ln", "q", "k", "v", "score_region", "ctx_region", "mask_add_region", "attn", "shape", "mask_axis", "mask_join", "mask_fork"], parent=None),
             region("ffn", "FeedForwardRegion", ["ffn_mm", "ffn_add", "gelu_erf", "out_mm", "out_add"], children=["ffn_int", "gelu", "ffn_out"]),
             region("ffn_int", "LinearProjectionRegion", ["ffn_mm", "ffn_add"], parent="ffn"),
             region("gelu", "ActivationRegion", ["gelu_erf"], parent="ffn"),
@@ -69,6 +71,9 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
             region("mask_add_region", "ResidualMergeRegion", ["mask_add"]),
             region("attn", "AttentionSkeletonRegion", ["score", "softmax", "ctx"]),
             region("shape", "AxisTransformRegion", ["shape"]),
+            region("mask_axis", "AxisTransformRegion", ["mask_shape"]),
+            region("mask_join", "JoinRegion", ["mask_where"]),
+            region("mask_fork", "ForkRegion", ["mask_shape", "mask_add", "mask_where"]),
         ],
     }
     rdim = {
@@ -125,6 +130,7 @@ def test_residual_and_layernorm_are_protected_or_blocked() -> None:
     layernorm = records["LayerNormRegion"][0]
 
     assert residual["pruning_role"] == "blocked"
+    assert residual["semantic_category"] == "residual_merge"
     assert any(blocker["blocker_type"] == "residual_hidden_dim" for blocker in residual["blockers"])
     assert any(dim["status"] == "protected" for dim in residual["dimensions"])
     assert layernorm["pruning_role"] == "protected"
@@ -189,6 +195,31 @@ def test_attention_mask_add_is_not_residual_semantics() -> None:
     assert not any(blocker["blocker_type"] == "residual_hidden_dim" for blocker in mask_add["blockers"])
     assert not any(repair["obligation_type"] == "residual_branch_repair" for repair in mask_add["repair_obligations"])
     assert any(repair["obligation_type"] == "shape_metadata_update" for repair in mask_add["repair_obligations"])
+
+
+def test_attention_mask_auxiliary_regions_are_not_mask_add() -> None:
+    records = records_by_type()
+    mask_axis = next(item for item in records["AxisTransformRegion"] if item["region_name"] == "mask_axis")
+    mask_join = next(item for item in records["JoinRegion"] if item["region_name"] == "mask_join")
+    mask_fork = next(item for item in records["ForkRegion"] if item["region_name"] == "mask_fork")
+
+    assert mask_axis["semantic_category"] == "attention_mask_axis_transform"
+    assert mask_join["semantic_category"] == "attention_mask_join"
+    assert mask_fork["semantic_category"] == "attention_mask_fork"
+    assert all(item["semantic_category"] != "attention_mask_add" for item in (mask_axis, mask_join, mask_fork))
+
+
+def test_attention_mask_add_summary_count_excludes_auxiliary_regions() -> None:
+    tree, tensor_ir, rdim = synthetic_inputs()
+    semantics = region_pruning_semantics_to_dict(
+        build_region_pruning_semantics(tree, tensor_ir, region_dimension_ir=rdim)
+    )
+    counts = semantics["summary"]["semantic_category_counts"]
+
+    assert counts["attention_mask_add"] == 1
+    assert counts["attention_mask_axis_transform"] == 1
+    assert counts["attention_mask_join"] == 1
+    assert counts["attention_mask_fork"] == 1
 
 
 def test_qkv_projection_remains_directly_prunable_with_attention_warning() -> None:

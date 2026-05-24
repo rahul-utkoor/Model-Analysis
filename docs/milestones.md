@@ -584,6 +584,7 @@ Implemented:
 - Conservative semantics for projection, GELU, feed-forward, attention, residual, LayerNorm, and shape/mask regions
 - Attention-internal score/context MatMul and mask-add overrides to avoid treating dataflow contractions or mask application as directly prunable projections/residual merges
 - Explicit `source_region_type` and `semantic_category` fields so reports distinguish structural classification from pruning-semantics interpretation
+- Tight attention-mask categories so Axis/Fork/Join mask plumbing is not counted as true `attention_mask_add`
 - Synthetic tests for opportunities, repairs, blockers, text dumps, and comparison summaries
 
 Primary commands:

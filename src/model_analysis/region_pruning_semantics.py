@@ -321,6 +321,36 @@ def _attention_internal_kind(paths: list[str]) -> str | None:
     return None
 
 
+def _has_attention_mask_flow(paths: list[str]) -> bool:
+    return any(
+        "/attention/self/add" in path
+        or "/attention/self/where" in path
+        or "attention_mask" in path
+        or "attention.mask" in path
+        for path in paths
+    )
+
+
+def _has_attention_self_add(paths: list[str]) -> bool:
+    return any(
+        "/attention/self/add" in path
+        and "/attention/output/add" not in path
+        and "/output/add" not in path
+        and "/embeddings/add" not in path
+        for path in paths
+    )
+
+
+def _is_local_attention_mask_add(region_type: str, paths: list[str]) -> bool:
+    if region_type != "ResidualMergeRegion":
+        return False
+    if not _has_attention_self_add(paths):
+        return False
+    # The semantic category is reserved for the actual score-bias Add region,
+    # not larger recursive regions that happen to contain that Add as evidence.
+    return len(paths) <= 3
+
+
 def _semantic_category(region_type: str, paths: list[str], projection_kind: str, attention_kind: str | None) -> str:
     if region_type == "AttentionSkeletonRegion":
         return "attention_skeleton"
@@ -332,8 +362,17 @@ def _semantic_category(region_type: str, paths: list[str], projection_kind: str,
         return "attention_score_matmul"
     if attention_kind == "context_matmul":
         return "attention_context_matmul"
-    if attention_kind in {"mask_add", "mask_select"}:
+    if _is_local_attention_mask_add(region_type, paths):
         return "attention_mask_add"
+    if _has_attention_mask_flow(paths):
+        if region_type == "AxisTransformRegion":
+            return "attention_mask_axis_transform"
+        if region_type == "JoinRegion":
+            return "attention_mask_join"
+        if region_type == "ForkRegion":
+            return "attention_mask_fork"
+        if attention_kind in {"mask_add", "mask_select"}:
+            return "auxiliary_attention_mask_flow"
     if region_type == "LinearProjectionRegion":
         return {
             "query": "query_projection",
@@ -521,13 +560,24 @@ def _record_semantics(
         rules.append(_rule(region_id, 0, "attention_context_contraction", "softmax_value_axes", ["context"], "reshape_head_mapping_required", "bidirectional", "Attention context MatMul is Softmax(scores) x V, not a parameterized projection layer."))
         repairs.append(_repair(region_id, 0, "attention_axis_mapping_required", [region_id], ["head_dim", "context_dim"], True, "Prove Softmax/V head-axis mapping before pruning attention context paths."))
         blockers.append(_blocker(region_id, 0, "attention_head_mapping_unproven", "blocker", "Attention context MatMul has no independent prunable weight/channel dimension."))
-    elif attention_internal_kind in {"mask_add", "mask_select"}:
+    elif semantic_category in {
+        "attention_mask_add",
+        "attention_mask_axis_transform",
+        "attention_mask_join",
+        "attention_mask_fork",
+        "auxiliary_attention_mask_flow",
+    }:
         dimensions = []
-        pruning_role = "constraint_carrier"
+        pruning_role = "propagation_only" if semantic_category in {"attention_mask_axis_transform", "attention_mask_fork"} else "constraint_carrier"
         _add_dim(dimensions, "attention_score_dim", "unknown", "propagated", "inferred_from_op_path", "Attention mask application follows the attention score tensor.")
         _add_dim(dimensions, "sequence_dim", "sequence_dim", "propagated", "inferred_from_op_path", "Mask axes must broadcast over sequence dimensions.")
         _add_dim(dimensions, "mask_dim", "axis_mapping", "propagated", "inferred_from_op_path", "Mask dimensions are metadata-like broadcast axes.")
-        rules.append(_rule(region_id, 0, "attention_mask_application", "mask_dim", ["attention_score_dim"], "axis_remap_required", "bidirectional", "Attention mask add biases attention scores; it is not a residual hidden-state merge."))
+        explanation = (
+            "Attention mask add biases attention scores; it is not a residual hidden-state merge."
+            if semantic_category == "attention_mask_add"
+            else "Auxiliary attention-mask flow carries broadcast, select, fork, or axis metadata rather than a direct pruning choice."
+        )
+        rules.append(_rule(region_id, 0, "attention_mask_application", "mask_dim", ["attention_score_dim"], "axis_remap_required", "bidirectional", explanation))
         repairs.append(_repair(region_id, 0, "shape_metadata_update", [region_id], ["mask_dim", "sequence_dim"], False, "Mask broadcasting metadata may need updates if upstream axes change."))
         blockers.append(_blocker(region_id, 0, "unknown_axis_mapping", "warning", "Exact attention mask broadcast axes are not proven in this semantics pass."))
     elif region_type == "FeedForwardRegion":

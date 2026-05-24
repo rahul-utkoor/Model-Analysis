@@ -293,6 +293,7 @@ This layer explains pruning information flow through semantic regions. It record
 By default, the Markdown report summarizes raw `AxisTransformRegion`, `ForkRegion`, and `JoinRegion` auxiliary flow instead of listing every one-op record. Pass `--include-auxiliary-details` to `build_region_pruning_semantics.py` only when debugging shape/axis plumbing.
 
 Each region record includes both `source_region_type` from the Structural Region Tree and `semantic_category` from the pruning semantics layer. This is important for attention internals: score/context MatMuls can be structurally shaped like `LinearProjectionRegion` records while semantically acting as attention contractions.
+Mask-broadcast Axis/Fork/Join helper regions use auxiliary attention-mask categories, while `attention_mask_add` is reserved for the true score-bias Add node.
 
 ## Structural Region Tree over Tensor IR
 
