@@ -1,6 +1,6 @@
 # Design Notes
 
-Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, Region-Aware Dimension IR lowers region interfaces into symbolic equations, Region Pruning Semantics and Op Semantics explain pruning-relevant behavior, and region-aware legality analysis evaluates symbolic requests. The current analysis path intentionally stops before modifying weights.
+Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, Region-Aware Dimension IR lowers region interfaces into symbolic equations, Region Pruning Semantics and Op Semantics explain pruning-relevant behavior, Pruning Opportunity Ranking prioritizes safe/constrained/blocked candidates, symbolic Pruning Plans specify static FFN repair obligations, and region-aware legality analysis evaluates symbolic requests. The current analysis path intentionally stops before modifying weights.
 
 ## Pipeline Design
 
@@ -34,6 +34,8 @@ The pipeline is staged:
 26. Region-aware pruning propagation and legality analysis
 27. Region Pruning Semantics reporting
 28. Op Semantics annotation over Tensor IR
+29. Region pruning opportunity ranking
+30. Symbolic pruning plan synthesis for safe FFN candidates
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -54,6 +56,8 @@ Model checkpoint
   -> Region-Aware Dimension IR
   -> Region Pruning Semantics
   -> Op Semantics
+  -> Pruning Opportunity Ranking
+  -> Symbolic Pruning Plans
   -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
@@ -188,6 +192,18 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 
 `pruning_opportunity.py`
 : Defines the compiler-style pruning opportunity IR: pruning dimensions, propagation constraints, opportunities, structural risks, and model pruning maps.
+
+`op_semantics.py`
+: Annotates primitive Tensor IR operations with pruning-relevant local behavior, such as learned projections, residual merges, attention contractions, GELU elementwise flow, axis transforms, and metadata-only helpers.
+
+`region_pruning_semantics.py`
+: Assigns pruning roles, symbolic dimension semantics, propagation rules, repairs, and blockers to structural regions.
+
+`pruning_opportunity_ranking.py`
+: Combines region semantics and op semantics into ranked safe, constrained, blocked, auxiliary, and unknown pruning candidates.
+
+`pruning_plan_synthesis.py`
+: Converts top safe feed-forward candidates into symbolic plans with shared index sets, required producer-output and consumer-input actions, bias repairs, GELU propagation, hidden-dimension preservation, and forbidden residual/LayerNorm hidden pruning.
 
 `pruning_map_compare.py`
 : Aggregates and compares pruning map summaries across configured models.

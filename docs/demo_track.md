@@ -90,7 +90,7 @@ Milestones 6, 7, and 8 are experimental execution backends. They are useful for 
 1. Start with `demos/README.md` to frame pruning as compiler analysis.
 2. Run `demo_scripts/run_demo_01_setup_check.sh`.
 3. If model files are not present, run the download and ONNX export commands manually.
-4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, pruning opportunity ranking, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
+4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, pruning opportunity ranking, pruning plan synthesis, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
 5. Open the reports in the artifact ladder order.
 6. Mention backend demos only as optional lowering experiments.
 
@@ -112,6 +112,12 @@ For a `bert-base-uncased` walkthrough, the key reports are:
 - `reports/region_pruning_ir_dumps/bert-base-uncased.rdim`
 - `reports/region_pruning_semantics_explanations/bert-base-uncased.md`
 - `reports/region_pruning_semantics_dumps/bert-base-uncased.rpsem`
+- `reports/op_semantics_explanations/bert-base-uncased.md`
+- `reports/op_semantics_dumps/bert-base-uncased.opsem`
+- `reports/pruning_opportunity_explanations/bert-base-uncased.md`
+- `reports/pruning_opportunity_ranking_dumps/bert-base-uncased.rank`
+- `reports/pruning_plan_explanations/bert-base-uncased.md`
+- `reports/pruning_plan_dumps/bert-base-uncased.plan`
 - `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
 - `reports/region_legality_checks/`
 - `reports/dependency_graphs/bert-base-uncased.md`

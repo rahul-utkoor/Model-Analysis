@@ -15,6 +15,9 @@ python scripts/build_control_tree_trace.py --model bert-base-uncased --format al
 python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
 python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
 python scripts/build_region_pruning_semantics.py --model bert-base-uncased --verbose
+python scripts/build_op_semantics.py --model bert-base-uncased --verbose
+python scripts/rank_pruning_opportunities.py --model bert-base-uncased --verbose
+python scripts/synthesize_pruning_plans.py --model bert-base-uncased --verbose
 python scripts/explain_region_pruning_semantics.py --model bert-base-uncased --contains "Feed Forward" --limit 5
 python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 10
 python scripts/explain_region_blocked_dimensions.py --model bert-base-uncased
@@ -54,6 +57,7 @@ Model checkpoint
   -> Region Pruning Semantics
   -> Op Semantics
   -> Pruning Opportunity Ranking
+  -> Symbolic Pruning Plans
   -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
@@ -65,7 +69,7 @@ Model checkpoint
   -> Legality check
 ```
 
-ONNX currently supplies the frontend graph and Netron visualization. Tensor IR is the frontend-independent analysis substrate; the Structural Region Tree organizes that IR into compiler-inspired semantic regions; Region-Aware Dimension IR lowers region interfaces into symbolic dimensions and equations; Region Pruning Semantics explains region-level roles and blockers; Op Semantics annotates primitive TensorOps with local pruning behavior; Pruning Opportunity Ranking prioritizes safe/constrained/blocked candidates; region legality analysis answers symbolic requests over those dimensions. The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
+ONNX currently supplies the frontend graph and Netron visualization. Tensor IR is the frontend-independent analysis substrate; the Structural Region Tree organizes that IR into compiler-inspired semantic regions; Region-Aware Dimension IR lowers region interfaces into symbolic dimensions and equations; Region Pruning Semantics explains region-level roles and blockers; Op Semantics annotates primitive TensorOps with local pruning behavior; Pruning Opportunity Ranking prioritizes safe/constrained/blocked candidates; Pruning Plan Synthesis turns top safe FFN opportunities into symbolic index-set plans; region legality analysis answers symbolic requests over those dimensions. The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
 
 Optional backend ladder:
 
@@ -95,19 +99,21 @@ Read these reports in order:
 14. `reports/op_semantics_dumps/bert-base-uncased.opsem`
 15. `reports/pruning_opportunity_explanations/bert-base-uncased.md`
 16. `reports/pruning_opportunity_ranking_dumps/bert-base-uncased.rank`
-17. `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
-18. `reports/region_legality_checks/`
-19. `reports/dependency_graphs/bert-base-uncased.md`
-20. `reports/correspondence/bert-base-uncased.md`
-21. `reports/join_subgraphs/bert-base-uncased.md`
-22. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
-23. `reports/dag_regions/bert-base-uncased.md`
-24. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
-25. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
-26. `reports/model_pruning_maps/bert-base-uncased.md`
-27. `reports/dimension_ir/bert-base-uncased.md`
-28. `reports/pruning_ir_dumps/bert-base-uncased.pir`
-29. `reports/legality_checks/`
+17. `reports/pruning_plan_explanations/bert-base-uncased.md`
+18. `reports/pruning_plan_dumps/bert-base-uncased.plan`
+19. `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
+20. `reports/region_legality_checks/`
+21. `reports/dependency_graphs/bert-base-uncased.md`
+22. `reports/correspondence/bert-base-uncased.md`
+23. `reports/join_subgraphs/bert-base-uncased.md`
+24. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
+25. `reports/dag_regions/bert-base-uncased.md`
+26. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
+27. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
+28. `reports/model_pruning_maps/bert-base-uncased.md`
+29. `reports/dimension_ir/bert-base-uncased.md`
+30. `reports/pruning_ir_dumps/bert-base-uncased.pir`
+31. `reports/legality_checks/`
 
 ## Mainline vs backend
 

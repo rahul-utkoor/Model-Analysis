@@ -369,6 +369,40 @@ reports/pruning_opportunity_compare/summary.md
 
 The ranking classifies candidates as `safe`, `constrained`, `blocked`, `auxiliary`, or `unknown`. Safe candidates prioritize feed-forward `intermediate_dim` pruning. Q/K/V projections are constrained by attention head-axis mapping, attention score/context contractions are blocked, and shape/mask/axis flow is auxiliary. This is static reporting only.
 
+## Pruning Plan Synthesis
+
+Synthesize symbolic repair/pruning plans for the top safe FFN opportunities:
+
+```bash
+./conda-env/bin/python scripts/synthesize_pruning_plans.py \
+  --model bert-base-uncased \
+  --verbose
+```
+
+Explain ready plans:
+
+```bash
+./conda-env/bin/python scripts/explain_pruning_plan.py \
+  --model bert-base-uncased \
+  --status ready_symbolic \
+  --limit 20
+
+./conda-env/bin/python scripts/explain_pruning_plan.py \
+  --model bert-base-uncased \
+  --contains "Layer 0 Feed Forward"
+```
+
+Generated outputs:
+
+```text
+reports/pruning_plans/<model>.json
+reports/pruning_plan_dumps/<model>.plan
+reports/pruning_plan_explanations/<model>.md
+reports/pruning_plan_compare/summary.md
+```
+
+Plan synthesis is the static bridge from "this opportunity is safe" to "these dimensions and components must be transformed together." The current planner emits feed-forward `intermediate_dim` plans parameterized by symbolic index sets. It does not choose concrete indices, modify weights, execute pruning, or rewrite ONNX.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

@@ -644,3 +644,26 @@ Primary commands:
 ```
 
 This is static reporting/analysis only and does not modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.
+
+## Milestone 27: Candidate Plan Synthesis for Safe FFN Pruning
+
+Status: complete.
+
+Implemented:
+
+- Symbolic Pruning Plan IR for safe feed-forward `intermediate_dim` candidates
+- JSON, Markdown, and `.plan` text reports
+- Build, explain, and compare CLIs
+- Plan actions for intermediate projection output pruning, intermediate bias repair, GELU propagation, FFN output projection input repair, hidden-dimension preservation, and forbidden residual/LayerNorm hidden pruning
+- Synthetic tests for plan synthesis, text reports, incomplete-evidence handling, and comparison summaries
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/synthesize_pruning_plans.py --model bert-base-uncased --verbose
+./conda-env/bin/python scripts/explain_pruning_plan.py --model bert-base-uncased --status ready_symbolic --limit 20
+./conda-env/bin/python scripts/explain_pruning_plan.py --model bert-base-uncased --contains "Layer 0 Feed Forward"
+./conda-env/bin/python scripts/compare_pruning_plans.py --models all
+```
+
+This is static reporting/analysis only. Plans are parameterized by symbolic index sets; they do not choose concrete indices, modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.
