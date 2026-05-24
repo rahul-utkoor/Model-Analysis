@@ -500,6 +500,15 @@ The ordered tree browser presents the final Structural Region Tree as the neural
 
 The frontend lazy-loads root, immediate children, selected-node details, paths, search results, and primitive leaf lists. This makes the final hierarchy readable while keeping browser memory small for BERT-sized trees.
 
+## Abstract Node Expansion Report
+
+The abstract-node expansion report is a learner-facing companion to the ordered hierarchy and dataflow PDF views. It records two expansion notions explicitly:
+
+- immediate expansion: direct abstract or primitive children in the learner hierarchy
+- recursive primitive leaves: underlying source ONNX/TensorIR operations used as evidence
+
+Root-like records (`ModelRegion`, virtual `SectionRegion`, and grouped `ShapeMotifRegion`) hide recursive primitive leaves by default so reports stay readable. Semantic regions such as feed-forward, attention, residual merge, layer norm, and linear projection still show primitive leaves as evidence. Auxiliary predicate, mask, and shape construction operations are grouped into shape motifs so the main compute report is not dominated by scalar and axis plumbing.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

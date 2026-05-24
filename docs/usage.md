@@ -222,6 +222,33 @@ http://127.0.0.1:8767/
 
 This viewer shows the final Structural Region Tree as an expandable dataflow control tree. It preserves Tensor IR / ONNX-like source order, expands one node at a time, and lets a selected abstract region reveal ordered primitive leaves. It is different from the step trace viewer: the trace viewer shows how reductions happened step by step, while this browser shows the final hierarchy in model order.
 
+## Abstract Node Expansion Report
+
+Use this report when you want a printable explanation of what each learner-facing abstract node expands into. It records both direct hierarchy and source evidence:
+
+- `immediate_expansion`: direct abstract or primitive children in the learner hierarchy
+- `recursive_primitive_leaves`: source ONNX/TensorIR operations under the node
+
+Generate the main learner report:
+
+```bash
+./conda-env/bin/python tools/export_abstract_node_expansion_report.py \
+  --model bert-base-uncased \
+  --view main \
+  --max-leaf-names 30
+```
+
+Generate the grouped shape/mask report:
+
+```bash
+./conda-env/bin/python tools/export_abstract_node_expansion_report.py \
+  --model bert-base-uncased \
+  --view shape \
+  --max-leaf-names 30
+```
+
+The main view hides auxiliary shape/mask flow. The shape view groups those operations into `ShapeMotifRegion` records by default. Use `--include-single-op-shape-regions` and `--include-root-leaves` for debugging raw one-op shape regions and root/section/motif primitive leaves.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

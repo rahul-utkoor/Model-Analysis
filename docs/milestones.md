@@ -549,3 +549,25 @@ python tools/ordered_control_tree_api_server.py --model bert-base-uncased --port
 ```
 
 Open `http://127.0.0.1:8767/`. This is visualization/reporting only and does not modify models, execute pruning, rewrite ONNX, export ONNX, or evaluate quality.
+
+## Learner Abstract Node Expansion Reports
+
+Status: complete.
+
+Implemented:
+
+- Learner-facing abstract-node expansion report generator
+- Main compute and grouped shape/mask report views
+- Clear separation between immediate expansion and recursive primitive leaf evidence
+- Section-level expansion for model, embeddings, encoder layers, prediction head, and auxiliary flow
+- ShapeMotifRegion grouping for predicate, mask, scalar, and axis plumbing
+- Markdown/PDF/JSON outputs and synthetic tests
+
+Primary commands:
+
+```bash
+./conda-env/bin/python tools/export_abstract_node_expansion_report.py --model bert-base-uncased --view main --max-leaf-names 30
+./conda-env/bin/python tools/export_abstract_node_expansion_report.py --model bert-base-uncased --view shape --max-leaf-names 30
+```
+
+This is reporting/visualization only and does not modify models, execute pruning, rewrite ONNX, export ONNX, or evaluate quality.

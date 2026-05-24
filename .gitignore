@@ -151,6 +151,18 @@ reports/abstract_structures/*
 !reports/abstract_structures/.gitkeep
 reports/mindnode_outlines/*
 !reports/mindnode_outlines/.gitkeep
+reports/abstract_node_expansions/*
+!reports/abstract_node_expansions/.gitkeep
+reports/abstract_structure_graphviz/*
+!reports/abstract_structure_graphviz/.gitkeep
+reports/clean_learner_graphviz/*
+!reports/clean_learner_graphviz/.gitkeep
+reports/learner_dataflow_graphviz/*
+!reports/learner_dataflow_graphviz/.gitkeep
+reports/learner_hierarchical_dataflow/*
+!reports/learner_hierarchical_dataflow/.gitkeep
+reports/topological_region_tree_graphviz/*
+!reports/topological_region_tree_graphviz/.gitkeep
 viewer_data/
 
 *.onnx

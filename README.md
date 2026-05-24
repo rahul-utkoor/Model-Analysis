@@ -227,6 +227,24 @@ python tools/ordered_control_tree_api_server.py --model bert-base-uncased --port
 
 Open `http://127.0.0.1:8767/`. This browser starts from the `ModelRegion`, expands children on demand, preserves Tensor IR/source operation order, and maps abstract regions down to primitive TensorOps. It complements the step trace viewer: the trace viewer explains how collapses happened; the ordered tree browser shows the final hierarchy in model order.
 
+## Abstract Node Expansion Report
+
+Generate learner-facing expansion reports for the final structural hierarchy:
+
+```bash
+./conda-env/bin/python tools/export_abstract_node_expansion_report.py \
+  --model bert-base-uncased \
+  --view main \
+  --max-leaf-names 30
+
+./conda-env/bin/python tools/export_abstract_node_expansion_report.py \
+  --model bert-base-uncased \
+  --view shape \
+  --max-leaf-names 30
+```
+
+The report complements the learner hierarchical dataflow PDF. It separates `immediate_expansion` from `recursive_primitive_leaves`, so the reader can distinguish direct abstract children from source ONNX/TensorIR evidence. Main view hides auxiliary shape/mask flow; shape view groups that flow into `ShapeMotifRegion` records. Debug flags expose root leaves and raw one-op shape regions when needed.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:
