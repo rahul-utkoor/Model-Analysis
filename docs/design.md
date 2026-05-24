@@ -488,6 +488,12 @@ Milestone 21 adds an explanatory construction trace for the Structural Region Tr
 
 The trace mirrors compiler structural analysis as a sequence of region reductions, but it is deliberately a teaching and debugging artifact. The final Structural Region Tree remains the authoritative hierarchy. The trace does not modify Tensor IR, ONNX, models, or pruning logic.
 
+## Lightweight Control-Tree Trace Viewer
+
+The trace viewer is API-backed because full traces can contain hundreds of steps and each step can contain graph snapshots. The browser loads only the trace index, a page of step summaries, one selected step, and a reduced local graph around the selected collapse. Moving to another step replaces the selected-step state rather than retaining complete historical snapshots in browser memory.
+
+The local graph is intentionally small: created region, collapsed nodes, immediate incoming boundary nodes, immediate outgoing boundary nodes, and relevant dataflow/abstraction edges. It is an explanation tool, not a full graph renderer.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

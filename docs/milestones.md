@@ -509,3 +509,23 @@ python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
 ```
 
 This is an explanatory structural-analysis trace over Tensor IR. It does not modify models, execute pruning, rewrite ONNX, or evaluate quality.
+
+## Milestone 22: Lightweight Stepwise Control-Tree Viewer
+
+Status: complete.
+
+Implemented:
+
+- Standard-library lazy API server for control-tree trace browsing
+- Standalone HTML viewer with step filters, paging, navigation, details, and local SVG collapse graphs
+- Local graph extraction that avoids sending full step snapshots to the browser
+- Pure helper tests for step summaries, filters, pagination, local graphs, skip steps, and next/previous navigation
+
+Primary commands:
+
+```bash
+python scripts/build_control_tree_trace.py --model bert-base-uncased --format all --max-dot-steps 20 --verbose
+python tools/control_tree_trace_api_server.py --model bert-base-uncased --port 8766
+```
+
+Open `http://127.0.0.1:8766/`. This viewer is an explanatory structural-analysis browser and does not modify models, execute pruning, rewrite ONNX, or evaluate quality.

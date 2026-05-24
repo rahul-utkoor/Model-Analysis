@@ -207,6 +207,16 @@ python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
 
 Outputs include `reports/control_tree_steps/<model>.md`, `reports/control_tree_step_dumps/<model>.ctrace`, DOT graph snapshots under `reports/control_tree_step_graphs/<model>/`, and a MindNode outline under `reports/mindnode_outlines/`. The trace is a teaching/debug artifact over Tensor IR; the final Structural Region Tree remains authoritative and no models or pruning logic are modified.
 
+## Lightweight Control-Tree Trace Viewer
+
+Start a lazy API-backed browser for the construction trace:
+
+```bash
+python tools/control_tree_trace_api_server.py --model bert-base-uncased --port 8766
+```
+
+Open `http://127.0.0.1:8766/`. The browser requests only the trace index, pages of step summaries, the selected step, and a small local collapse graph. It does not load the full trace JSON into browser memory and it does not modify models.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:

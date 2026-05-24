@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Control Tree Trace Viewer</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --line: #d6dbe3;
+      --text: #172033;
+      --muted: #657084;
+      --accent: #146c43;
+      --yellow: #fff3bf;
+      --blue: #d0ebff;
+      --purple: #e5dbff;
+      --red: #ffe3e3;
+      --gray: #eceff3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 13px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    header {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) 340px auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+    header h1 { margin: 0; font-size: 17px; font-weight: 650; }
+    input, select, button {
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: white;
+      color: var(--text);
+      padding: 6px 8px;
+    }
+    button { cursor: pointer; }
+    button:hover { border-color: #9aa6b2; }
+    .layout {
+      display: grid;
+      grid-template-columns: 360px minmax(520px, 1fr) 390px;
+      height: calc(100vh - 54px);
+      min-height: 640px;
+    }
+    aside, main {
+      overflow: auto;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+    }
+    main { background: #fbfcfe; }
+    .panel { padding: 12px; }
+    .section-title {
+      margin: 12px 0 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--muted);
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .filters input, .filters select { width: 100%; }
+    .wide { grid-column: 1 / -1; }
+    .checkrow { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+    .pager, .navrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fbfcfe;
+    }
+    .metric .label { color: var(--muted); font-size: 11px; }
+    .metric .value { font-weight: 700; font-size: 16px; }
+    .step-list { display: grid; gap: 6px; }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      background: white;
+    }
+    .step.selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+    .step .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 650; }
+    .step .meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .step .reason { margin-top: 5px; color: #2f3a4a; }
+    .graph-wrap {
+      margin: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      overflow: auto;
+      min-height: 360px;
+    }
+    svg { display: block; min-width: 760px; }
+    .node rect { stroke: #667085; stroke-width: 1; rx: 7; }
+    .node text { font-size: 11px; fill: var(--text); }
+    .edge { stroke: #687385; stroke-width: 1.3; fill: none; marker-end: url(#arrow); }
+    .edge-label { font-size: 10px; fill: var(--muted); }
+    .details dl { display: grid; grid-template-columns: 125px 1fr; gap: 6px 10px; }
+    .details dt { color: var(--muted); }
+    .details dd { margin: 0; word-break: break-word; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8fafc;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: #f8fafc;
+      margin: 2px 3px 2px 0;
+      font-size: 11px;
+    }
+    @media (max-width: 1100px) {
+      header { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; height: auto; }
+      aside, main { border-right: none; border-bottom: 1px solid var(--line); min-height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="title">Control Tree Trace Viewer</h1>
+    <input id="apiBase" value="" placeholder="API base, blank for same origin">
+    <button id="loadBtn">Load trace</button>
+  </header>
+  <div class="layout">
+    <aside class="panel">
+      <div class="summary" id="summary"></div>
+      <div class="section-title">Filters</div>
+      <div class="filters">
+        <select id="passFilter"><option value="">all passes</option></select>
+        <select id="actionFilter"><option value="">all actions</option></select>
+        <select id="regionFilter" class="wide"><option value="">all region types</option></select>
+        <input id="searchBox" class="wide" placeholder="search reason/pass/region">
+        <label class="checkrow wide"><input type="checkbox" id="hideSkips"> hide skip steps</label>
+      </div>
+      <div class="pager">
+        <button id="prevPage">Previous page</button>
+        <button id="nextPage">Next page</button>
+        <span id="pageInfo" class="pill"></span>
+      </div>
+      <div class="step-list" id="stepList"></div>
+    </aside>
+
+    <main>
+      <div class="panel">
+        <div class="navrow">
+          <button data-nav="prev">Previous step</button>
+          <button data-nav="next">Next step</button>
+          <button data-nav="nextCollapse">Next collapse</button>
+          <button data-nav="nextFF">Next FeedForwardRegion</button>
+          <button data-nav="nextResidual">Next ResidualMergeRegion</button>
+          <button data-nav="nextAttention">Next AttentionSkeletonRegion</button>
+        </div>
+      </div>
+      <div class="graph-wrap">
+        <svg id="graph" width="980" height="480" role="img" aria-label="local control-tree step graph"></svg>
+      </div>
+    </main>
+
+    <aside class="panel details">
+      <div class="section-title">Selected Step</div>
+      <div id="details">Select a step.</div>
+      <div class="section-title">Node Metadata</div>
+      <pre id="nodeMeta">Click a node.</pre>
+      <details>
+        <summary class="section-title">Local Graph JSON</summary>
+        <pre id="rawGraph"></pre>
+      </details>
+    </aside>
+  </div>
+
+  <script>
+    const state = {
+      apiBase: "",
+      index: null,
+      steps: [],
+      selectedSummary: null,
+      selectedStep: null,
+      localGraph: null,
+      offset: 0,
+      limit: 100
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    function api(path) {
+      const base = $("apiBase").value.trim().replace(/\/$/, "");
+      return base + path;
+    }
+
+    async function fetchJson(path) {
+      const res = await fetch(api(path), {cache: "no-store"});
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    }
+
+    function metric(label, value) {
+      return `<div class="metric"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div></div>`;
+    }
+
+    function renderIndex() {
+      const idx = state.index || {};
+      $("title").textContent = `Control Tree Trace: ${idx.model_name || ""}`;
+      $("summary").innerHTML = [
+        metric("steps", idx.num_steps ?? 0),
+        metric("collapses", idx.num_collapse_steps ?? 0),
+        metric("skips", idx.num_skip_steps ?? 0),
+        metric("initial ops", idx.initial_tensor_op_count ?? 0),
+        metric("final active", idx.final_active_node_count ?? 0),
+        metric("frontend", idx.source_frontend || "unknown")
+      ].join("");
+      fillSelect("passFilter", idx.pass_name_counts || {}, "all passes");
+      fillSelect("regionFilter", idx.created_region_type_counts || {}, "all region types");
+    }
+
+    function fillSelect(id, counts, first) {
+      const el = $(id);
+      const old = el.value;
+      el.innerHTML = `<option value="">${first}</option>` + Object.keys(counts).sort().map(k => `<option value="${esc(k)}">${esc(k)} (${counts[k]})</option>`).join("");
+      el.value = old;
+    }
+
+    function queryParams(extra = {}) {
+      const params = new URLSearchParams();
+      params.set("offset", extra.offset ?? state.offset);
+      params.set("limit", state.limit);
+      if ($("passFilter").value) params.set("pass_name", $("passFilter").value);
+      if ($("actionFilter").value) params.set("action", $("actionFilter").value);
+      if ($("regionFilter").value) params.set("region_type", $("regionFilter").value);
+      if ($("searchBox").value.trim()) params.set("q", $("searchBox").value.trim());
+      if ($("hideSkips").checked) params.set("hide_skips", "1");
+      return params.toString();
+    }
+
+    async function loadSteps(offset = 0) {
+      state.offset = Math.max(0, offset);
+      const page = await fetchJson(`/api/trace/steps?${queryParams()}`);
+      state.steps = page.items || [];
+      $("pageInfo").textContent = `${page.offset + 1}-${Math.min(page.offset + page.items.length, page.total)} of ${page.total}`;
+      renderSteps();
+    }
+
+    function renderSteps() {
+      $("stepList").innerHTML = state.steps.map(step => {
+        const selected = state.selectedSummary && state.selectedSummary.step_id === step.step_id ? " selected" : "";
+        return `<div class="step${selected}" data-step="${esc(step.step_id)}">
+          <div class="top"><span>#${esc(step.step_index)} ${esc(step.pass_name)}</span><span>${esc(step.action)}</span></div>
+          <div class="meta">${esc(step.created_region_type || "")} · active ${esc(step.before_active_node_count)} -> ${esc(step.after_active_node_count)} · conf ${esc(step.confidence || "")}</div>
+          <div class="reason">${esc(step.reason || "")}</div>
+        </div>`;
+      }).join("");
+      document.querySelectorAll(".step").forEach(el => el.addEventListener("click", () => selectStep(el.dataset.step)));
+    }
+
+    async function selectStep(stepId) {
+      state.selectedStep = await fetchJson(`/api/trace/steps/${encodeURIComponent(stepId)}`);
+      state.localGraph = await fetchJson(`/api/trace/steps/${encodeURIComponent(stepId)}/local-graph`);
+      state.selectedSummary = {
+        step_id: state.selectedStep.step_id,
+        step_index: state.selectedStep.step_index
+      };
+      renderSteps();
+      renderDetails();
+      renderGraph();
+      $("rawGraph").textContent = JSON.stringify(state.localGraph, null, 2);
+      $("nodeMeta").textContent = "Click a node.";
+    }
+
+    function renderDetails() {
+      const s = state.selectedStep || {};
+      const pills = (items) => (items || []).slice(0, 60).map(x => `<span class="pill">${esc(x)}</span>`).join("");
+      $("details").innerHTML = `<dl>
+        <dt>step</dt><dd>${esc(s.step_index)} / ${esc(s.step_id)}</dd>
+        <dt>pass</dt><dd>${esc(s.pass_name)}</dd>
+        <dt>action</dt><dd>${esc(s.action)}</dd>
+        <dt>created</dt><dd>${esc(s.created_region_type || "")}<br>${esc(s.created_region_id || "")}</dd>
+        <dt>confidence</dt><dd>${esc(s.confidence)}</dd>
+        <dt>active nodes</dt><dd>${esc(s.before_summary?.num_active_nodes)} -> ${esc(s.after_summary?.num_active_nodes)}</dd>
+        <dt>reason</dt><dd>${esc(s.reason)}</dd>
+        <dt>collapsed ops</dt><dd>${pills(s.collapsed_op_ids)}</dd>
+        <dt>collapsed regions</dt><dd>${pills(s.collapsed_region_ids)}</dd>
+      </dl>`;
+    }
+
+    function colorFor(node) {
+      if (node.role === "created") return "#b7f4c2";
+      if (node.role === "collapsed") return "#fff3bf";
+      if (node.role === "incoming_boundary") return "#d0ebff";
+      if (node.role === "outgoing_boundary") return "#e5dbff";
+      if (node.pruning_role === "blocked") return "#ffe3e3";
+      return "#eceff3";
+    }
+
+    function lane(role) {
+      if (role === "incoming_boundary") return 120;
+      if (role === "collapsed") return 355;
+      if (role === "created") return 585;
+      if (role === "outgoing_boundary") return 820;
+      return 470;
+    }
+
+    function renderGraph() {
+      const graph = state.localGraph || {nodes: [], edges: []};
+      const svg = $("graph");
+      const nodes = graph.nodes || [];
+      const groups = {};
+      for (const n of nodes) (groups[n.role] ||= []).push(n);
+      const pos = {};
+      for (const [role, items] of Object.entries(groups)) {
+        items.forEach((n, i) => pos[n.node_id] = {x: lane(role), y: 70 + i * 82});
+      }
+      const maxY = Math.max(460, ...Object.values(pos).map(p => p.y + 60));
+      svg.setAttribute("height", maxY);
+      svg.innerHTML = `<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#687385"></path></marker></defs>`;
+      for (const e of graph.edges || []) {
+        const a = pos[e.src], b = pos[e.dst];
+        if (!a || !b) continue;
+        const y1 = a.y + 22, y2 = b.y + 22;
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("class", "edge");
+        path.setAttribute("d", `M${a.x + 130},${y1} C${a.x + 190},${y1} ${b.x - 60},${y2} ${b.x},${y2}`);
+        path.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = e.label || e.edge_kind || "";
+        svg.appendChild(path);
+        if (e.label) {
+          const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          t.setAttribute("class", "edge-label");
+          t.setAttribute("x", (a.x + b.x) / 2);
+          t.setAttribute("y", (y1 + y2) / 2 - 4);
+          t.textContent = String(e.label).slice(0, 32);
+          svg.appendChild(t);
+        }
+      }
+      for (const n of nodes) {
+        const p = pos[n.node_id] || {x: 40, y: 40};
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "node");
+        g.style.cursor = "pointer";
+        g.addEventListener("click", () => $("nodeMeta").textContent = JSON.stringify(n, null, 2));
+        const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        r.setAttribute("x", p.x); r.setAttribute("y", p.y); r.setAttribute("width", 150); r.setAttribute("height", 48);
+        r.setAttribute("fill", colorFor(n));
+        g.appendChild(r);
+        const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t1.setAttribute("x", p.x + 8); t1.setAttribute("y", p.y + 18);
+        t1.textContent = String(n.label || n.node_id).slice(0, 22);
+        g.appendChild(t1);
+        const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t2.setAttribute("x", p.x + 8); t2.setAttribute("y", p.y + 35);
+        t2.textContent = String(n.region_type || n.canonical_op_type || n.role || "").slice(0, 24);
+        g.appendChild(t2);
+        svg.appendChild(g);
+      }
+      if (!nodes.length) {
+        const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t.setAttribute("x", 40); t.setAttribute("y", 60);
+        t.textContent = graph.summary?.reason || "Summary step; no local graph.";
+        svg.appendChild(t);
+      }
+    }
+
+    async function navigate(kind) {
+      if (!state.selectedStep) return;
+      const idx = state.selectedStep.step_index;
+      let path = `/api/trace/next?step_index=${idx}`;
+      if (kind === "prev") path = `/api/trace/prev?step_index=${idx}`;
+      if (kind === "nextCollapse") path += "&action=collapse";
+      if (kind === "nextFF") path += "&region_type=FeedForwardRegion";
+      if (kind === "nextResidual") path += "&region_type=ResidualMergeRegion";
+      if (kind === "nextAttention") path += "&region_type=AttentionSkeletonRegion";
+      const result = await fetchJson(path);
+      if (result.match) await selectStep(result.match.step_id);
+    }
+
+    async function loadTrace() {
+      state.index = await fetchJson("/api/trace/index");
+      renderIndex();
+      await loadSteps(0);
+      if (state.steps[0]) await selectStep(state.steps[0].step_id);
+    }
+
+    $("loadBtn").addEventListener("click", loadTrace);
+    $("prevPage").addEventListener("click", () => loadSteps(state.offset - state.limit));
+    $("nextPage").addEventListener("click", () => loadSteps(state.offset + state.limit));
+    for (const id of ["passFilter", "actionFilter", "regionFilter", "hideSkips"]) $(id).addEventListener("change", () => loadSteps(0));
+    $("searchBox").addEventListener("keydown", e => { if (e.key === "Enter") loadSteps(0); });
+    document.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => navigate(b.dataset.nav)));
+    fillSelect("actionFilter", {initialize: 0, collapse: 0, skip: 0, finalize: 0}, "all actions");
+    loadTrace().catch(err => { $("details").textContent = String(err); });
+  </script>
+</body>
+</html>

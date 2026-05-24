@@ -180,6 +180,30 @@ reports/mindnode_outlines/<model>.control_tree_steps.mindnode.txt
 
 The trace starts from primitive TensorOps, records each semantic-region collapse, and snapshots the current abstract graph. It is explanatory structural analysis only and does not replace the final Structural Region Tree.
 
+## Lightweight Control-Tree Trace Viewer
+
+Run the trace API server after building a trace:
+
+```bash
+python scripts/build_control_tree_trace.py \
+  --model bert-base-uncased \
+  --format all \
+  --max-dot-steps 20 \
+  --verbose
+
+python tools/control_tree_trace_api_server.py \
+  --model bert-base-uncased \
+  --port 8766
+```
+
+Open:
+
+```text
+http://127.0.0.1:8766/
+```
+
+The final Structural Region Tree shows what was found; the control-tree trace shows how structures were collapsed step by step. The viewer fetches only local step neighborhoods and is visualization only.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:
