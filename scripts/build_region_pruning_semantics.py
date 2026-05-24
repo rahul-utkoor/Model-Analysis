@@ -22,6 +22,7 @@ from model_analysis.reporting import write_markdown
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build region-level pruning propagation semantics.")
     parser.add_argument("--model", required=True, help="Configured model name/HF ID or 'all'.")
+    parser.add_argument("--include-auxiliary-details", action="store_true", help="Include raw Axis/Fork/Join auxiliary rows in the Markdown tables.")
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
@@ -40,7 +41,7 @@ def _maybe(path: Path) -> dict | None:
     return _load_json(path) if path.exists() else None
 
 
-def build_one(root: Path, config: dict, verbose: bool) -> bool:
+def build_one(root: Path, config: dict, verbose: bool, include_auxiliary_details: bool) -> bool:
     safe = safe_model_name(config["hf_id"])
     tree_path = root / "reports" / "structural_region_trees" / f"{safe}.json"
     tensor_path = root / "reports" / "tensor_ir" / f"{safe}.json"
@@ -68,7 +69,7 @@ def build_one(root: Path, config: dict, verbose: bool) -> bool:
     md_path = root / "reports" / "region_pruning_semantics_explanations" / f"{safe}.md"
     write_region_pruning_semantics_json(semantics, json_path)
     write_region_pruning_semantics_text(semantics, text_path)
-    write_markdown(region_pruning_semantics_to_markdown(semantics), md_path)
+    write_markdown(region_pruning_semantics_to_markdown(semantics, include_auxiliary_details=include_auxiliary_details), md_path)
 
     if verbose:
         summary = semantics.summary
@@ -94,7 +95,7 @@ def main() -> int:
         return 1
     ok = True
     for config in configs:
-        ok = build_one(root, config, args.verbose) and ok
+        ok = build_one(root, config, args.verbose, args.include_auxiliary_details) and ok
     return 0 if ok else 1
 
 

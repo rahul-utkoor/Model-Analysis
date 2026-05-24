@@ -293,6 +293,30 @@ def _projection_kind(paths: list[str]) -> str:
     return "generic"
 
 
+def _attention_internal_kind(paths: list[str]) -> str | None:
+    blob = " ".join(paths)
+    if "/attention/self/matmul_1" in blob:
+        return "context_matmul"
+    if (
+        "/attention/self/matmul" in blob
+        and "/attention/self/query/" not in blob
+        and "/attention/self/key/" not in blob
+        and "/attention/self/value/" not in blob
+    ):
+        return "score_matmul"
+    if (
+        "/attention/self/add" in blob
+        and "/attention/self/query/" not in blob
+        and "/attention/self/key/" not in blob
+        and "/attention/self/value/" not in blob
+        and "/attention/output/" not in blob
+    ):
+        return "mask_add"
+    if "/attention/self/where" in blob:
+        return "mask_select"
+    return None
+
+
 def _infer_name(region: dict[str, Any], paths: list[str], expansion: dict[str, dict[str, Any]]) -> str:
     region_id = region["region_id"]
     if region_id in expansion and expansion[region_id].get("name"):
@@ -305,6 +329,11 @@ def _infer_name(region: dict[str, Any], paths: list[str], expansion: dict[str, d
     if region_type == "AttentionSkeletonRegion":
         return prefix + "Attention"
     if region_type == "LinearProjectionRegion":
+        attention_kind = _attention_internal_kind(paths)
+        if attention_kind == "score_matmul":
+            return prefix + "Attention Score MatMul"
+        if attention_kind == "context_matmul":
+            return prefix + "Attention Context MatMul"
         kind = _projection_kind(paths)
         return {
             "query": prefix + "Query Projection",
@@ -319,6 +348,8 @@ def _infer_name(region: dict[str, Any], paths: list[str], expansion: dict[str, d
         return prefix + ("GELU" if any("erf" in path or "gelu" in path for path in paths) else "Activation")
     if region_type == "ResidualMergeRegion":
         blob = " ".join(paths)
+        if _attention_internal_kind(paths) == "mask_add":
+            return prefix + "Attention Mask Add"
         if "/attention/output/add" in blob:
             return prefix + "Attention Residual Add"
         if "/output/add" in blob:
@@ -415,6 +446,7 @@ def _record_semantics(
     region_id = region["region_id"]
     region_type = region.get("region_type", "UnknownRegion")
     projection_kind = _projection_kind(paths)
+    attention_internal_kind = _attention_internal_kind(paths)
     dimensions: list[DimensionSemantics] = []
     rules: list[PropagationRule] = []
     repairs: list[RepairObligation] = []
@@ -424,7 +456,34 @@ def _record_semantics(
         role, status = _role_from_rdim(dim)
         _add_dim(dimensions, str(dim.get("dim_name", "unknown")), role, status, "region_dimension_ir", str(dim.get("reason", "")))
 
-    if region_type == "FeedForwardRegion":
+    if attention_internal_kind == "score_matmul":
+        dimensions = []
+        pruning_role = "constraint_carrier"
+        _add_dim(dimensions, "sequence_dim", "sequence_dim", "propagated", "inferred_from_op_path", "Attention score MatMul propagates sequence axes through Q x K^T.")
+        _add_dim(dimensions, "head_dim", "head_dim", "blocked", "inferred_from_op_path", "Q/K contraction depends on the unproven attention head-axis mapping.")
+        _add_dim(dimensions, "attention_score_dim", "unknown", "unknown", "inferred_from_op_path", "Attention scores are dataflow products, not independent parameter channels.")
+        rules.append(_rule(region_id, 0, "attention_score_contraction", "query_key_axes", ["attention_scores"], "reshape_head_mapping_required", "bidirectional", "Attention score MatMul is Q x K^T, a dataflow contraction rather than a parameterized projection layer."))
+        repairs.append(_repair(region_id, 0, "attention_axis_mapping_required", [region_id], ["head_dim", "sequence_dim"], True, "Prove Q/K head-axis mapping before pruning attention score paths."))
+        blockers.append(_blocker(region_id, 0, "attention_head_mapping_unproven", "blocker", "Attention score MatMul has no independent prunable weight/channel dimension."))
+    elif attention_internal_kind == "context_matmul":
+        dimensions = []
+        pruning_role = "constraint_carrier"
+        _add_dim(dimensions, "sequence_dim", "sequence_dim", "propagated", "inferred_from_op_path", "Attention context MatMul propagates the softmax/value sequence axes.")
+        _add_dim(dimensions, "head_dim", "head_dim", "blocked", "inferred_from_op_path", "Context contraction depends on unproven head-axis mapping.")
+        _add_dim(dimensions, "context_dim", "hidden_dim", "propagated", "inferred_from_op_path", "Context output dimensions flow from V through attention axis transforms.")
+        rules.append(_rule(region_id, 0, "attention_context_contraction", "softmax_value_axes", ["context"], "reshape_head_mapping_required", "bidirectional", "Attention context MatMul is Softmax(scores) x V, not a parameterized projection layer."))
+        repairs.append(_repair(region_id, 0, "attention_axis_mapping_required", [region_id], ["head_dim", "context_dim"], True, "Prove Softmax/V head-axis mapping before pruning attention context paths."))
+        blockers.append(_blocker(region_id, 0, "attention_head_mapping_unproven", "blocker", "Attention context MatMul has no independent prunable weight/channel dimension."))
+    elif attention_internal_kind in {"mask_add", "mask_select"}:
+        dimensions = []
+        pruning_role = "constraint_carrier"
+        _add_dim(dimensions, "attention_score_dim", "unknown", "propagated", "inferred_from_op_path", "Attention mask application follows the attention score tensor.")
+        _add_dim(dimensions, "sequence_dim", "sequence_dim", "propagated", "inferred_from_op_path", "Mask axes must broadcast over sequence dimensions.")
+        _add_dim(dimensions, "mask_dim", "axis_mapping", "propagated", "inferred_from_op_path", "Mask dimensions are metadata-like broadcast axes.")
+        rules.append(_rule(region_id, 0, "attention_mask_application", "mask_dim", ["attention_score_dim"], "axis_remap_required", "bidirectional", "Attention mask add biases attention scores; it is not a residual hidden-state merge."))
+        repairs.append(_repair(region_id, 0, "shape_metadata_update", [region_id], ["mask_dim", "sequence_dim"], False, "Mask broadcasting metadata may need updates if upstream axes change."))
+        blockers.append(_blocker(region_id, 0, "unknown_axis_mapping", "warning", "Exact attention mask broadcast axes are not proven in this semantics pass."))
+    elif region_type == "FeedForwardRegion":
         pruning_role = "directly_prunable"
         _add_dim(dimensions, "intermediate_dim", "intermediate_dim", "prunable", "inferred_from_region_type", "Feed-forward intermediate width is the canonical MLP pruning axis.")
         _add_dim(dimensions, "hidden_dim", "hidden_dim", "protected", "inferred_from_region_type", "Feed-forward boundary hidden width is kept unchanged.")
@@ -618,13 +677,49 @@ def _table(rows: list[dict[str, Any]], columns: list[str], limit: int = 120) -> 
     return "\n".join(lines)
 
 
-def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[str, Any]) -> str:
+def _is_auxiliary_detail(region: dict[str, Any]) -> bool:
+    return (
+        region.get("region_type") in {"AxisTransformRegion", "ForkRegion", "JoinRegion", "ShapeMotifRegion"}
+        or region.get("section") == "Auxiliary Shape / Mask Flow"
+    )
+
+
+def _count_rows(values: list[tuple[str, str]]) -> list[dict[str, Any]]:
+    counts = Counter(values)
+    return [
+        {"type": key[0], "section_or_blocker": key[1], "count": count}
+        for key, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
+def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[str, Any], *, include_auxiliary_details: bool = False) -> str:
     data = region_pruning_semantics_to_dict(value) if isinstance(value, RegionPruningSemantics) else value
     summary = data.get("summary", {})
     regions = data.get("regions", [])
     direct = [item for item in regions if item.get("pruning_role") == "directly_prunable"]
-    propagation = [item for item in regions if item.get("pruning_role") == "propagation_only"]
-    blocked = [item for item in regions if item.get("blockers") or item.get("pruning_role") in {"blocked", "protected", "constraint_carrier"}]
+    propagation = [
+        item for item in regions
+        if item.get("pruning_role") == "propagation_only"
+        and (include_auxiliary_details or not _is_auxiliary_detail(item))
+    ]
+    blocked = [
+        item for item in regions
+        if (
+            item.get("pruning_role") in {"blocked", "protected"}
+            or any(blocker.get("severity") == "blocker" for blocker in item.get("blockers", []))
+            or (
+                item.get("pruning_role") == "constraint_carrier"
+                and (include_auxiliary_details or not _is_auxiliary_detail(item))
+            )
+        )
+    ]
+    auxiliary = [item for item in regions if _is_auxiliary_detail(item)]
+    auxiliary_type_rows = _count_rows([(item.get("region_type", "unknown"), item.get("section", "unknown")) for item in auxiliary])
+    auxiliary_blocker_rows = _count_rows([
+        (item.get("region_type", "unknown"), blocker.get("blocker_type", "none"))
+        for item in auxiliary
+        for blocker in item.get("blockers", [])
+    ])
     important_types = {"FeedForwardRegion", "AttentionSkeletonRegion", "ResidualMergeRegion", "LayerNormRegion", "LinearProjectionRegion", "ActivationRegion"}
     details = [item for item in regions if item.get("region_type") in important_types]
 
@@ -652,6 +747,13 @@ def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[st
         f"- LayerNorm-protected regions: `{summary.get('layernorm_protected_regions', 0)}`",
         f"- MLP pruning opportunities: `{summary.get('mlp_pruning_opportunities', 0)}`",
         "",
+        "## Interpretation Highlights",
+        "",
+        "- Clean executable pruning opportunity: FFN `intermediate_dim` pruning with same-index propagation through Linear -> GELU -> Linear.",
+        "- Structurally visible but blocked: attention head/channel pruning until head-axis mapping is proven.",
+        "- Protected by default: residual hidden dimensions, LayerNorm hidden dimensions, and embedding vocabulary/hidden dimensions.",
+        "- Auxiliary shape/mask/axis flow carries metadata and axis propagation obligations; it is not directly prunable.",
+        "",
         "## Directly Prunable Opportunities",
         "",
         _table([row(item) for item in direct], ["name", "type", "role", "section", "dims", "blockers"], limit=80),
@@ -664,9 +766,30 @@ def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[st
         "",
         _table([row(item) for item in blocked], ["name", "type", "role", "section", "dims", "blockers"], limit=120),
         "",
-        "## Region Details",
+        "## Auxiliary Shape / Axis Propagation Summary",
+        "",
+        "Raw auxiliary regions are summarized here by default so they do not dominate the learner report.",
+        "",
+        "### Counts by Type and Section",
+        "",
+        _table(auxiliary_type_rows, ["type", "section_or_blocker", "count"], limit=80),
+        "",
+        "### Counts by Type and Blocker",
+        "",
+        _table(auxiliary_blocker_rows, ["type", "section_or_blocker", "count"], limit=80),
         "",
     ]
+    if include_auxiliary_details:
+        lines.extend([
+            "### Auxiliary Detail Rows",
+            "",
+            _table([row(item) for item in auxiliary], ["name", "type", "role", "section", "dims", "blockers"], limit=300),
+            "",
+        ])
+    lines.extend([
+        "## Region Details",
+        "",
+    ])
     for item in details[:200]:
         lines.extend(
             [

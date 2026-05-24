@@ -39,7 +39,9 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
             op("res_add", "/model/bert/encoder/layer.0/output/Add", "Add", ["e", "x"], ["f"]),
             op("ln", "/model/bert/encoder/layer.0/output/LayerNorm/LayerNormalization", "LayerNormalization", ["f"], ["g"]),
             op("q_mm", "/model/bert/encoder/layer.0/attention/self/query/MatMul", "MatMul", ["x"], ["q"]),
+            op("q_add", "/model/bert/encoder/layer.0/attention/self/query/Add", "Add", ["q"], ["qb"]),
             op("score", "/model/bert/encoder/layer.0/attention/self/MatMul", "MatMul", ["q"], ["s"]),
+            op("mask_add", "/model/bert/encoder/layer.0/attention/self/Add", "Add", ["s", "mask"], ["sm"]),
             op("softmax", "/model/bert/encoder/layer.0/attention/self/Softmax", "Softmax", ["s"], ["p"]),
             op("ctx", "/model/bert/encoder/layer.0/attention/self/MatMul_1", "MatMul", ["p"], ["ctx"]),
             op("shape", "/model/bert/encoder/layer.0/attention/self/Reshape", "Reshape", ["q"], ["qr"]),
@@ -50,14 +52,17 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
         "source_frontend": "onnx",
         "root_region_id": "model",
         "regions": [
-            region("model", "ModelRegion", [item["op_id"] for item in tensor_ir["ops"]], children=["ffn", "ffn_int", "gelu", "ffn_out", "res", "ln", "q", "attn", "shape"], parent=None),
+            region("model", "ModelRegion", [item["op_id"] for item in tensor_ir["ops"]], children=["ffn", "ffn_int", "gelu", "ffn_out", "res", "ln", "q", "score_region", "ctx_region", "mask_add_region", "attn", "shape"], parent=None),
             region("ffn", "FeedForwardRegion", ["ffn_mm", "ffn_add", "gelu_erf", "out_mm", "out_add"], children=["ffn_int", "gelu", "ffn_out"]),
             region("ffn_int", "LinearProjectionRegion", ["ffn_mm", "ffn_add"], parent="ffn"),
             region("gelu", "ActivationRegion", ["gelu_erf"], parent="ffn"),
             region("ffn_out", "LinearProjectionRegion", ["out_mm", "out_add"], parent="ffn"),
             region("res", "ResidualMergeRegion", ["res_add"]),
             region("ln", "LayerNormRegion", ["ln"]),
-            region("q", "LinearProjectionRegion", ["q_mm"]),
+            region("q", "LinearProjectionRegion", ["q_mm", "q_add"]),
+            region("score_region", "LinearProjectionRegion", ["score"]),
+            region("ctx_region", "LinearProjectionRegion", ["ctx"]),
+            region("mask_add_region", "ResidualMergeRegion", ["mask_add"]),
             region("attn", "AttentionSkeletonRegion", ["score", "softmax", "ctx"]),
             region("shape", "AxisTransformRegion", ["shape"]),
         ],
@@ -139,3 +144,41 @@ def test_linear_projection_semantics_are_path_aware() -> None:
     assert ffn_intermediate["pruning_role"] == "directly_prunable"
     assert any(dim["symbolic_role"] == "intermediate_dim" and dim["status"] == "prunable" for dim in ffn_intermediate["dimensions"])
     assert any(dim["symbolic_role"] == "hidden_dim" and dim["status"] == "protected" for dim in ffn_output["dimensions"])
+
+
+def test_attention_score_matmul_is_not_directly_prunable() -> None:
+    projections = records_by_type()["LinearProjectionRegion"]
+    score = next(item for item in projections if item["region_name"] == "Layer 0 Attention Score MatMul")
+
+    assert score["pruning_role"] in {"constraint_carrier", "propagation_only"}
+    assert not any(dim["status"] == "prunable" for dim in score["dimensions"])
+    assert any(blocker["blocker_type"] == "attention_head_mapping_unproven" for blocker in score["blockers"])
+    assert any("Q x K" in rule["explanation"] for rule in score["propagation_rules"])
+
+
+def test_attention_context_matmul_is_not_directly_prunable() -> None:
+    projections = records_by_type()["LinearProjectionRegion"]
+    context = next(item for item in projections if item["region_name"] == "Layer 0 Attention Context MatMul")
+
+    assert context["pruning_role"] in {"constraint_carrier", "propagation_only"}
+    assert not any(dim["status"] == "prunable" for dim in context["dimensions"])
+    assert any(blocker["blocker_type"] == "attention_head_mapping_unproven" for blocker in context["blockers"])
+
+
+def test_attention_mask_add_is_not_residual_semantics() -> None:
+    residuals = records_by_type()["ResidualMergeRegion"]
+    mask_add = next(item for item in residuals if item["region_name"] == "Layer 0 Attention Mask Add")
+
+    assert mask_add["pruning_role"] in {"constraint_carrier", "propagation_only"}
+    assert not any(blocker["blocker_type"] == "residual_hidden_dim" for blocker in mask_add["blockers"])
+    assert not any(repair["obligation_type"] == "residual_branch_repair" for repair in mask_add["repair_obligations"])
+    assert any(repair["obligation_type"] == "shape_metadata_update" for repair in mask_add["repair_obligations"])
+
+
+def test_qkv_projection_remains_directly_prunable_with_attention_warning() -> None:
+    projections = records_by_type()["LinearProjectionRegion"]
+    query = next(item for item in projections if item["region_name"] == "Layer 0 Query Projection")
+
+    assert query["pruning_role"] == "directly_prunable"
+    assert any(blocker["blocker_type"] == "attention_head_mapping_unproven" for blocker in query["blockers"])
+    assert any(repair["obligation_type"] == "prune_bias" for repair in query["repair_obligations"])

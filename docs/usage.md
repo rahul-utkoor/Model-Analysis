@@ -290,6 +290,8 @@ reports/region_pruning_semantics_compare/summary.md
 
 This layer explains pruning information flow through semantic regions. It records prunable dimensions, propagated dimensions, protected dimensions, required repairs, and blockers such as residual hidden equality, LayerNorm hidden width, and unproven attention head-axis mapping.
 
+By default, the Markdown report summarizes raw `AxisTransformRegion`, `ForkRegion`, and `JoinRegion` auxiliary flow instead of listing every one-op record. Pass `--include-auxiliary-details` to `build_region_pruning_semantics.py` only when debugging shape/axis plumbing.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

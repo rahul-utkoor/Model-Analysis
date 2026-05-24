@@ -582,6 +582,7 @@ Implemented:
 - JSON, Markdown, and `.rpsem` text reports
 - Build, explain, and compare CLIs
 - Conservative semantics for projection, GELU, feed-forward, attention, residual, LayerNorm, and shape/mask regions
+- Attention-internal score/context MatMul and mask-add overrides to avoid treating dataflow contractions or mask application as directly prunable projections/residual merges
 - Synthetic tests for opportunities, repairs, blockers, text dumps, and comparison summaries
 
 Primary commands:

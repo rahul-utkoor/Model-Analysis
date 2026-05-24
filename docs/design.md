@@ -517,6 +517,8 @@ Region Pruning Semantics sits above the Structural Region Tree and Region-Aware 
 - GELU and elementwise activation regions propagate index sets without changing them.
 - Residual merges and LayerNorm regions protect hidden dimensions and explain branch/parameter repair blockers.
 - Attention skeletons recognize score/context structure but block executable head pruning until head and axis mappings are proven.
+- Attention score/context MatMuls are treated as dataflow contractions (`Q x K^T` and `Softmax(scores) x V`), not directly prunable linear projections.
+- Attention mask adds are treated as score bias/mask application, not residual hidden-state merges.
 - Shape and mask regions carry axis/metadata propagation obligations rather than direct pruning choices.
 
 The `.rpsem` text dump is intended to make these semantics readable as a compiler-style analysis artifact.

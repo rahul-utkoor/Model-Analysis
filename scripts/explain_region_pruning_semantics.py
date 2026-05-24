@@ -36,7 +36,15 @@ def _matches(region: dict, args: argparse.Namespace) -> bool:
         return False
     if args.blocked_only:
         has_hard_blocker = any(blocker.get("severity") == "blocker" for blocker in region.get("blockers", []))
-        if not (has_hard_blocker or region.get("pruning_role") in {"blocked", "protected", "constraint_carrier"}):
+        role = region.get("pruning_role")
+        rtype = region.get("region_type")
+        name = region.get("region_name", "")
+        meaningful_constraint = (
+            role == "constraint_carrier"
+            and rtype in {"AttentionSkeletonRegion", "LinearProjectionRegion"}
+            and "Attention Mask Add" not in name
+        )
+        if not (has_hard_blocker or role in {"blocked", "protected"} or meaningful_constraint):
             return False
     return True
 

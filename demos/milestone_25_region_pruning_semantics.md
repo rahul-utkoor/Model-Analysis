@@ -57,3 +57,10 @@ python scripts/compare_region_pruning_semantics.py --models all
 ```
 
 Milestone 25 is a static reporting layer over learner structural regions. It explains pruning information flow, repair obligations, and blockers without invoking an executable pruning backend.
+
+Important interpretation:
+
+- FFN `intermediate_dim` pruning is the clean directly prunable opportunity.
+- Attention score/context MatMuls are contractions, not independent projection layers.
+- Attention mask add applies score bias/masking, not residual hidden-state merging.
+- Attention pruning remains blocked until head-axis mapping is proven.

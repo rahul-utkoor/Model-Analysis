@@ -262,6 +262,8 @@ Build static pruning-flow semantics over learner structural regions:
 
 Outputs include `reports/region_pruning_semantics/<model>.json`, `reports/region_pruning_semantics_dumps/<model>.rpsem`, and `reports/region_pruning_semantics_explanations/<model>.md`. This layer explains which region dimensions are prunable, propagated, protected, repair-required, or blocked. It is static analysis only and does not modify models or invoke pruning backends.
 
+The report treats attention-internal score/context MatMuls as dataflow contractions, not parameterized projections. Q/K/V projections remain directly prunable candidates with head-axis mapping warnings; attention head/channel pruning remains blocked until that mapping is proven. The clean executable opportunity remains FFN `intermediate_dim` pruning.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:
