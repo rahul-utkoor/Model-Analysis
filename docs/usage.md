@@ -16,7 +16,7 @@ Then follow [the demo track](../demos/README.md) or run the full single-model re
 PYTHON=python MODEL=bert-base-uncased bash demo_scripts/run_full_analysis_pipeline.sh
 ```
 
-The demo track is organized around the main research artifacts: structural inventory, frontend-independent Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality analysis, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, Netron visualization fragments, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
+The demo track is organized around the main research artifacts: structural inventory, frontend-independent Tensor IR, Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, region-aware legality analysis, dependency graph, correspondence evidence, join-aware subgraph evidence, bounded DAG-region evidence, Netron visualization fragments, pruning maps, Dimension IR, and legality analysis. Executable pruning commands are documented as optional experimental backend demos.
 
 ## Environment Setup
 
@@ -294,6 +294,41 @@ By default, the Markdown report summarizes raw `AxisTransformRegion`, `ForkRegio
 
 Each region record includes both `source_region_type` from the Structural Region Tree and `semantic_category` from the pruning semantics layer. This is important for attention internals: score/context MatMuls can be structurally shaped like `LinearProjectionRegion` records while semantically acting as attention contractions.
 Mask-broadcast Axis/Fork/Join helper regions use auxiliary attention-mask categories, while `attention_mask_add` is reserved for the true score-bias Add node.
+
+## Op Semantics
+
+Build primitive Tensor IR op semantics:
+
+```bash
+./conda-env/bin/python scripts/build_op_semantics.py \
+  --model bert-base-uncased \
+  --verbose
+```
+
+Explain selected op classes:
+
+```bash
+./conda-env/bin/python scripts/explain_op_semantics.py \
+  --model bert-base-uncased \
+  --semantic-kind attention_score_matmul \
+  --limit 5
+
+./conda-env/bin/python scripts/explain_op_semantics.py \
+  --model bert-base-uncased \
+  --category parameterized_projection \
+  --limit 10
+```
+
+Generated outputs:
+
+```text
+reports/op_semantics/<model>.json
+reports/op_semantics_dumps/<model>.opsem
+reports/op_semantics_explanations/<model>.md
+reports/op_semantics_compare/summary.md
+```
+
+Op Semantics annotates primitive Tensor IR operations with local pruning-relevant behavior. It distinguishes learned projection MatMuls from attention score/context contractions, bias adds from residual adds, GELU elementwise pieces from axis/metadata flow, and unknown ops that need future classifier work. This is static reporting only.
 
 ## Structural Region Tree over Tensor IR
 

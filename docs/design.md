@@ -1,6 +1,6 @@
 # Design Notes
 
-Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, Region-Aware Dimension IR lowers region interfaces into symbolic equations, and region-aware legality analysis evaluates symbolic requests. The current analysis path intentionally stops before modifying weights.
+Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, Region-Aware Dimension IR lowers region interfaces into symbolic equations, Region Pruning Semantics and Op Semantics explain pruning-relevant behavior, and region-aware legality analysis evaluates symbolic requests. The current analysis path intentionally stops before modifying weights.
 
 ## Pipeline Design
 
@@ -32,6 +32,8 @@ The pipeline is staged:
 24. Structural Region Tree construction over Tensor IR
 25. Region-Aware Dimension IR construction from structural interfaces
 26. Region-aware pruning propagation and legality analysis
+27. Region Pruning Semantics reporting
+28. Op Semantics annotation over Tensor IR
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -46,8 +48,12 @@ Model checkpoint
   -> ONNX frontend graph
   -> Structural inventory
   -> Tensor Graph IR
+  -> Semantic Fusion
   -> Structural Region Tree
+  -> Stepwise Control-Tree Construction Trace
   -> Region-Aware Dimension IR
+  -> Region Pruning Semantics
+  -> Op Semantics
   -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
@@ -525,6 +531,19 @@ The `.rpsem` text dump is intended to make these semantics readable as a compile
 
 The semantics layer deliberately separates source structure from interpretation. `source_region_type` records the Structural Region Tree classification, while `semantic_category` records the pruning semantics category such as `attention_score_matmul`, `attention_mask_add`, or `feed_forward_block`.
 The `attention_mask_add` category is intentionally narrow: auxiliary mask Axis/Fork/Join plumbing is tracked with separate mask-flow categories so it is not confused with the true score-bias Add.
+
+## Op Semantics
+
+Op Semantics is the primitive-operation companion to Region Pruning Semantics. It consumes Tensor IR and assigns local pruning-relevant transfer behavior to each TensorOp:
+
+- learned projection MatMuls expose parameterized row/column axes
+- projection bias Adds follow output feature indices
+- attention score/context MatMuls are non-parameterized contractions
+- residual Adds require branch hidden agreement
+- GELU pieces preserve intermediate indices
+- reshape/transpose/shape/constant operations carry axis or metadata flow
+
+The artifact is intentionally local. It does not replace the Structural Region Tree or Region Pruning Semantics; future opportunity ranking can combine local op behavior with region-level roles, repairs, and blockers. It does not modify models or execute pruning.
 
 ## Region-Aware Pruning Propagation Analysis
 

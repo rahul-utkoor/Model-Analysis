@@ -171,6 +171,14 @@ reports/region_pruning_semantics_explanations/*
 !reports/region_pruning_semantics_explanations/.gitkeep
 reports/region_pruning_semantics_compare/*
 !reports/region_pruning_semantics_compare/.gitkeep
+reports/op_semantics/*
+!reports/op_semantics/.gitkeep
+reports/op_semantics_dumps/*
+!reports/op_semantics_dumps/.gitkeep
+reports/op_semantics_explanations/*
+!reports/op_semantics_explanations/.gitkeep
+reports/op_semantics_compare/*
+!reports/op_semantics_compare/.gitkeep
 viewer_data/
 
 *.onnx

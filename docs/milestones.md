@@ -597,3 +597,26 @@ Primary commands:
 ```
 
 This is static reporting/analysis only and does not modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.
+
+## Milestone 25.4: Pruning-Relevant Op Semantics Annotation
+
+Status: complete.
+
+Implemented:
+
+- Op Semantics IR over primitive Tensor IR operations
+- JSON, Markdown, and `.opsem` text reports
+- Build, explain, and compare CLIs
+- Conservative op semantics for learned projections, bias adds, embeddings, GELU pieces, LayerNorm, residual Adds, attention score/context MatMuls, attention mask Adds/selects, axis transforms, metadata flow, and unknown ops
+- Synthetic tests for classifier behavior, text dumps, and comparison summaries
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/build_op_semantics.py --model bert-base-uncased --verbose
+./conda-env/bin/python scripts/explain_op_semantics.py --model bert-base-uncased --semantic-kind attention_score_matmul --limit 5
+./conda-env/bin/python scripts/explain_op_semantics.py --model bert-base-uncased --category parameterized_projection --limit 10
+./conda-env/bin/python scripts/compare_op_semantics.py --models all
+```
+
+This is static reporting/analysis only and does not modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.

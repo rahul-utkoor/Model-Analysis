@@ -1,6 +1,6 @@
 # Model Analysis
 
-Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, Region-Aware Dimension IR, and region legality analysis are the intended substrate for pruning-propagation research.
+Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, and region legality analysis are the intended substrate for pruning-propagation research.
 
 The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
 
@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality reports, pruning maps, Dimension IR, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, region-aware legality reports, pruning maps, Dimension IR, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -266,6 +266,23 @@ The report treats attention-internal score/context MatMuls as dataflow contracti
 
 Region records carry both `source_region_type` and `semantic_category`. For example, attention score MatMul may originate from a `LinearProjectionRegion` structural shape, but its pruning category is `attention_score_matmul`, which prevents readers from mistaking it for a parameterized projection.
 Attention-mask auxiliary Axis/Fork/Join plumbing is categorized separately from the true per-layer `attention_mask_add` score-bias node.
+
+## Op Semantics
+
+Build pruning-relevant annotations for primitive Tensor IR operations:
+
+```bash
+./conda-env/bin/python scripts/build_op_semantics.py \
+  --model bert-base-uncased \
+  --verbose
+
+./conda-env/bin/python scripts/explain_op_semantics.py \
+  --model bert-base-uncased \
+  --semantic-kind attention_score_matmul \
+  --limit 5
+```
+
+Outputs include `reports/op_semantics/<model>.json`, `reports/op_semantics_dumps/<model>.opsem`, and `reports/op_semantics_explanations/<model>.md`. Op Semantics is the primitive-op companion to Region Pruning Semantics: it says whether a Tensor IR op is a learned projection, bias add, attention contraction, residual merge, GELU elementwise op, axis transform, or metadata-only helper. It is static reporting only and does not modify models.
 
 ## Structural Region Tree over Tensor IR
 
