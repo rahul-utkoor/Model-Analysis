@@ -10,7 +10,9 @@ def test_text_dump_contains_readable_region_entries() -> None:
     text = region_pruning_semantics_to_text(build_region_pruning_semantics(tree, tensor_ir, region_dimension_ir=rdim))
 
     assert "region_pruning_semantics @synthetic" in text
-    assert 'region "Layer 0 Feed Forward" [FeedForwardRegion]' in text
+    assert 'region "Layer 0 Feed Forward"' in text
+    assert "source_type = FeedForwardRegion" in text
+    assert "semantic_category = feed_forward_block" in text
     assert "same_indices" in text
     assert "attention_head_mapping_unproven" in text
 
@@ -40,5 +42,8 @@ def test_default_markdown_summarizes_auxiliary_details_without_spam() -> None:
     debug_md = region_pruning_semantics_to_markdown(semantics, include_auxiliary_details=True)
 
     assert "Auxiliary Shape / Axis Propagation Summary" in default_md
+    assert "Semantic Category Counts" in default_md
+    assert "Source type" in default_md
+    assert "Semantic category" in default_md
     assert "AxisTransformRegion_019" not in default_md
     assert "AxisTransformRegion_019" in debug_md

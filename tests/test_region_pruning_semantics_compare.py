@@ -16,4 +16,5 @@ def test_compare_region_pruning_semantics_summarizes_role_counts() -> None:
     assert comparison["num_models"] == 2
     assert "directly_prunable" in comparison["pruning_role_matrix"]
     assert "FeedForwardRegion" in comparison["region_type_matrix"]
+    assert "feed_forward_block" in comparison["semantic_category_matrix"]
     assert comparison["repair_obligation_matrix"]["same_indices_across_mlp"]["synthetic"] == 1

@@ -40,7 +40,7 @@ def _matrix(reports: list[dict[str, Any]], counter_fn) -> dict[str, dict[str, in
 def compare_region_pruning_semantics(reports: list[dict[str, Any]]) -> dict[str, Any]:
     models = [_model_name(report) for report in reports]
     pattern_sets = {
-        _model_name(report): {f"{item.get('region_type')}::{item.get('pruning_role')}" for item in report.get("regions", [])}
+        _model_name(report): {f"{item.get('semantic_category', item.get('region_type'))}::{item.get('pruning_role')}" for item in report.get("regions", [])}
         for report in reports
     }
     common = sorted(set.intersection(*pattern_sets.values())) if pattern_sets else []
@@ -53,6 +53,7 @@ def compare_region_pruning_semantics(reports: list[dict[str, Any]]) -> dict[str,
         "models": models,
         "pruning_role_matrix": _matrix(reports, lambda report: _counts(report, "pruning_role")),
         "region_type_matrix": _matrix(reports, lambda report: _counts(report, "region_type")),
+        "semantic_category_matrix": _matrix(reports, lambda report: _counts(report, "semantic_category")),
         "blocker_type_matrix": _matrix(reports, lambda report: _nested_counts(report, "blockers", "blocker_type")),
         "repair_obligation_matrix": _matrix(reports, lambda report: _nested_counts(report, "repair_obligations", "obligation_type")),
         "dimension_status_matrix": _matrix(reports, lambda report: _nested_counts(report, "dimensions", "status")),
@@ -90,6 +91,10 @@ def comparison_to_markdown(comparison: dict[str, Any]) -> str:
             "## Region Types",
             "",
             table(comparison.get("region_type_matrix", {})),
+            "",
+            "## Semantic Categories",
+            "",
+            table(comparison.get("semantic_category_matrix", {})),
             "",
             "## Blockers",
             "",

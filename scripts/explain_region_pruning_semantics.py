@@ -57,7 +57,8 @@ def _markdown(model: str, rows: list[dict], args: argparse.Namespace) -> str:
                 f"## {region.get('region_name')}",
                 "",
                 f"- Region id: `{region.get('region_id')}`",
-                f"- Type: `{region.get('region_type')}`",
+                f"- Source type: `{region.get('source_region_type', region.get('region_type'))}`",
+                f"- Semantic category: `{region.get('semantic_category', 'unknown')}`",
                 f"- Role: `{region.get('pruning_role')}`",
                 f"- Section: `{region.get('section')}`",
                 f"- Op range: `{region.get('op_range')}`",
@@ -105,7 +106,7 @@ def main() -> int:
     write_markdown(_markdown(report.get("model_name", args.model), rows, args), out_md)
     print(f"[region-pruning-semantics-explain] matches={len(rows)}")
     for region in rows:
-        print(f"- {region.get('region_name')} [{region.get('region_type')}] role={region.get('pruning_role')}")
+        print(f"- {region.get('region_name')} [{region.get('source_region_type', region.get('region_type'))} => {region.get('semantic_category', 'unknown')}] role={region.get('pruning_role')}")
     print(f"[region-pruning-semantics-explain] json={out_json}")
     print(f"[region-pruning-semantics-explain] markdown={out_md}")
     return 0

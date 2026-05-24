@@ -17,7 +17,9 @@ def region_pruning_semantics_to_text(value: RegionPruningSemantics | dict[str, A
     data = region_pruning_semantics_to_dict(value) if isinstance(value, RegionPruningSemantics) else value
     lines = [f'region_pruning_semantics @{_escape(data.get("model_name", "model"))} {{']
     for region in data.get("regions", []):
-        lines.append(f'  region "{_escape(region.get("region_name", region.get("region_id")))}" [{_escape(region.get("region_type"))}] {{')
+        lines.append(f'  region "{_escape(region.get("region_name", region.get("region_id")))}" {{')
+        lines.append(f'    source_type = {_escape(region.get("source_region_type", region.get("region_type", "unknown")))}')
+        lines.append(f'    semantic_category = {_escape(region.get("semantic_category", "unknown"))}')
         lines.append(f'    role = {region.get("pruning_role", "unknown")}')
         if region.get("dimensions"):
             lines.append("    dims {")

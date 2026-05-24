@@ -40,6 +40,8 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
             op("ln", "/model/bert/encoder/layer.0/output/LayerNorm/LayerNormalization", "LayerNormalization", ["f"], ["g"]),
             op("q_mm", "/model/bert/encoder/layer.0/attention/self/query/MatMul", "MatMul", ["x"], ["q"]),
             op("q_add", "/model/bert/encoder/layer.0/attention/self/query/Add", "Add", ["q"], ["qb"]),
+            op("k_mm", "/model/bert/encoder/layer.0/attention/self/key/MatMul", "MatMul", ["x"], ["k"]),
+            op("v_mm", "/model/bert/encoder/layer.0/attention/self/value/MatMul", "MatMul", ["x"], ["v"]),
             op("score", "/model/bert/encoder/layer.0/attention/self/MatMul", "MatMul", ["q"], ["s"]),
             op("mask_add", "/model/bert/encoder/layer.0/attention/self/Add", "Add", ["s", "mask"], ["sm"]),
             op("softmax", "/model/bert/encoder/layer.0/attention/self/Softmax", "Softmax", ["s"], ["p"]),
@@ -52,7 +54,7 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
         "source_frontend": "onnx",
         "root_region_id": "model",
         "regions": [
-            region("model", "ModelRegion", [item["op_id"] for item in tensor_ir["ops"]], children=["ffn", "ffn_int", "gelu", "ffn_out", "res", "ln", "q", "score_region", "ctx_region", "mask_add_region", "attn", "shape"], parent=None),
+            region("model", "ModelRegion", [item["op_id"] for item in tensor_ir["ops"]], children=["ffn", "ffn_int", "gelu", "ffn_out", "res", "ln", "q", "k", "v", "score_region", "ctx_region", "mask_add_region", "attn", "shape"], parent=None),
             region("ffn", "FeedForwardRegion", ["ffn_mm", "ffn_add", "gelu_erf", "out_mm", "out_add"], children=["ffn_int", "gelu", "ffn_out"]),
             region("ffn_int", "LinearProjectionRegion", ["ffn_mm", "ffn_add"], parent="ffn"),
             region("gelu", "ActivationRegion", ["gelu_erf"], parent="ffn"),
@@ -60,6 +62,8 @@ def synthetic_inputs() -> tuple[dict, dict, dict]:
             region("res", "ResidualMergeRegion", ["res_add"]),
             region("ln", "LayerNormRegion", ["ln"]),
             region("q", "LinearProjectionRegion", ["q_mm", "q_add"]),
+            region("k", "LinearProjectionRegion", ["k_mm"]),
+            region("v", "LinearProjectionRegion", ["v_mm"]),
             region("score_region", "LinearProjectionRegion", ["score"]),
             region("ctx_region", "LinearProjectionRegion", ["ctx"]),
             region("mask_add_region", "ResidualMergeRegion", ["mask_add"]),
@@ -101,6 +105,8 @@ def test_feedforward_is_directly_prunable_with_mlp_repairs_and_rule() -> None:
     ffn = records_by_type()["FeedForwardRegion"][0]
 
     assert ffn["pruning_role"] == "directly_prunable"
+    assert ffn["source_region_type"] == "FeedForwardRegion"
+    assert ffn["semantic_category"] == "feed_forward_block"
     assert any(dim["dim_name"] == "intermediate_dim" and dim["status"] == "prunable" for dim in ffn["dimensions"])
     assert any(repair["obligation_type"] == "same_indices_across_mlp" for repair in ffn["repair_obligations"])
     assert any(rule["rule_type"] == "same_indices_across_mlp" for rule in ffn["propagation_rules"])
@@ -130,6 +136,8 @@ def test_attention_and_shape_semantics_are_conservative() -> None:
     attention = records["AttentionSkeletonRegion"][0]
     shape = records["AxisTransformRegion"][0]
 
+    assert attention["source_region_type"] == "AttentionSkeletonRegion"
+    assert attention["semantic_category"] == "attention_skeleton"
     assert any(blocker["blocker_type"] == "attention_head_mapping_unproven" for blocker in attention["blockers"])
     assert any(repair["obligation_type"] == "attention_axis_mapping_required" for repair in attention["repair_obligations"])
     assert shape["pruning_role"] == "propagation_only"
@@ -142,6 +150,8 @@ def test_linear_projection_semantics_are_path_aware() -> None:
     ffn_output = next(item for item in projections if item["region_name"] == "Layer 0 FFN Output Projection")
 
     assert ffn_intermediate["pruning_role"] == "directly_prunable"
+    assert ffn_intermediate["semantic_category"] == "ffn_intermediate_projection"
+    assert ffn_output["semantic_category"] == "ffn_output_projection"
     assert any(dim["symbolic_role"] == "intermediate_dim" and dim["status"] == "prunable" for dim in ffn_intermediate["dimensions"])
     assert any(dim["symbolic_role"] == "hidden_dim" and dim["status"] == "protected" for dim in ffn_output["dimensions"])
 
@@ -151,6 +161,8 @@ def test_attention_score_matmul_is_not_directly_prunable() -> None:
     score = next(item for item in projections if item["region_name"] == "Layer 0 Attention Score MatMul")
 
     assert score["pruning_role"] in {"constraint_carrier", "propagation_only"}
+    assert score["source_region_type"] == "LinearProjectionRegion"
+    assert score["semantic_category"] == "attention_score_matmul"
     assert not any(dim["status"] == "prunable" for dim in score["dimensions"])
     assert any(blocker["blocker_type"] == "attention_head_mapping_unproven" for blocker in score["blockers"])
     assert any("Q x K" in rule["explanation"] for rule in score["propagation_rules"])
@@ -161,6 +173,8 @@ def test_attention_context_matmul_is_not_directly_prunable() -> None:
     context = next(item for item in projections if item["region_name"] == "Layer 0 Attention Context MatMul")
 
     assert context["pruning_role"] in {"constraint_carrier", "propagation_only"}
+    assert context["source_region_type"] == "LinearProjectionRegion"
+    assert context["semantic_category"] == "attention_context_matmul"
     assert not any(dim["status"] == "prunable" for dim in context["dimensions"])
     assert any(blocker["blocker_type"] == "attention_head_mapping_unproven" for blocker in context["blockers"])
 
@@ -170,6 +184,8 @@ def test_attention_mask_add_is_not_residual_semantics() -> None:
     mask_add = next(item for item in residuals if item["region_name"] == "Layer 0 Attention Mask Add")
 
     assert mask_add["pruning_role"] in {"constraint_carrier", "propagation_only"}
+    assert mask_add["source_region_type"] == "ResidualMergeRegion"
+    assert mask_add["semantic_category"] == "attention_mask_add"
     assert not any(blocker["blocker_type"] == "residual_hidden_dim" for blocker in mask_add["blockers"])
     assert not any(repair["obligation_type"] == "residual_branch_repair" for repair in mask_add["repair_obligations"])
     assert any(repair["obligation_type"] == "shape_metadata_update" for repair in mask_add["repair_obligations"])
@@ -178,7 +194,12 @@ def test_attention_mask_add_is_not_residual_semantics() -> None:
 def test_qkv_projection_remains_directly_prunable_with_attention_warning() -> None:
     projections = records_by_type()["LinearProjectionRegion"]
     query = next(item for item in projections if item["region_name"] == "Layer 0 Query Projection")
+    key = next(item for item in projections if item["region_name"] == "Layer 0 Key Projection")
+    value = next(item for item in projections if item["region_name"] == "Layer 0 Value Projection")
 
     assert query["pruning_role"] == "directly_prunable"
+    assert query["semantic_category"] == "query_projection"
+    assert key["semantic_category"] == "key_projection"
+    assert value["semantic_category"] == "value_projection"
     assert any(blocker["blocker_type"] == "attention_head_mapping_unproven" for blocker in query["blockers"])
     assert any(repair["obligation_type"] == "prune_bias" for repair in query["repair_obligations"])

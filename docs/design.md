@@ -523,6 +523,8 @@ Region Pruning Semantics sits above the Structural Region Tree and Region-Aware 
 
 The `.rpsem` text dump is intended to make these semantics readable as a compiler-style analysis artifact.
 
+The semantics layer deliberately separates source structure from interpretation. `source_region_type` records the Structural Region Tree classification, while `semantic_category` records the pruning semantics category such as `attention_score_matmul`, `attention_mask_add`, or `feed_forward_block`.
+
 ## Region-Aware Pruning Propagation Analysis
 
 Milestone 19 queries RegionDimensionIR directly. Given a region dimension and symbolic or concrete index request, it determines:

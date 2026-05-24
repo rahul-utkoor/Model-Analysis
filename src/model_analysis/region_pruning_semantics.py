@@ -55,6 +55,8 @@ class Blocker:
 class RegionSemanticsRecord:
     region_id: str
     region_name: str
+    source_region_type: str
+    semantic_category: str
     region_type: str
     section: str
     op_range: str
@@ -119,7 +121,9 @@ def load_region_pruning_semantics_json(path: Path) -> RegionPruningSemantics:
             RegionSemanticsRecord(
                 region_id=item["region_id"],
                 region_name=item.get("region_name", item["region_id"]),
-                region_type=item.get("region_type", "UnknownRegion"),
+                source_region_type=item.get("source_region_type", item.get("region_type", "UnknownRegion")),
+                semantic_category=item.get("semantic_category", "unknown"),
+                region_type=item.get("region_type", item.get("source_region_type", "UnknownRegion")),
                 section=item.get("section", "Other Main Flow"),
                 op_range=item.get("op_range", "-"),
                 primitive_leaf_count=item.get("primitive_leaf_count", 0),
@@ -317,6 +321,48 @@ def _attention_internal_kind(paths: list[str]) -> str | None:
     return None
 
 
+def _semantic_category(region_type: str, paths: list[str], projection_kind: str, attention_kind: str | None) -> str:
+    if region_type == "AttentionSkeletonRegion":
+        return "attention_skeleton"
+    if region_type == "FeedForwardRegion":
+        return "feed_forward_block"
+    if region_type == "ActivationRegion":
+        return "gelu_activation" if any("gelu" in path or "erf" in path or "intermediate_act_fn" in path for path in paths) else "activation"
+    if attention_kind == "score_matmul":
+        return "attention_score_matmul"
+    if attention_kind == "context_matmul":
+        return "attention_context_matmul"
+    if attention_kind in {"mask_add", "mask_select"}:
+        return "attention_mask_add"
+    if region_type == "LinearProjectionRegion":
+        return {
+            "query": "query_projection",
+            "key": "key_projection",
+            "value": "value_projection",
+            "attention_output": "attention_output_projection",
+            "ffn_intermediate": "ffn_intermediate_projection",
+            "ffn_output": "ffn_output_projection",
+            "prediction": "prediction_projection",
+            "embedding": "embedding_lookup",
+        }.get(projection_kind, "linear_projection")
+    if region_type == "ResidualMergeRegion":
+        blob = " ".join(paths)
+        if "/embeddings/add" in blob:
+            return "embedding_add"
+        return "residual_merge"
+    if region_type == "LayerNormRegion":
+        return "layer_norm"
+    if region_type == "AxisTransformRegion":
+        return "shape_axis_transform"
+    if region_type == "ShapeMotifRegion":
+        return "shape_motif"
+    if region_type in {"ForkRegion", "JoinRegion"} or any(_is_shape_mask_path(path) for path in paths):
+        return "shape_axis_transform"
+    if any("/embeddings/" in path for path in paths):
+        return "embedding_lookup"
+    return "unknown"
+
+
 def _infer_name(region: dict[str, Any], paths: list[str], expansion: dict[str, dict[str, Any]]) -> str:
     region_id = region["region_id"]
     if region_id in expansion and expansion[region_id].get("name"):
@@ -447,6 +493,7 @@ def _record_semantics(
     region_type = region.get("region_type", "UnknownRegion")
     projection_kind = _projection_kind(paths)
     attention_internal_kind = _attention_internal_kind(paths)
+    semantic_category = _semantic_category(region_type, paths, projection_kind, attention_internal_kind)
     dimensions: list[DimensionSemantics] = []
     rules: list[PropagationRule] = []
     repairs: list[RepairObligation] = []
@@ -579,6 +626,8 @@ def _record_semantics(
     return RegionSemanticsRecord(
         region_id=region_id,
         region_name=region_name,
+        source_region_type=region_type,
+        semantic_category=semantic_category,
         region_type=region_type,
         section=section,
         op_range=op_range,
@@ -595,6 +644,7 @@ def _record_semantics(
 def _summary(records: list[RegionSemanticsRecord]) -> dict[str, Any]:
     role_counts = Counter(item.pruning_role for item in records)
     type_counts = Counter(item.region_type for item in records)
+    semantic_category_counts = Counter(item.semantic_category for item in records)
     blocker_counts = Counter(blocker.blocker_type for item in records for blocker in item.blockers)
     repair_counts = Counter(repair.obligation_type for item in records for repair in item.repair_obligations)
     dim_status_counts = Counter(dim.status for item in records for dim in item.dimensions)
@@ -602,6 +652,7 @@ def _summary(records: list[RegionSemanticsRecord]) -> dict[str, Any]:
         "num_regions": len(records),
         "pruning_role_counts": dict(sorted(role_counts.items())),
         "region_type_counts": dict(sorted(type_counts.items())),
+        "semantic_category_counts": dict(sorted(semantic_category_counts.items())),
         "blocker_type_counts": dict(sorted(blocker_counts.items())),
         "repair_obligation_counts": dict(sorted(repair_counts.items())),
         "dimension_status_counts": dict(sorted(dim_status_counts.items())),
@@ -692,6 +743,13 @@ def _count_rows(values: list[tuple[str, str]]) -> list[dict[str, Any]]:
     ]
 
 
+def _count_dict_rows(counts: dict[str, int]) -> list[dict[str, Any]]:
+    return [
+        {"semantic_category": key, "count": value}
+        for key, value in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
 def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[str, Any], *, include_auxiliary_details: bool = False) -> str:
     data = region_pruning_semantics_to_dict(value) if isinstance(value, RegionPruningSemantics) else value
     summary = data.get("summary", {})
@@ -726,7 +784,8 @@ def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[st
     def row(item: dict[str, Any]) -> dict[str, Any]:
         return {
             "name": item.get("region_name"),
-            "type": item.get("region_type"),
+            "source_type": item.get("source_region_type", item.get("region_type")),
+            "semantic_category": item.get("semantic_category", "unknown"),
             "role": item.get("pruning_role"),
             "section": item.get("section"),
             "dims": ", ".join(f"{d['dim_name']}:{d['status']}" for d in item.get("dimensions", [])),
@@ -747,6 +806,10 @@ def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[st
         f"- LayerNorm-protected regions: `{summary.get('layernorm_protected_regions', 0)}`",
         f"- MLP pruning opportunities: `{summary.get('mlp_pruning_opportunities', 0)}`",
         "",
+        "## Semantic Category Counts",
+        "",
+        _table(_count_dict_rows(summary.get("semantic_category_counts", {})), ["semantic_category", "count"], limit=120),
+        "",
         "## Interpretation Highlights",
         "",
         "- Clean executable pruning opportunity: FFN `intermediate_dim` pruning with same-index propagation through Linear -> GELU -> Linear.",
@@ -756,15 +819,15 @@ def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[st
         "",
         "## Directly Prunable Opportunities",
         "",
-        _table([row(item) for item in direct], ["name", "type", "role", "section", "dims", "blockers"], limit=80),
+        _table([row(item) for item in direct], ["name", "source_type", "semantic_category", "role", "section", "dims", "blockers"], limit=80),
         "",
         "## Propagation-Only Regions",
         "",
-        _table([row(item) for item in propagation], ["name", "type", "role", "section", "dims", "blockers"], limit=80),
+        _table([row(item) for item in propagation], ["name", "source_type", "semantic_category", "role", "section", "dims", "blockers"], limit=80),
         "",
         "## Protected / Blocked Regions",
         "",
-        _table([row(item) for item in blocked], ["name", "type", "role", "section", "dims", "blockers"], limit=120),
+        _table([row(item) for item in blocked], ["name", "source_type", "semantic_category", "role", "section", "dims", "blockers"], limit=120),
         "",
         "## Auxiliary Shape / Axis Propagation Summary",
         "",
@@ -783,7 +846,7 @@ def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[st
         lines.extend([
             "### Auxiliary Detail Rows",
             "",
-            _table([row(item) for item in auxiliary], ["name", "type", "role", "section", "dims", "blockers"], limit=300),
+            _table([row(item) for item in auxiliary], ["name", "source_type", "semantic_category", "role", "section", "dims", "blockers"], limit=300),
             "",
         ])
     lines.extend([
@@ -795,7 +858,8 @@ def region_pruning_semantics_to_markdown(value: RegionPruningSemantics | dict[st
             [
                 f"### {item.get('region_name')}",
                 "",
-                f"- Type: `{item.get('region_type')}`",
+                f"- Source type: `{item.get('source_region_type', item.get('region_type'))}`",
+                f"- Semantic category: `{item.get('semantic_category', 'unknown')}`",
                 f"- Role: `{item.get('pruning_role')}`",
                 f"- Section: `{item.get('section')}`",
                 f"- Op range: `{item.get('op_range')}`",

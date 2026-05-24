@@ -264,6 +264,8 @@ Outputs include `reports/region_pruning_semantics/<model>.json`, `reports/region
 
 The report treats attention-internal score/context MatMuls as dataflow contractions, not parameterized projections. Q/K/V projections remain directly prunable candidates with head-axis mapping warnings; attention head/channel pruning remains blocked until that mapping is proven. The clean executable opportunity remains FFN `intermediate_dim` pruning.
 
+Region records carry both `source_region_type` and `semantic_category`. For example, attention score MatMul may originate from a `LinearProjectionRegion` structural shape, but its pruning category is `attention_score_matmul`, which prevents readers from mistaking it for a parameterized projection.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:
