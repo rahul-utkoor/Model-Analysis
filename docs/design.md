@@ -699,3 +699,9 @@ The grouping is deliberately not a new analysis source. It projects full-model T
 Validation summaries expose canonical `total_validations`, `valid`, `warning`, `invalid`, and `unknown` fields while preserving older `valid_plans` and `invalid_plans` fields for compatibility.
 
 The synthesized `GenericMLPRegion` records reuse the established region pruning semantics contract: `intermediate_dim` is prunable, `hidden_dim` is protected, the same indices must propagate through the MLP, the contraction input must be repaired, and hidden output dimensions are preserved. This gives DistilBERT, ViT, and GPT-2 the same static plan shape as BERT/OPT when the evidence is complete, without changing model weights or executing pruning.
+
+## Interactive Static Analysis Explorer
+
+The interactive explorer is a terminal presentation layer over generated reports. It discovers model reports, layers, subgraphs, plans, validations, explanations, and ONNX evidence paths, then lets a user navigate them without manually opening many files.
+
+It is intentionally read-only. It never chooses pruning indices, executes pruning, modifies model weights, rewrites ONNX, downloads models, or regenerates upstream artifacts.

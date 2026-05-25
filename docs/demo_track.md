@@ -82,6 +82,7 @@ Executable backend dry run
 | 32 | Rule-Gap Diagnosis | Diagnosis reports and generic FFN evidence matching | Cross-model semantic-rule generalization |
 | 33 | Generic MLP Region Fusion | Synthesized `GenericMLPRegion` semantics | FFN/MLP recovery beyond BERT/OPT |
 | 34 | Generic Block Atlases | Family-aware layer/block subgraph reports | Learner-facing atlases beyond BERT |
+| 35 | Interactive Explorer | Guided terminal report console | Stage-by-stage static analysis navigation |
 
 ## Mainline vs Backend
 
@@ -98,7 +99,7 @@ Milestones 6, 7, and 8 are experimental execution backends. They are useful for 
 1. Start with `demos/README.md` to frame pruning as compiler analysis.
 2. Run `demo_scripts/run_demo_01_setup_check.sh`.
 3. If model files are not present, run the download and ONNX export commands manually.
-4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, pruning opportunity ranking, pruning plan synthesis, pruning plan validation, layer subgraph validation pack, full-model reports, static coverage, rule-gap diagnosis, generic MLP fusion, generic block atlases, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
+4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, pruning opportunity ranking, pruning plan synthesis, pruning plan validation, layer subgraph validation pack, full-model reports, static coverage, rule-gap diagnosis, generic MLP fusion, generic block atlases, interactive explorer, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
 5. Open the reports in the artifact ladder order.
 6. Mention backend demos only as optional lowering experiments.
 

@@ -838,6 +838,16 @@ python scripts/build_full_model_analysis_report.py --model google/vit-base-patch
 
 The atlases group decoder/encoder blocks into attention, residual/LayerNorm, and MLP subgraphs so valid symbolic MLP plans are visible beyond BERT. Plan validation summaries expose both `valid/warning/invalid/unknown` and `valid_plans/invalid_plans` compatibility fields. This remains static reporting/visualization only.
 
+## Interactive Static Analysis Explorer
+
+The interactive explorer is a read-only terminal console over generated static reports.
+
+```bash
+python tools/interactive_analysis_explorer.py --model bert-base-uncased --layer 0 --no-open
+```
+
+Use it to choose a model/layer, list subgraphs, inspect Feed Forward or MLP plans, view validation evidence, print ONNX artifact paths, and compare cross-model coverage. See `README_interactive_analysis_explorer.md` for the command reference.
+
 ## First Push
 
 ```bash

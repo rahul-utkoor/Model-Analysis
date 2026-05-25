@@ -1360,3 +1360,28 @@ jq '.summary | {total_validations, valid, warning, invalid, unknown}' reports/pr
 ```
 
 and keep compatibility fields such as `valid_plans` and `invalid_plans`. This is reporting/visualization only and does not mutate models.
+
+## Interactive Static Analysis Explorer
+
+Milestone 35 adds a guided read-only terminal explorer over generated full-model reports and layer subgraph atlases.
+
+```bash
+python tools/interactive_analysis_explorer.py
+python tools/interactive_analysis_explorer.py --model bert-base-uncased --layer 0 --no-open
+```
+
+Typical commands:
+
+```text
+layers
+layer 0
+nodes
+subgraph Feed Forward
+plan
+validation
+onnx
+compare
+quit
+```
+
+The explorer reads existing files under `reports/model_analysis_reports/`, `reports/layer_subgraph_validation/`, and `artifacts/model_analysis_subgraphs/`. It does not regenerate reports or mutate models.

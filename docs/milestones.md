@@ -830,3 +830,26 @@ Primary commands:
 ```
 
 This is static analysis/reporting/visualization only. ONNX subgraphs are evidence artifacts for inspection; they are not treated as standalone models and no pruning or model mutation is performed.
+
+## Milestone 35: Interactive Static Analysis Explorer CLI
+
+Status: complete.
+
+Implemented:
+
+- Read-only interactive CLI under `tools/interactive_analysis_explorer.py`
+- Model, layer/block, and subgraph navigation over `reports/model_analysis_reports/`
+- Subgraph inspection commands for explanations, primitive ops, op/region semantics, ranking, symbolic plans, validation checks, and ONNX paths
+- Cross-model coverage comparison view
+- Optional `--scripted` command sequence for smoke testing
+- Stdlib-only helper module and tests for discovery, search, ONNX lookup, and validation summary aliases
+
+Primary commands:
+
+```bash
+./conda-env/bin/python tools/interactive_analysis_explorer.py
+./conda-env/bin/python tools/interactive_analysis_explorer.py --model bert-base-uncased --layer 0 --no-open
+./conda-env/bin/python tools/interactive_analysis_explorer.py --model bert-base-uncased --layer 0 --no-open --scripted "nodes;subgraph Feed Forward;plan;validation;path;back;back"
+```
+
+This is read-only static analysis/reporting/visualization only. It does not regenerate reports, execute pruning, modify models, rewrite ONNX, download models, or evaluate accuracy.
