@@ -1267,3 +1267,35 @@ artifacts/model_analysis_subgraphs/<model>/
 ```
 
 The report is a static projection of existing analysis artifacts. ONNX subgraphs are visualization evidence only.
+
+## Cross-Model Static Coverage Study
+
+The static coverage commands record how far each configured model gets through the analysis pipeline. They do not build missing base artifacts by default and do not download models.
+
+```bash
+python scripts/build_static_pipeline_for_model.py \
+  --model bert-base-uncased \
+  --build-missing-analysis \
+  --build-layer-packs \
+  --verbose
+
+python scripts/build_static_pipeline_for_all_models.py \
+  --models all \
+  --build-missing-analysis \
+  --build-layer-packs \
+  --verbose
+
+python scripts/report_static_pipeline_coverage.py --models all --verbose
+python scripts/explain_static_pipeline_status.py --model opt-125m
+```
+
+Outputs:
+
+```text
+reports/static_pipeline_status/<model>.json
+reports/static_pipeline_status/<model>.md
+reports/static_coverage_study/index.json
+reports/static_coverage_study/index.md
+```
+
+BERT is the current complete reference case. Other configured models are marked partial or skipped until the required local static artifacts exist and model-specific semantic rules are added.

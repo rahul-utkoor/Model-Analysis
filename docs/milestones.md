@@ -736,3 +736,26 @@ Primary commands:
 ```
 
 This is static reporting/visualization only. It does not choose pruning indices, modify models, execute pruning, rewrite full ONNX models, download models, or evaluate accuracy.
+
+## Milestone 31: Cross-Model Artifact Completion and Static Coverage Study
+
+Status: complete.
+
+Implemented:
+
+- Static pipeline model-status manifests under `reports/static_pipeline_status/`
+- Cross-model static coverage study under `reports/static_coverage_study/`
+- Orchestrator commands that mark existing stages, skipped prerequisites, failed builders, and not-applicable validation stages
+- Optional downstream static analysis/report building when prerequisites already exist locally
+- Synthetic tests for stage status, orchestrator continuation, coverage aggregation, and coverage Markdown
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/build_static_pipeline_for_model.py --model bert-base-uncased --build-missing-analysis --build-layer-packs --verbose
+./conda-env/bin/python scripts/build_static_pipeline_for_all_models.py --models all --build-missing-analysis --build-layer-packs --verbose
+./conda-env/bin/python scripts/report_static_pipeline_coverage.py --models all --verbose
+./conda-env/bin/python scripts/explain_static_pipeline_status.py --model opt-125m
+```
+
+This is a static coverage/generalization study. It distinguishes complete support from partial/skipped support and records where new model-specific semantics are needed.

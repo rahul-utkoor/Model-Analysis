@@ -789,6 +789,18 @@ python scripts/compare_model_analysis_reports.py --models all --verbose
 
 Reports are written under `reports/model_analysis_reports/`; visualization-only ONNX fragments are written under `artifacts/model_analysis_subgraphs/`. These reports do not choose pruning indices, modify models, execute pruning, rewrite full ONNX models, download models, or evaluate accuracy.
 
+## Cross-Model Static Coverage Study
+
+The coverage study checks how far the static pipeline gets for each configured model and records complete, partial, skipped, or failed support.
+
+```bash
+python scripts/build_static_pipeline_for_all_models.py --models all --build-missing-analysis --build-layer-packs --verbose
+python scripts/report_static_pipeline_coverage.py --models all --verbose
+python scripts/explain_static_pipeline_status.py --model bert-base-uncased
+```
+
+Coverage reports are written under `reports/static_pipeline_status/` and `reports/static_coverage_study/`. The study is reporting only; it does not download models, execute pruning, rewrite full ONNX models, or evaluate accuracy.
+
 ## First Push
 
 ```bash

@@ -78,6 +78,7 @@ Executable backend dry run
 | 28 | Pruning Plan Validation | `.pvalid` and validation reports | Static plan consistency checks |
 | 29 | Layer Subgraph Validation Pack | Per-node layer evidence folders | Local learner-node evidence projection |
 | 30 | Full-Model Reports | Model and cross-model report trees | Full-model and cross-model static summaries |
+| 31 | Static Coverage Study | Status manifests and coverage report | Cross-model support audit |
 
 ## Mainline vs Backend
 
@@ -129,6 +130,8 @@ For a `bert-base-uncased` walkthrough, the key reports are:
 - `reports/model_analysis_reports/bert-base-uncased/index.md`
 - `reports/model_analysis_reports/cross_model/index.md`
 - `artifacts/model_analysis_subgraphs/bert-base-uncased/`
+- `reports/static_pipeline_status/bert-base-uncased.md`
+- `reports/static_coverage_study/index.md`
 - `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
 - `reports/region_legality_checks/`
 - `reports/dependency_graphs/bert-base-uncased.md`

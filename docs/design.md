@@ -673,3 +673,9 @@ The exporter retains static axes, runs ONNX shape inference and validation, and 
 Full-model analysis reports are a presentation layer over existing static artifacts. They aggregate Op Semantics, Region Pruning Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, Pruning Plan Validation, and per-layer subgraph validation packs into one structured folder per model.
 
 The report layer does not create new pruning decisions. It improves learner-facing explanations, contextualizes duplicated names such as LayerNorm sites, records why constrained/blocked/auxiliary nodes do not receive plans, and writes cross-model summaries when multiple model reports are present. ONNX subgraphs under `artifacts/model_analysis_subgraphs/` remain visualization artifacts only and are not treated as independent models for re-analysis.
+
+## Static Coverage Study
+
+The static coverage study is an orchestration and audit layer. For each configured model, it records whether each pipeline stage is already present, built from local prerequisites, skipped because inputs are missing, failed, or not applicable. This makes BERT's complete support visible without pretending that decoder-only or vision-transformer models are already covered by BERT-specific structural rules.
+
+The coverage study does not download models or create missing base artifacts. Optional build flags only run downstream static analysis when local prerequisites already exist. The output is intended to guide the next semantic-rule work for DistilBERT, GPT/OPT-style decoders, and ViT-style patch/MLP structures.

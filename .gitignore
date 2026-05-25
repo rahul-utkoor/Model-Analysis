@@ -51,6 +51,10 @@ reports/compact_analysis_snapshots/*
 !reports/compact_analysis_snapshots/.gitkeep
 reports/model_analysis_reports/*
 !reports/model_analysis_reports/.gitkeep
+reports/static_pipeline_status/*
+!reports/static_pipeline_status/.gitkeep
+reports/static_coverage_study/*
+!reports/static_coverage_study/.gitkeep
 reports/propagation_traces/*
 !reports/propagation_traces/.gitkeep
 reports/pruning_action_checks/*
