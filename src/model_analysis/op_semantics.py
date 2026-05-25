@@ -102,6 +102,10 @@ def _source_path(op: dict[str, Any]) -> str:
     return _source_name(op).lower()
 
 
+def _normalized_path(path: str) -> str:
+    return path.lower().replace("__", "/").replace(".", "/")
+
+
 def _topological_index(op: dict[str, Any], fallback: int) -> int:
     source_location = op.get("source_location") or {}
     if "node_index" in source_location:
@@ -118,7 +122,8 @@ def _effect(direct: str, reason: str, repairs: list[str] | None = None, blockers
 
 
 def _is_parameterized_projection_path(path: str) -> bool:
-    return any(
+    normalized = _normalized_path(path)
+    bert_like = any(
         token in path
         for token in (
             "/attention/self/query/matmul",
@@ -130,10 +135,33 @@ def _is_parameterized_projection_path(path: str) -> bool:
             "/cls/",
         )
     ) and path.endswith("matmul")
+    generic_ffn = any(
+        token in normalized
+        for token in (
+            "/ffn/lin1/matmul",
+            "/ffn/lin2/matmul",
+            "/decoder/layers/",
+            "/mlp/fc1/matmul",
+            "/mlp/fc2/matmul",
+            "/mlp/c_fc/gemm",
+            "/mlp/c_proj/gemm",
+        )
+    ) and (
+        normalized.endswith("/fc1/gemm")
+        or normalized.endswith("/fc2/gemm")
+        or normalized.endswith("/lin1/matmul")
+        or normalized.endswith("/lin2/matmul")
+        or normalized.endswith("/fc1/matmul")
+        or normalized.endswith("/fc2/matmul")
+        or normalized.endswith("/c_fc/gemm")
+        or normalized.endswith("/c_proj/gemm")
+    )
+    return bert_like or generic_ffn
 
 
 def _is_projection_bias_path(path: str) -> bool:
-    return any(
+    normalized = _normalized_path(path)
+    bert_like = any(
         token in path
         for token in (
             "/attention/self/query/add",
@@ -145,6 +173,16 @@ def _is_projection_bias_path(path: str) -> bool:
             "/cls/",
         )
     ) and path.endswith("add")
+    generic_ffn = any(
+        normalized.endswith(token)
+        for token in (
+            "/ffn/lin1/add",
+            "/ffn/lin2/add",
+            "/mlp/fc1/add",
+            "/mlp/fc2/add",
+        )
+    )
+    return bert_like or generic_ffn
 
 
 def _is_attention_score_matmul(path: str) -> bool:
@@ -174,13 +212,26 @@ def _is_true_residual_add(path: str) -> bool:
 
 
 def _is_gelu_path(path: str) -> bool:
-    return "/intermediate/intermediate_act_fn/" in path or "gelu" in path
+    normalized = _normalized_path(path)
+    return (
+        "/intermediate/intermediate_act_fn/" in path
+        or "gelu" in path
+        or "/ffn/activation/" in normalized
+        or "/mlp/activation_fn/" in normalized
+        or "/mlp/act/" in normalized
+        or "/activation_fn/" in normalized
+    )
 
 
 def _projection_roles(path: str) -> dict[str, str]:
+    normalized = _normalized_path(path)
     if "/intermediate/dense/" in path:
         return {"input": "hidden_dim", "output": "intermediate_dim"}
     if "/output/dense/" in path and "/attention/output/dense/" not in path:
+        return {"input": "intermediate_dim", "output": "hidden_dim"}
+    if any(token in normalized for token in ("/ffn/lin1/", "/fc1/", "/mlp/c_fc/")):
+        return {"input": "hidden_dim", "output": "intermediate_dim"}
+    if any(token in normalized for token in ("/ffn/lin2/", "/fc2/", "/mlp/c_proj/")) and "/attn/c_proj/" not in normalized:
         return {"input": "intermediate_dim", "output": "hidden_dim"}
     if "/attention/self/query/" in path:
         return {"input": "hidden_dim", "output": "head_dim"}
@@ -254,7 +305,7 @@ def _classify_op(op: dict[str, Any]) -> tuple[str, str, bool | str, str, dict[st
             matched,
             "high",
         )
-    if _is_gelu_path(path) and op_type in {"Div", "Add", "Mul", "Erf"}:
+    if _is_gelu_path(path) and op_type in {"Div", "Add", "Mul", "Erf", "Relu", "Tanh", "Pow"}:
         matched.append("gelu_decomposition_path")
         kind = "gelu_erf" if op_type == "Erf" else "gelu_mul" if op_type == "Mul" else "gelu_elementwise"
         return (
@@ -611,4 +662,3 @@ def op_semantics_ir_to_markdown(value: OpSemanticsIR | dict[str, Any]) -> str:
             "",
         ]
     )
-

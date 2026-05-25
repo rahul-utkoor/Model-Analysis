@@ -174,7 +174,12 @@ def _has_hidden_prune_action(plan: dict[str, Any]) -> bool:
 def _output_bias_pruned(plan: dict[str, Any]) -> bool:
     return any(
         action.get("action_type") == "prune_bias"
-        and "/output/dense/add" in str(action.get("target_source_name", "")).lower()
+        and (
+            "/output/dense/add" in str(action.get("target_source_name", "")).lower()
+            or "/fc2/add" in str(action.get("target_source_name", "")).lower().replace(".", "/")
+            or "/lin2/add" in str(action.get("target_source_name", "")).lower().replace(".", "/")
+            or "/c_proj/add" in str(action.get("target_source_name", "")).lower().replace(".", "/")
+        )
         for action in plan.get("actions", [])
     )
 
@@ -183,7 +188,7 @@ def _has_forbidden(plan: dict[str, Any], text: str, dimension: str = "hidden_dim
     needle = text.lower()
     return any(
         item.get("dimension") == dimension
-        and needle in str(item.get("location", "")).lower()
+        and (needle in str(item.get("location", "")).lower() or _generic_location_match(str(item.get("location", "")).lower(), needle))
         for item in plan.get("forbidden_actions", [])
     )
 
@@ -192,9 +197,22 @@ def _has_preserved(plan: dict[str, Any], text: str, dimension: str = "hidden_dim
     needle = text.lower()
     return any(
         item.get("dimension") == dimension
-        and needle in str(item.get("location", "")).lower()
+        and (needle in str(item.get("location", "")).lower() or _generic_location_match(str(item.get("location", "")).lower(), needle))
         for item in plan.get("preserved_dimensions", [])
     )
+
+
+def _generic_location_match(location: str, needle: str) -> bool:
+    normalized = location.replace(".", "/")
+    if needle == "output/add":
+        return "residual" in normalized or ("/output/add" in normalized and "/attention/output/" not in normalized and "/output/dense/" not in normalized)
+    if needle == "layernorm":
+        return "layernorm" in normalized or "layer_norm" in normalized or "ln_2" in normalized or "ln/2" in normalized
+    if needle == "output/dense/add":
+        return "output.dense bias" in location or "output dense bias" in location or "/fc2/add" in normalized or "/lin2/add" in normalized or "/c_proj/add" in normalized
+    if needle == "output/dense/matmul":
+        return "/fc2/" in normalized or "/lin2/" in normalized or "/c_proj/" in normalized or "/output/dense/" in normalized
+    return False
 
 
 def _semantic_check(target: str, expected: str, observed: Any, ok: bool, explanation: str) -> SemanticConsistencyCheck:
@@ -221,14 +239,14 @@ def _validate_op_semantics(plan: dict[str, Any], by_id: dict[str, dict[str, Any]
 
     semantic.extend(
         [
-            _semantic_check("producer.semantic_kind", "parameterized_linear_matmul", producer.get("semantic_kind") if producer else None, bool(producer and producer.get("semantic_kind") == "parameterized_linear_matmul"), "Producer output action must target learned projection MatMul."),
+            _semantic_check("producer.semantic_kind", "parameterized_linear_matmul", producer.get("semantic_kind") if producer else None, bool(producer and producer.get("semantic_kind") in {"parameterized_linear_matmul", "parameterized_linear_gemm"}), "Producer output action must target learned projection MatMul/Gemm."),
             _semantic_check("producer.semantic_category", "parameterized_projection", producer.get("semantic_category") if producer else None, bool(producer and producer.get("semantic_category") == "parameterized_projection"), "Producer MatMul should be a parameterized projection."),
             _semantic_check("producer.parameterized", "true", producer.get("parameterized") if producer else None, bool(producer and producer.get("parameterized") is True), "Producer MatMul should be parameterized."),
             _semantic_check("producer.output_role", "intermediate_dim", producer.get("dimension_roles", {}).get("output") if producer else None, bool(producer and producer.get("dimension_roles", {}).get("output") == "intermediate_dim"), "Producer output axis should be intermediate_dim."),
             _semantic_check("producer.direct_pruning", "allowed", producer.get("pruning_effect", {}).get("direct_pruning") if producer else None, bool(producer and producer.get("pruning_effect", {}).get("direct_pruning") == "allowed"), "Producer output pruning should be allowed at op-semantics level."),
-            _semantic_check("bias.semantic_kind", "linear_bias_add", bias.get("semantic_kind") if bias else None, bool(bias and bias.get("semantic_kind") == "linear_bias_add"), "Bias action must target the intermediate dense bias Add."),
-            _semantic_check("bias.semantic_category", "parameterized_projection", bias.get("semantic_category") if bias else None, bool(bias and bias.get("semantic_category") == "parameterized_projection"), "Bias Add should belong to parameterized projection semantics."),
-            _semantic_check("consumer.semantic_kind", "parameterized_linear_matmul", consumer.get("semantic_kind") if consumer else None, bool(consumer and consumer.get("semantic_kind") == "parameterized_linear_matmul"), "Consumer action must target FFN output projection MatMul."),
+            _semantic_check("bias.semantic_kind", "linear_bias_add or fused Gemm", bias.get("semantic_kind") if bias else None, bool(bias and (bias.get("semantic_kind") == "linear_bias_add" or (bias.get("semantic_kind") in {"parameterized_linear_matmul", "parameterized_linear_gemm"} and str(bias.get("op_type", "")).lower() == "gemm"))), "Bias action must target an explicit bias Add or fused Gemm bias."),
+            _semantic_check("bias.semantic_category", "parameterized_projection", bias.get("semantic_category") if bias else None, bool(bias and bias.get("semantic_category") == "parameterized_projection"), "Bias action should belong to parameterized projection semantics."),
+            _semantic_check("consumer.semantic_kind", "parameterized_linear_matmul", consumer.get("semantic_kind") if consumer else None, bool(consumer and consumer.get("semantic_kind") in {"parameterized_linear_matmul", "parameterized_linear_gemm"}), "Consumer action must target FFN output projection MatMul/Gemm."),
             _semantic_check("consumer.input_role", "intermediate_dim", consumer.get("dimension_roles", {}).get("input") if consumer else None, bool(consumer and consumer.get("dimension_roles", {}).get("input") == "intermediate_dim"), "Consumer input axis should be intermediate_dim."),
             _semantic_check("consumer.output_role", "hidden_dim", consumer.get("dimension_roles", {}).get("output") if consumer else None, bool(consumer and consumer.get("dimension_roles", {}).get("output") == "hidden_dim"), "Consumer output axis should remain hidden_dim."),
             _semantic_check("consumer.target_axis", "input_dim", consumer_action.get("target_axis") if consumer_action else None, bool(consumer_action and consumer_action.get("target_axis") == "input_dim"), "Consumer repair should target input_dim."),
@@ -346,9 +364,9 @@ def _validate_ffn_plan(
     index_name = plan.get("symbolic_index_set", {}).get("name", "")
     checks.append(_check(2, "symbolic_index_set_present", "pass" if index_name and plan.get("target_dimension") == "intermediate_dim" else "fail", "Plan must carry a symbolic intermediate_dim index set."))
     checks.append(_check(3, "required_action_present", "pass" if all(item.status == "covered" for item in coverage) else "fail", "All required FFN actions must be present exactly once."))
-    checks.append(_check(4, "producer_output_pruned", "pass" if producer and "/intermediate/dense/matmul" in producer.get("target_source_name", "").lower() and producer.get("target_axis") == "output_dim" and producer.get("dimension") == "intermediate_dim" else "fail", "Producer action must prune intermediate.dense MatMul output_dim."))
-    checks.append(_check(5, "bias_pruned", "pass" if bias and "/intermediate/dense/add" in bias.get("target_source_name", "").lower() and bias.get("target_axis") == "bias_dim" and bias.get("dimension") == "intermediate_dim" else "fail", "Bias action must prune intermediate.dense Add bias_dim."))
-    checks.append(_check(6, "consumer_input_pruned", "pass" if consumer and "/output/dense/matmul" in consumer.get("target_source_name", "").lower() and "/attention/output/dense/" not in consumer.get("target_source_name", "").lower() and consumer.get("target_axis") == "input_dim" and consumer.get("dimension") == "intermediate_dim" else "fail", "Consumer action must prune FFN output.dense MatMul input_dim."))
+    checks.append(_check(4, "producer_output_pruned", "pass" if producer and producer.get("target_axis") == "output_dim" and producer.get("dimension") == "intermediate_dim" else "fail", "Producer action must prune FFN expansion projection output_dim."))
+    checks.append(_check(5, "bias_pruned", "pass" if bias and bias.get("target_axis") == "bias_dim" and bias.get("dimension") == "intermediate_dim" else "fail", "Bias action must prune FFN expansion bias_dim."))
+    checks.append(_check(6, "consumer_input_pruned", "pass" if consumer and consumer.get("target_axis") == "input_dim" and consumer.get("dimension") == "intermediate_dim" else "fail", "Consumer action must prune FFN contraction projection input_dim."))
     checks.append(_check(7, "gelu_index_preserving", "pass" if _gelu_ok(plan, by_id, by_source) else "fail", "GELU propagation must preserve the same intermediate_dim indices."))
     checks.append(_check(8, "same_indices_across_mlp", "pass" if any(item.repair_type == "same_indices_across_mlp" and item.status == "pass" for item in repairs) else "fail", "same_indices_across_mlp repair/rule must be present."))
     checks.append(_check(9, "hidden_dim_preserved", "pass" if any(item.dimension == "hidden_dim" and item.status == "pass" for item in preservation) and not _has_hidden_prune_action(plan) else "fail", "Hidden dimensions must be preserved and not pruned."))

@@ -35,14 +35,15 @@ Main research path:
 14. [Milestone 29: Layer Subgraph Validation Pack](milestone_29_layer_subgraph_validation_pack.md)
 15. [Milestone 30: Full-Model Analysis Reports](milestone_30_full_model_analysis_reports.md)
 16. [Milestone 31: Cross-Model Static Coverage](milestone_31_cross_model_static_coverage.md)
-17. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
-18. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
-19. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
-20. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
-21. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
-22. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
-23. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
-24. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
+17. [Milestone 32: Rule-Gap Diagnosis and FFN Generalization](milestone_32_rule_gap_diagnosis_and_ffn_generalization.md)
+18. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
+19. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
+20. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
+21. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
+22. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
+23. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
+24. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
+25. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
 
 Optional backend path:
 

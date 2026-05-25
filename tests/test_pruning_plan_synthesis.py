@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from model_analysis.pruning_plan_synthesis import pruning_plan_set_to_dict, synthesize_pruning_plans
+from model_analysis.pruning_plan_synthesis import detect_ffn_evidence_for_candidate, pruning_plan_set_to_dict, synthesize_pruning_plans
 
 
 def candidate(kind: str = "feedforward_intermediate_pruning") -> dict:
@@ -33,6 +33,30 @@ def op(op_id: str, path: str, kind: str, op_type: str = "MatMul") -> dict:
         "dimension_roles": {},
         "pruning_effect": {"direct_pruning": "allowed", "required_repairs": [], "blockers": [], "reason": ""},
     }
+
+
+def ffn_candidate_with_sources(model_name: str, sources: list[str]) -> dict:
+    item = candidate()
+    item["op_semantics_evidence"] = [
+        {
+            "source_name": source,
+            "semantic_kind": "parameterized_linear_matmul",
+            "semantic_category": "parameterized_projection",
+        }
+        for source in sources
+    ]
+    item["model_name"] = model_name
+    return item
+
+
+def generic_ops(expansion: str, activation: str | None, contraction: str, *, op_type: str = "MatMul") -> list[dict]:
+    ops = [
+        op("exp", expansion, "parameterized_linear_matmul", op_type),
+        op("con", contraction, "parameterized_linear_matmul", op_type),
+    ]
+    if activation:
+        ops.insert(1, op("act", activation, "gelu_elementwise", "Relu"))
+    return ops
 
 
 def full_ops() -> list[dict]:
@@ -103,13 +127,17 @@ def test_plan_preserves_and_forbids_hidden_dim_pruning() -> None:
 def test_plan_uses_ffn_residual_and_layernorm_not_attention_output() -> None:
     base = "/model/bert/encoder/layer.0"
     ops = [
+        op("attn_mm", f"{base}/attention/output/dense/MatMul", "parameterized_linear_matmul"),
+        op("attn_bias", f"{base}/attention/output/dense/Add", "linear_bias_add", "Add"),
         op("attn_res", f"{base}/attention/output/Add", "residual_add", "Add"),
         op("attn_ln", f"{base}/attention/output/LayerNorm/LayerNormalization", "layernorm", "LayerNormalization"),
         *full_ops(),
     ]
     plan = build_plan_set(ops=ops)["plans"][0]
+    action_locations = " ".join(item["target_source_name"] for item in plan["actions"])
     forbidden_locations = " ".join(item["location"] for item in plan["forbidden_actions"])
 
+    assert "/attention/output/dense/" not in action_locations
     assert "/attention/output/" not in forbidden_locations
     assert f"{base}/output/Add" in forbidden_locations
     assert f"{base}/output/LayerNorm/LayerNormalization" in forbidden_locations
@@ -127,3 +155,83 @@ def test_component_candidate_does_not_create_full_plan() -> None:
     data = build_plan_set(candidates=[candidate("projection_output_pruning")])
 
     assert data["summary"]["total_plans"] == 0
+
+
+def test_generic_ffn_matcher_finds_bert_pattern() -> None:
+    base = "/model/bert/encoder/layer.0"
+    ops = generic_ops(
+        f"{base}/intermediate/dense/MatMul",
+        f"{base}/intermediate/intermediate_act_fn/Erf",
+        f"{base}/output/dense/MatMul",
+    )
+    ops.append(op("exp_bias", f"{base}/intermediate/dense/Add", "linear_bias_add", "Add"))
+    ops.append(op("con_bias", f"{base}/output/dense/Add", "linear_bias_add", "Add"))
+    evidence = detect_ffn_evidence_for_candidate(ffn_candidate_with_sources("bert-base-uncased", [op["source_name"] for op in ops]), {"ops": ops}, {}, "bert-base-uncased")
+
+    assert evidence.family == "bert_encoder"
+    assert evidence.evidence_status == "complete"
+
+
+def test_generic_ffn_matcher_finds_distilbert_pattern() -> None:
+    base = "/model/distilbert/transformer/layer.0"
+    ops = generic_ops(f"{base}/ffn/lin1/MatMul", f"{base}/ffn/activation/Erf", f"{base}/ffn/lin2/MatMul")
+    ops.append(op("exp_bias", f"{base}/ffn/lin1/Add", "linear_bias_add", "Add"))
+    ops.append(op("con_bias", f"{base}/ffn/lin2/Add", "linear_bias_add", "Add"))
+    evidence = detect_ffn_evidence_for_candidate(ffn_candidate_with_sources("distilbert-base-uncased", [op["source_name"] for op in ops]), {"ops": ops}, {}, "distilbert-base-uncased")
+
+    assert evidence.family == "distilbert_encoder"
+    assert evidence.evidence_status == "complete"
+
+
+def test_generic_ffn_matcher_finds_opt_pattern() -> None:
+    base = "/model/decoder/layers.0"
+    ops = generic_ops(f"{base}/fc1/Gemm", f"{base}/activation_fn/Relu", f"{base}/fc2/Gemm", op_type="Gemm")
+    evidence = detect_ffn_evidence_for_candidate(ffn_candidate_with_sources("facebook/opt-125m", [op["source_name"] for op in ops]), {"ops": ops}, {}, "facebook/opt-125m")
+
+    assert evidence.family == "opt_decoder"
+    assert evidence.evidence_status == "complete"
+
+
+def test_generic_ffn_matcher_finds_vit_pattern() -> None:
+    base = "/model/vit/layers.0"
+    ops = generic_ops(f"{base}/mlp/fc1/MatMul", f"{base}/mlp/activation_fn/Erf", f"{base}/mlp/fc2/MatMul")
+    ops.append(op("exp_bias", f"{base}/mlp/fc1/Add", "linear_bias_add", "Add"))
+    ops.append(op("con_bias", f"{base}/mlp/fc2/Add", "linear_bias_add", "Add"))
+    evidence = detect_ffn_evidence_for_candidate(ffn_candidate_with_sources("google/vit-base-patch16-224", [op["source_name"] for op in ops]), {"ops": ops}, {}, "google/vit-base-patch16-224")
+
+    assert evidence.family == "vit_encoder"
+    assert evidence.evidence_status == "complete"
+
+
+def test_generic_ffn_matcher_finds_gpt2_pattern() -> None:
+    base = "/model/transformer/h.0"
+    ops = generic_ops(f"{base}/mlp/c_fc/Gemm", f"{base}/mlp/act/Tanh", f"{base}/mlp/c_proj/Gemm", op_type="Gemm")
+    evidence = detect_ffn_evidence_for_candidate(ffn_candidate_with_sources("gpt2", [op["source_name"] for op in ops]), {"ops": ops}, {}, "gpt2")
+
+    assert evidence.family == "gpt2_decoder"
+    assert evidence.evidence_status == "complete"
+
+
+def test_generic_ffn_matcher_reports_missing_activation() -> None:
+    base = "/model/decoder/layers.0"
+    ops = generic_ops(f"{base}/fc1/Gemm", None, f"{base}/fc2/Gemm", op_type="Gemm")
+    evidence = detect_ffn_evidence_for_candidate(ffn_candidate_with_sources("facebook/opt-125m", [op["source_name"] for op in ops]), {"ops": ops}, {}, "facebook/opt-125m")
+
+    assert evidence.evidence_status == "partial"
+    assert "missing activation evidence" in evidence.missing_evidence
+
+
+def test_plan_synthesis_uses_generic_opt_evidence() -> None:
+    base = "/model/decoder/layers.0"
+    ops = [
+        op("fc1", f"{base}/fc1/Gemm", "parameterized_linear_matmul", "Gemm"),
+        op("relu", f"{base}/activation_fn/Relu", "gelu_elementwise", "Relu"),
+        op("fc2", f"{base}/fc2/Gemm", "parameterized_linear_matmul", "Gemm"),
+    ]
+    item = ffn_candidate_with_sources("facebook/opt-125m", [op["source_name"] for op in ops])
+    data = build_plan_set(candidates=[item], ops=ops)
+    plan = data["plans"][0]
+    actions = {action["action_type"] for action in plan["actions"]}
+
+    assert plan["plan_status"] == "ready_symbolic"
+    assert {"prune_producer_output", "prune_bias", "prune_consumer_input"}.issubset(actions)

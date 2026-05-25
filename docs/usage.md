@@ -1299,3 +1299,24 @@ reports/static_coverage_study/index.md
 ```
 
 BERT is the current complete reference case. Other configured models are marked partial or skipped until the required local static artifacts exist and model-specific semantic rules are added.
+
+## Rule-Gap Diagnosis and Generic FFN Matching
+
+Milestone 32 diagnoses remaining cross-model rule gaps and applies generic FFN evidence matching across common transformer naming schemes.
+
+```bash
+python scripts/diagnose_rule_gaps.py --models all --verbose
+python scripts/explain_rule_gap.py --model facebook/opt-125m
+python scripts/compare_rule_gaps.py --models all
+```
+
+Outputs:
+
+```text
+reports/rule_gap_diagnosis/<model>.json
+reports/rule_gap_diagnosis/<model>.md
+reports/rule_gap_diagnosis_compare/index.json
+reports/rule_gap_diagnosis_compare/index.md
+```
+
+The matcher recognizes BERT `intermediate/output dense`, DistilBERT `ffn.lin1/lin2`, OPT `fc1/fc2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj` evidence. It only binds static plan evidence; it does not choose pruning indices or execute pruning.

@@ -55,6 +55,10 @@ reports/static_pipeline_status/*
 !reports/static_pipeline_status/.gitkeep
 reports/static_coverage_study/*
 !reports/static_coverage_study/.gitkeep
+reports/rule_gap_diagnosis/*
+!reports/rule_gap_diagnosis/.gitkeep
+reports/rule_gap_diagnosis_compare/*
+!reports/rule_gap_diagnosis_compare/.gitkeep
 reports/propagation_traces/*
 !reports/propagation_traces/.gitkeep
 reports/pruning_action_checks/*

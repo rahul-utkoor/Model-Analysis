@@ -801,6 +801,18 @@ python scripts/explain_static_pipeline_status.py --model bert-base-uncased
 
 Coverage reports are written under `reports/static_pipeline_status/` and `reports/static_coverage_study/`. The study is reporting only; it does not download models, execute pruning, rewrite full ONNX models, or evaluate accuracy.
 
+## Cross-Model Rule-Gap Diagnosis
+
+Rule-gap diagnosis explains why a configured model is complete, partial, or missing valid symbolic FFN plans, then reports candidate semantic-rule repairs.
+
+```bash
+python scripts/diagnose_rule_gaps.py --models all --verbose
+python scripts/explain_rule_gap.py --model facebook/opt-125m
+python scripts/compare_rule_gaps.py --models all
+```
+
+Reports are written under `reports/rule_gap_diagnosis/` and `reports/rule_gap_diagnosis_compare/`. Generic FFN evidence matching now recognizes BERT `intermediate/output dense`, DistilBERT `ffn.lin1/lin2`, OPT `fc1/fc2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj` naming where op evidence exists. This remains static reporting and does not modify models or execute pruning.
+
 ## First Push
 
 ```bash

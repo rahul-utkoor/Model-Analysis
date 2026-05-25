@@ -113,6 +113,34 @@ class PruningPlanSet:
     summary: dict[str, Any]
 
 
+@dataclass
+class GenericFFNPattern:
+    family: str
+    expansion_projection_patterns: list[str]
+    expansion_bias_patterns: list[str]
+    activation_patterns: list[str]
+    contraction_projection_patterns: list[str]
+    contraction_bias_patterns: list[str]
+    residual_patterns: list[str]
+    layernorm_patterns: list[str]
+
+
+@dataclass
+class FFNEvidence:
+    layer_index: int | None
+    family: str
+    expansion_matmul_op: dict[str, Any] | None
+    expansion_bias_op: dict[str, Any] | None
+    activation_ops: list[dict[str, Any]]
+    contraction_matmul_op: dict[str, Any] | None
+    contraction_bias_op: dict[str, Any] | None
+    residual_op: dict[str, Any] | None
+    layernorm_op: dict[str, Any] | None
+    evidence_status: str
+    missing_evidence: list[str]
+    confidence: str
+
+
 def pruning_plan_to_dict(value: PruningPlan) -> dict[str, Any]:
     return asdict(value)
 
@@ -168,7 +196,8 @@ def _plan_from_dict(item: dict[str, Any]) -> PruningPlan:
 
 
 def _layer_from_text(value: str) -> int | None:
-    match = re.search(r"layer[ ._/:-]*(\d+)", value.lower())
+    normalized = _normalize_path(value)
+    match = re.search(r"(?:layer|layers|h)[/_ .:-]*(\d+)", normalized)
     return int(match.group(1)) if match else None
 
 
@@ -199,8 +228,194 @@ def _op_by_id(op_semantics: dict[str, Any]) -> dict[str, dict[str, Any]]:
 def _ops_for_layer(op_semantics: dict[str, Any], layer: int | None) -> list[dict[str, Any]]:
     if layer is None:
         return op_semantics.get("ops", [])
-    token = f"/encoder/layer.{layer}/"
-    return [op for op in op_semantics.get("ops", []) if token in str(op.get("source_name", "")).lower()]
+    layer_tokens = [
+        f"/encoder/layer/{layer}/",
+        f"/encoder/layer.{layer}/",
+        f"/transformer/layer/{layer}/",
+        f"/transformer/layer.{layer}/",
+        f"/decoder/layers/{layer}/",
+        f"/decoder/layers.{layer}/",
+        f"/layers/{layer}/",
+        f"/layers.{layer}/",
+        f"/h/{layer}/",
+        f"/h.{layer}/",
+    ]
+    return [
+        op for op in op_semantics.get("ops", [])
+        if any(token in _normalize_path(str(op.get("source_name", ""))) for token in layer_tokens)
+    ]
+
+
+def _normalize_path(value: str) -> str:
+    return str(value).lower().replace("__", "/").replace(".", "/")
+
+
+GENERIC_FFN_PATTERNS = [
+    GenericFFNPattern(
+        "bert_encoder",
+        ["/intermediate/dense/matmul"],
+        ["/intermediate/dense/add"],
+        ["/intermediate/intermediate_act_fn/"],
+        ["/output/dense/matmul"],
+        ["/output/dense/add"],
+        ["/output/add"],
+        ["/output/layernorm/layernormalization", "/output/layer_norm/layernormalization"],
+    ),
+    GenericFFNPattern(
+        "distilbert_encoder",
+        ["/ffn/lin1/matmul"],
+        ["/ffn/lin1/add"],
+        ["/ffn/activation/"],
+        ["/ffn/lin2/matmul"],
+        ["/ffn/lin2/add"],
+        [],
+        ["/output_layer_norm", "/output/layer_norm"],
+    ),
+    GenericFFNPattern(
+        "opt_decoder",
+        ["/fc1/gemm", "/fc1/matmul"],
+        ["/fc1/add"],
+        ["/activation_fn/", "/relu", "/gelu"],
+        ["/fc2/gemm", "/fc2/matmul"],
+        ["/fc2/add"],
+        [],
+        ["/final_layer_norm", "/self_attn_layer_norm"],
+    ),
+    GenericFFNPattern(
+        "vit_encoder",
+        ["/mlp/fc1/matmul", "/intermediate/dense/matmul"],
+        ["/mlp/fc1/add", "/intermediate/dense/add"],
+        ["/mlp/activation_fn/", "/intermediate/intermediate_act_fn/"],
+        ["/mlp/fc2/matmul", "/output/dense/matmul"],
+        ["/mlp/fc2/add", "/output/dense/add"],
+        [],
+        ["/layernorm", "/layer_norm"],
+    ),
+    GenericFFNPattern(
+        "gpt2_decoder",
+        ["/mlp/c_fc/gemm", "/mlp/c_fc/matmul"],
+        ["/mlp/c_fc/add"],
+        ["/mlp/act/"],
+        ["/mlp/c_proj/gemm", "/mlp/c_proj/matmul"],
+        ["/mlp/c_proj/add"],
+        [],
+        ["/ln_2", "/ln/2"],
+    ),
+]
+
+
+def _candidate_source_names(candidate: dict[str, Any]) -> list[str]:
+    return [str(item.get("source_name", "")) for item in candidate.get("op_semantics_evidence", [])]
+
+
+def _family_from_sources(model_name: str, sources: list[str]) -> str:
+    text = _normalize_path(" ".join([model_name, *sources]))
+    if "distilbert" in text or "/ffn/lin1/" in text:
+        return "distilbert_encoder"
+    if "opt" in text or "/decoder/layers/" in text:
+        return "opt_decoder"
+    if "vit" in text or "/mlp/fc1/" in text:
+        return "vit_encoder"
+    if "gpt2" in text or "/mlp/c_fc/" in text:
+        return "gpt2_decoder"
+    if "/intermediate/dense/" in text:
+        return "bert_encoder"
+    return "unknown"
+
+
+def _pattern_for_family(family: str) -> GenericFFNPattern:
+    return next((item for item in GENERIC_FFN_PATTERNS if item.family == family), GENERIC_FFN_PATTERNS[0])
+
+
+def _match_pattern(op: dict[str, Any], patterns: list[str]) -> bool:
+    source = _normalize_path(str(op.get("source_name", "")))
+    return any(pattern in source for pattern in patterns)
+
+
+def _find_matching_op(ops: list[dict[str, Any]], patterns: list[str], kinds: set[str] | None = None) -> dict[str, Any] | None:
+    for op in ops:
+        source = _normalize_path(str(op.get("source_name", "")))
+        if "/attention/output/dense/" in source and any("/output/dense/" in pattern for pattern in patterns):
+            continue
+        if not _match_pattern(op, patterns):
+            continue
+        if kinds is not None and op.get("semantic_kind") not in kinds:
+            continue
+        return op
+    return None
+
+
+def _find_support_op(ops: list[dict[str, Any]], patterns: list[str], kinds: set[str] | None = None) -> dict[str, Any] | None:
+    for op in ops:
+        source = _normalize_path(str(op.get("source_name", "")))
+        if "/attention/output/" in source:
+            continue
+        if not any(pattern in source for pattern in patterns):
+            continue
+        if kinds is not None and op.get("semantic_kind") not in kinds:
+            continue
+        return op
+    return None
+
+
+def _find_activation_ops(ops: list[dict[str, Any]], patterns: list[str]) -> list[dict[str, Any]]:
+    allowed = {"gelu_elementwise", "gelu_erf", "gelu_mul"}
+    out = []
+    for op in ops:
+        if op.get("semantic_category") == "elementwise_index_preserving" and (_match_pattern(op, patterns) or op.get("semantic_kind") in allowed):
+            out.append(op)
+    return out
+
+
+def detect_ffn_evidence_for_candidate(
+    candidate: dict[str, Any],
+    op_semantics: dict[str, Any],
+    region_semantics: dict[str, Any],
+    model_name: str,
+) -> FFNEvidence:
+    del region_semantics
+    sources = _candidate_source_names(candidate)
+    family = _family_from_sources(model_name, sources)
+    layer = _layer_from_candidate(candidate)
+    if layer is None:
+        for source in sources:
+            layer = _layer_from_text(source)
+            if layer is not None:
+                break
+    ops = _ops_for_layer(op_semantics, layer)
+    if not ops and sources:
+        source_set = {_normalize_path(source) for source in sources}
+        ops = [
+            op for op in op_semantics.get("ops", [])
+            if _normalize_path(str(op.get("source_name", ""))) in source_set
+        ]
+    pattern = _pattern_for_family(family)
+    projection_kinds = {"parameterized_linear_matmul", "parameterized_linear_gemm"}
+    expansion = _find_matching_op(ops, pattern.expansion_projection_patterns, projection_kinds)
+    if not expansion:
+        expansion = _find_matching_op(ops, pattern.expansion_projection_patterns)
+    contraction = _find_matching_op(ops, pattern.contraction_projection_patterns, projection_kinds)
+    if not contraction:
+        contraction = _find_matching_op(ops, pattern.contraction_projection_patterns)
+    expansion_bias = _find_matching_op(ops, pattern.expansion_bias_patterns, {"linear_bias_add"})
+    contraction_bias = _find_matching_op(ops, pattern.contraction_bias_patterns, {"linear_bias_add"})
+    activation = _find_activation_ops(ops, pattern.activation_patterns)
+    residual = _find_support_op(ops, pattern.residual_patterns)
+    layernorm = _find_support_op(ops, pattern.layernorm_patterns)
+    missing = []
+    if not expansion:
+        missing.append("missing expansion projection evidence")
+    if not activation:
+        missing.append("missing activation evidence")
+    if not contraction:
+        missing.append("missing contraction projection evidence")
+    if not expansion_bias and not (expansion and str(expansion.get("op_type", "")).lower() == "gemm"):
+        missing.append("missing expansion bias evidence")
+    if not contraction_bias and not (contraction and str(contraction.get("op_type", "")).lower() == "gemm"):
+        missing.append("missing contraction bias evidence")
+    status = "complete" if not any(item.startswith("missing expansion") or item.startswith("missing activation") or item.startswith("missing contraction") for item in missing) else "partial" if (expansion or contraction or activation) else "missing"
+    confidence = "high" if status == "complete" else "medium" if status == "partial" else "low"
+    return FFNEvidence(layer, family, expansion, expansion_bias, activation, contraction, contraction_bias, residual, layernorm, status, missing, confidence)
 
 
 def _find_op(ops: list[dict[str, Any]], contains: str, semantic_kind: str | None = None) -> dict[str, Any] | None:
@@ -299,21 +514,23 @@ def _synthesize_ffn_plan(
     op_semantics: dict[str, Any],
     index: int,
 ) -> PruningPlan:
-    layer = _layer_from_candidate(candidate)
+    evidence = detect_ffn_evidence_for_candidate(candidate, op_semantics, region_semantics, model_name)
+    layer = evidence.layer_index
     index_set = _index_set(layer)
-    layer_ops = _ops_for_layer(op_semantics, layer)
-    intermediate_matmul = _find_op(layer_ops, "/intermediate/dense/matmul", "parameterized_linear_matmul")
-    intermediate_bias = _find_op(layer_ops, "/intermediate/dense/add", "linear_bias_add")
-    output_matmul = _find_ffn_output_op(layer_ops, "matmul", "parameterized_linear_matmul")
-    output_bias = _find_ffn_output_op(layer_ops, "add", "linear_bias_add")
-    residual_add = _find_ffn_output_support_op(layer_ops, "add", "residual_add")
-    layernorm = _find_ffn_output_support_op(layer_ops, "layernorm/layernormalization", "layernorm")
-    gelu_ops = _find_gelu_ops(layer_ops)
+    intermediate_matmul = evidence.expansion_matmul_op
+    intermediate_bias = evidence.expansion_bias_op
+    output_matmul = evidence.contraction_matmul_op
+    output_bias = evidence.contraction_bias_op
+    residual_add = evidence.residual_op
+    layernorm = evidence.layernorm_op
+    gelu_ops = evidence.activation_ops
     actions: list[PlanAction] = []
     if intermediate_matmul:
         actions.append(_make_action(0, "prune_producer_output", intermediate_matmul, "output_dim", "intermediate_dim", index_set.name, True, "Prune FFN intermediate projection output features using the symbolic index set."))
     if intermediate_bias:
         actions.append(_make_action(1, "prune_bias", intermediate_bias, "bias_dim", "intermediate_dim", index_set.name, True, "Prune intermediate projection bias entries with the same indices."))
+    elif intermediate_matmul and str(intermediate_matmul.get("op_type", "")).lower() == "gemm":
+        actions.append(_make_action(1, "prune_bias", intermediate_matmul, "bias_dim", "intermediate_dim", index_set.name, True, "Prune fused Gemm bias entries with the same indices when the backend exposes bias parameters."))
     if output_matmul:
         actions.append(_make_action(2, "prune_consumer_input", output_matmul, "input_dim", "intermediate_dim", index_set.name, True, "Prune FFN output projection input columns with the same indices."))
         actions.append(_make_action(3, "preserve_output", output_matmul, "output_dim", "hidden_dim", "", True, "Preserve FFN output hidden_dim."))
@@ -338,8 +555,12 @@ def _synthesize_ffn_plan(
         preserved.append(PreservedDimension("hidden_dim", str(output_bias.get("source_name", "")), "Output dense bias belongs to hidden_dim and is not pruned by intermediate_dim pruning."))
     if residual_add:
         preserved.append(PreservedDimension("hidden_dim", str(residual_add.get("source_name", "")), "Residual hidden_dim remains unchanged."))
+    else:
+        preserved.append(PreservedDimension("hidden_dim", "residual hidden_dim", "Residual hidden_dim remains unchanged symbolically."))
     if layernorm:
         preserved.append(PreservedDimension("hidden_dim", str(layernorm.get("source_name", "")), "LayerNorm hidden_dim remains unchanged."))
+    else:
+        preserved.append(PreservedDimension("hidden_dim", "LayerNorm hidden_dim", "LayerNorm hidden_dim remains unchanged symbolically."))
     forbidden = [
         ForbiddenAction("do_not_prune", "hidden_dim", str(residual_add.get("source_name", "residual hidden_dim")) if residual_add else "residual hidden_dim", "Residual hidden_dim pruning is outside this FFN intermediate plan."),
         ForbiddenAction("do_not_prune", "hidden_dim", str(layernorm.get("source_name", "LayerNorm hidden_dim")) if layernorm else "LayerNorm hidden_dim", "LayerNorm hidden_dim pruning is outside this FFN intermediate plan."),
@@ -347,7 +568,7 @@ def _synthesize_ffn_plan(
     ]
     checks = [
         _check(0, "required_op_present", "pass" if intermediate_matmul else "fail", "Required intermediate dense MatMul evidence."),
-        _check(1, "required_op_present", "pass" if intermediate_bias else "fail", "Required intermediate dense bias Add evidence."),
+        _check(1, "required_op_present", "pass" if intermediate_bias or (intermediate_matmul and str(intermediate_matmul.get("op_type", "")).lower() == "gemm") else "fail", "Required intermediate dense bias Add or fused Gemm bias evidence."),
         _check(2, "required_op_present", "pass" if output_matmul else "fail", "Required output dense MatMul evidence."),
         _check(3, "required_op_present", "pass" if gelu_ops else "fail", "Required GELU/index-preserving activation evidence."),
         _check(4, "hidden_dim_preserved", "pass" if output_matmul else "fail", "Output dense hidden_dim is preserved."),
@@ -359,6 +580,8 @@ def _synthesize_ffn_plan(
     missing = [check.check_type + ":" + check.explanation for check in checks if check.status == "fail"]
     if missing:
         warnings.extend("missing_" + item for item in missing)
+    for item in evidence.missing_evidence:
+        warnings.append("missing_" + item.replace(" ", "_"))
     status = "ready_symbolic" if not missing and not candidate.get("blockers") else "incomplete"
     if candidate.get("blockers"):
         status = "blocked"
@@ -400,6 +623,9 @@ def _synthesize_ffn_plan(
                 "pruning_role": region.get("pruning_role"),
             },
             "op_semantics_summary": {
+                "family": evidence.family,
+                "evidence_status": evidence.evidence_status,
+                "missing_evidence": evidence.missing_evidence,
                 "intermediate_matmul": bool(intermediate_matmul),
                 "intermediate_bias": bool(intermediate_bias),
                 "gelu_ops": len(gelu_ops),

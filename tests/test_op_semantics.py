@@ -33,6 +33,12 @@ def build_records() -> dict[str, dict]:
             op("op_11", "/model/bert/encoder/layer.0/attention/self/Reshape", "Reshape"),
             op("op_12", "/model/bert/encoder/layer.0/attention/self/Constant", "Constant"),
             op("op_13", "/model/bert/unknown/Foo", "Foo"),
+            op("op_14", "/model/decoder/layers.0/fc1/Gemm", "Gemm"),
+            op("op_15", "/model/decoder/layers.0/fc2/Gemm", "Gemm"),
+            op("op_16", "/model/distilbert/transformer/layer.0/ffn/lin1/MatMul", "MatMul"),
+            op("op_17", "/model/vit/layers.0/mlp/fc2/MatMul", "MatMul"),
+            op("op_18", "/model/transformer/h.0/mlp/c_fc/Gemm", "Gemm"),
+            op("op_19", "/model/decoder/layers.0/activation_fn/Relu", "Relu"),
         ],
     }
     data = op_semantics_ir_to_dict(build_op_semantics_ir(tensor_ir))
@@ -136,3 +142,27 @@ def test_unknown_op_gets_warning_blocker() -> None:
     assert record["semantic_category"] == "unknown"
     assert "unsupported_or_unknown_op_semantics" in record["pruning_effect"]["blockers"]
 
+
+def test_opt_fc1_fc2_are_parameterized_ffn_roles() -> None:
+    records = build_records()
+
+    assert records["op_14"]["semantic_kind"] == "parameterized_linear_matmul"
+    assert records["op_14"]["dimension_roles"]["output"] == "intermediate_dim"
+    assert records["op_15"]["semantic_kind"] == "parameterized_linear_matmul"
+    assert records["op_15"]["dimension_roles"]["input"] == "intermediate_dim"
+    assert records["op_15"]["dimension_roles"]["output"] == "hidden_dim"
+
+
+def test_distilbert_vit_gpt2_ffn_aliases_are_parameterized() -> None:
+    records = build_records()
+
+    assert records["op_16"]["dimension_roles"]["output"] == "intermediate_dim"
+    assert records["op_17"]["dimension_roles"]["input"] == "intermediate_dim"
+    assert records["op_18"]["dimension_roles"]["output"] == "intermediate_dim"
+
+
+def test_generic_activation_alias_is_index_preserving() -> None:
+    record = build_records()["op_19"]
+
+    assert record["semantic_category"] == "elementwise_index_preserving"
+    assert record["index_behavior"] == "index_preserving"

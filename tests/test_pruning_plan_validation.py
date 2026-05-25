@@ -195,3 +195,27 @@ def test_unknown_critical_op_semantics_invalid() -> None:
     ops["ops"][0]["semantic_kind"] = "unknown"
 
     assert "no_unknown_critical_ops" in failed_checks(validated(plan_set, ranking, regions, ops))
+
+
+def test_generic_opt_ffn_plan_validates_with_role_semantics() -> None:
+    base = "/model/decoder/layers.0"
+    generic_ops = {
+        "model_name": "facebook/opt-125m",
+        "ops": [
+            op("fc1", f"{base}/fc1/Gemm", "parameterized_linear_matmul", "Gemm", {"input": "hidden_dim", "output": "intermediate_dim"}),
+            op("relu", f"{base}/activation_fn/Relu", "gelu_elementwise", "Relu", {"input": "intermediate_dim", "output": "intermediate_dim"}),
+            op("fc2", f"{base}/fc2/Gemm", "parameterized_linear_matmul", "Gemm", {"input": "intermediate_dim", "output": "hidden_dim"}),
+        ],
+    }
+    generic_ranking = deepcopy({"model_name": "facebook/opt-125m", "candidates": [candidate()]})
+    generic_ranking["candidates"][0]["op_semantics_evidence"] = [
+        {"source_name": item["source_name"], "semantic_kind": item["semantic_kind"], "semantic_category": item["semantic_category"]}
+        for item in generic_ops["ops"]
+    ]
+    generic_regions = {"model_name": "facebook/opt-125m", "regions": [region()]}
+    plan_set = pruning_plan_set_to_dict(synthesize_pruning_plans(generic_ranking, generic_regions, generic_ops))
+
+    data = validated(plan_set, generic_ranking, generic_regions, generic_ops)
+
+    assert plan_set["plans"][0]["plan_status"] == "ready_symbolic"
+    assert data["summary"]["valid_plans"] == 1

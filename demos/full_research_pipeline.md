@@ -62,6 +62,9 @@ Model checkpoint
   -> Symbolic Pruning Plans
   -> Pruning Plan Validation
   -> Layer Subgraph Validation Pack
+  -> Full-Model Analysis Reports
+  -> Static Coverage Study
+  -> Rule-Gap Diagnosis and Generic FFN Matching
   -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
@@ -73,7 +76,7 @@ Model checkpoint
   -> Legality check
 ```
 
-ONNX currently supplies the frontend graph and Netron visualization. Tensor IR is the frontend-independent analysis substrate; the Structural Region Tree organizes that IR into compiler-inspired semantic regions; Region-Aware Dimension IR lowers region interfaces into symbolic dimensions and equations; Region Pruning Semantics explains region-level roles and blockers; Op Semantics annotates primitive TensorOps with local pruning behavior; Pruning Opportunity Ranking prioritizes safe/constrained/blocked candidates; Pruning Plan Synthesis turns top safe FFN opportunities into symbolic index-set plans; Pruning Plan Validation checks those plans for static consistency; Layer Subgraph Validation Packs project the full-model analysis onto individual learner nodes for inspection; Full-Model Analysis Reports aggregate every layer and compare generated model reports; Static Coverage Study records complete/partial/skipped support across configured models; region legality analysis answers symbolic requests over those dimensions. The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
+ONNX currently supplies the frontend graph and Netron visualization. Tensor IR is the frontend-independent analysis substrate; the Structural Region Tree organizes that IR into compiler-inspired semantic regions; Region-Aware Dimension IR lowers region interfaces into symbolic dimensions and equations; Region Pruning Semantics explains region-level roles and blockers; Op Semantics annotates primitive TensorOps with local pruning behavior; Pruning Opportunity Ranking prioritizes safe/constrained/blocked candidates; Pruning Plan Synthesis turns top safe FFN opportunities into symbolic index-set plans; Pruning Plan Validation checks those plans for static consistency; Layer Subgraph Validation Packs project the full-model analysis onto individual learner nodes for inspection; Full-Model Analysis Reports aggregate every layer and compare generated model reports; Static Coverage Study records complete/partial/skipped support across configured models; Rule-Gap Diagnosis identifies missing model-family rules and binds generic FFN evidence across common transformer naming schemes; region legality analysis answers symbolic requests over those dimensions. The Netron index lists the original ONNX model first, so extracted structural regions can be opened alongside their full-graph source context.
 
 Optional backend ladder:
 
@@ -109,19 +112,24 @@ Read these reports in order:
 20. `reports/pruning_plan_validation_dumps/bert-base-uncased.pvalid`
 21. `reports/layer_subgraph_validation/bert-base-uncased/layer_0/index.md`
 22. `artifacts/layer_subgraphs/bert-base-uncased/layer_0/`
-23. `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
-24. `reports/region_legality_checks/`
-25. `reports/dependency_graphs/bert-base-uncased.md`
-26. `reports/correspondence/bert-base-uncased.md`
-27. `reports/join_subgraphs/bert-base-uncased.md`
-28. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
-29. `reports/dag_regions/bert-base-uncased.md`
-30. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
-31. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
-32. `reports/model_pruning_maps/bert-base-uncased.md`
-33. `reports/dimension_ir/bert-base-uncased.md`
-34. `reports/pruning_ir_dumps/bert-base-uncased.pir`
-35. `reports/legality_checks/`
+23. `reports/model_analysis_reports/bert-base-uncased/index.md`
+24. `reports/static_pipeline_status/bert-base-uncased.md`
+25. `reports/static_coverage_study/index.md`
+26. `reports/rule_gap_diagnosis/bert-base-uncased.md`
+27. `reports/rule_gap_diagnosis_compare/index.md`
+28. `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
+29. `reports/region_legality_checks/`
+30. `reports/dependency_graphs/bert-base-uncased.md`
+31. `reports/correspondence/bert-base-uncased.md`
+32. `reports/join_subgraphs/bert-base-uncased.md`
+33. `reports/subgraph_pruning_analysis/bert-base-uncased.md`
+34. `reports/dag_regions/bert-base-uncased.md`
+35. `reports/dag_region_pruning_evidence/bert-base-uncased.md`
+36. `reports/netron_subgraph_index/bert-base-uncased__demo.md`
+37. `reports/model_pruning_maps/bert-base-uncased.md`
+38. `reports/dimension_ir/bert-base-uncased.md`
+39. `reports/pruning_ir_dumps/bert-base-uncased.pir`
+40. `reports/legality_checks/`
 
 ## Mainline vs backend
 

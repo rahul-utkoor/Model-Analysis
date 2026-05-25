@@ -759,3 +759,27 @@ Primary commands:
 ```
 
 This is a static coverage/generalization study. It distinguishes complete support from partial/skipped support and records where new model-specific semantics are needed.
+
+## Milestone 32: Cross-Model Rule-Gap Diagnosis and Generic FFN Matching
+
+Status: complete.
+
+Implemented:
+
+- Rule-gap diagnosis reports for incomplete plans, invalid validations, missing FFN fusion, skipped layer grouping, and unknown op semantics
+- Family detection for BERT, DistilBERT, OPT, GPT-2, ViT, and unknown models using op-semantic source paths
+- Generic FFN evidence matching for `intermediate/output dense`, `ffn.lin1/lin2`, `fc1/fc2`, `mlp.fc1/fc2`, and `mlp.c_fc/c_proj`
+- Generic plan synthesis/validation over expansion projection, activation propagation, contraction projection, hidden preservation, and fused Gemm bias actions
+- Synthetic tests for cross-family matching, diagnosis, Markdown, and comparison reports
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/diagnose_rule_gaps.py --models all --verbose
+./conda-env/bin/python scripts/explain_rule_gap.py --model facebook/opt-125m
+./conda-env/bin/python scripts/compare_rule_gaps.py --models all
+./conda-env/bin/python scripts/build_static_pipeline_for_all_models.py --models all --build-missing-analysis --build-layer-packs --verbose
+./conda-env/bin/python scripts/report_static_pipeline_coverage.py --models all --verbose
+```
+
+This is static diagnosis/reporting only. Generic FFN matching improves symbolic plan evidence binding; it does not choose pruning indices, modify models, execute pruning, rewrite ONNX, download models, or evaluate accuracy.

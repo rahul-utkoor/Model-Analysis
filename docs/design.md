@@ -679,3 +679,9 @@ The report layer does not create new pruning decisions. It improves learner-faci
 The static coverage study is an orchestration and audit layer. For each configured model, it records whether each pipeline stage is already present, built from local prerequisites, skipped because inputs are missing, failed, or not applicable. This makes BERT's complete support visible without pretending that decoder-only or vision-transformer models are already covered by BERT-specific structural rules.
 
 The coverage study does not download models or create missing base artifacts. Optional build flags only run downstream static analysis when local prerequisites already exist. The output is intended to guide the next semantic-rule work for DistilBERT, GPT/OPT-style decoders, and ViT-style patch/MLP structures.
+
+## Rule-Gap Diagnosis and Generic FFN Evidence
+
+Rule-gap diagnosis turns the static coverage audit into concrete semantic-rule work items. It inspects status manifests, op semantics, region pruning semantics, rankings, plans, and validation reports to distinguish missing layer grouping, missing feed-forward fusion, missing FFN evidence binding, missing activation semantics, and validation policies that are too tied to a single model family.
+
+Generic FFN evidence matching separates the symbolic plan pattern from BERT-specific names. The same safe plan shape can be bound to expansion projection, index-preserving activation, contraction projection, hidden preservation, and optional/fused bias evidence for BERT `intermediate/output dense`, DistilBERT `ffn.lin1/lin2`, OPT `fc1/fc2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj` paths when the upstream artifacts expose those ops. This remains conservative static analysis; attention contractions stay blocked unless a future head-axis mapping proof is added.

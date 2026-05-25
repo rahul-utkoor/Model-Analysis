@@ -32,6 +32,7 @@ run_cmd "${PYTHON_BIN}" scripts/validate_pruning_plans.py --model "${MODEL}" --v
 run_cmd "${PYTHON_BIN}" scripts/build_layer_subgraph_validation_pack.py --model "${MODEL}" --layer 0 --export-onnx --render-svg --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_full_model_analysis_report.py --model "${MODEL}" --layers all --export-onnx-subgraphs --render-svg --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_static_pipeline_for_model.py --model "${MODEL}" --build-missing-analysis --build-layer-packs --verbose
+run_cmd "${PYTHON_BIN}" scripts/diagnose_rule_gaps.py --models "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/list_region_dimensions.py --model "${MODEL}" --contains intermediate --limit 10
 run_cmd "${PYTHON_BIN}" scripts/explain_region_blocked_dimensions.py --model "${MODEL}"
 run_cmd "${PYTHON_BIN}" scripts/build_dependency_graph.py --model "${MODEL}" --require-onnx --verbose
@@ -69,6 +70,7 @@ echo "  artifacts/layer_subgraphs/${MODEL}/layer_0/"
 echo "  reports/model_analysis_reports/${MODEL}/index.md"
 echo "  artifacts/model_analysis_subgraphs/${MODEL}/"
 echo "  reports/static_pipeline_status/${MODEL}.md"
+echo "  reports/rule_gap_diagnosis/${MODEL}.md"
 echo "  reports/region_blocked_analysis/${MODEL}__blocked_dimensions.md"
 echo "  reports/dependency_graphs/${MODEL}.md"
 echo "  reports/correspondence/${MODEL}.md"
