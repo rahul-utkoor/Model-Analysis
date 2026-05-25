@@ -777,6 +777,18 @@ python scripts/explain_blocked_regions.py --model bert-base-uncased
 
 This performs static legality analysis only. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy.
 
+## Full-Model Static Analysis Reports
+
+Full-model reports collect the static pruning-analysis pipeline into one structured folder per model, with per-layer learner-node reports and a cross-model summary.
+
+```bash
+python scripts/build_full_model_analysis_report.py --model bert-base-uncased --layers all --export-onnx-subgraphs --verbose
+python scripts/build_all_model_analysis_reports.py --models all --layers all --no-export-onnx-subgraphs --verbose
+python scripts/compare_model_analysis_reports.py --models all --verbose
+```
+
+Reports are written under `reports/model_analysis_reports/`; visualization-only ONNX fragments are written under `artifacts/model_analysis_subgraphs/`. These reports do not choose pruning indices, modify models, execute pruning, rewrite full ONNX models, download models, or evaluate accuracy.
+
 ## First Push
 
 ```bash

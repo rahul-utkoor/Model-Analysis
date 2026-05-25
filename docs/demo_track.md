@@ -74,6 +74,10 @@ Executable backend dry run
 | 25 | Region Pruning Semantics | `.rpsem` and explanation reports | Region-level pruning flow, repairs, and blockers |
 | 25.4 | Op Semantics | `.opsem` and explanation reports | Primitive TensorOp pruning behavior |
 | 26 | Pruning Opportunity Ranking | `.rank` and explanation reports | Prioritized safe/constrained/blocked candidates |
+| 27 | Pruning Plan Synthesis | `.plan` and explanation reports | Symbolic FFN pruning plans |
+| 28 | Pruning Plan Validation | `.pvalid` and validation reports | Static plan consistency checks |
+| 29 | Layer Subgraph Validation Pack | Per-node layer evidence folders | Local learner-node evidence projection |
+| 30 | Full-Model Reports | Model and cross-model report trees | Full-model and cross-model static summaries |
 
 ## Mainline vs Backend
 
@@ -122,6 +126,9 @@ For a `bert-base-uncased` walkthrough, the key reports are:
 - `reports/pruning_plan_validation_dumps/bert-base-uncased.pvalid`
 - `reports/layer_subgraph_validation/bert-base-uncased/layer_0/index.md`
 - `artifacts/layer_subgraphs/bert-base-uncased/layer_0/`
+- `reports/model_analysis_reports/bert-base-uncased/index.md`
+- `reports/model_analysis_reports/cross_model/index.md`
+- `artifacts/model_analysis_subgraphs/bert-base-uncased/`
 - `reports/region_blocked_analysis/bert-base-uncased__blocked_dimensions.md`
 - `reports/region_legality_checks/`
 - `reports/dependency_graphs/bert-base-uncased.md`

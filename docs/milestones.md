@@ -713,3 +713,26 @@ Primary commands:
 ```
 
 This is static reporting/visualization only. ONNX fragments are evidence artifacts for Netron and are not treated as standalone full models.
+
+## Milestone 30: Full-Model and Cross-Model Structured Analysis Reports
+
+Status: complete.
+
+Implemented:
+
+- Full-model static analysis report tree under `reports/model_analysis_reports/<model>/`
+- Per-layer polished reports and per-subgraph explanation slices
+- Cross-model summary reports under `reports/model_analysis_reports/cross_model/`
+- Visualization-only subgraph artifacts under `artifacts/model_analysis_subgraphs/`
+- Learner-facing report fixes for attention skeleton, attention softmax, attention output projection, contextual LayerNorm names, and "why no plan" explanations
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/build_full_model_analysis_report.py --model bert-base-uncased --layers all --export-onnx-subgraphs --render-svg --verbose
+./conda-env/bin/python scripts/build_all_model_analysis_reports.py --models all --layers all --no-export-onnx-subgraphs --verbose
+./conda-env/bin/python scripts/compare_model_analysis_reports.py --models all --verbose
+./conda-env/bin/python scripts/explain_model_analysis_report.py --model bert-base-uncased --section feedforward
+```
+
+This is static reporting/visualization only. It does not choose pruning indices, modify models, execute pruning, rewrite full ONNX models, download models, or evaluate accuracy.

@@ -49,6 +49,8 @@ reports/layer_subgraph_validation_compare/*
 !reports/layer_subgraph_validation_compare/.gitkeep
 reports/compact_analysis_snapshots/*
 !reports/compact_analysis_snapshots/.gitkeep
+reports/model_analysis_reports/*
+!reports/model_analysis_reports/.gitkeep
 reports/propagation_traces/*
 !reports/propagation_traces/.gitkeep
 reports/pruning_action_checks/*
@@ -65,6 +67,8 @@ artifacts/subgraph_onnx/*
 !artifacts/subgraph_onnx/.gitkeep
 artifacts/layer_subgraphs/*
 !artifacts/layer_subgraphs/.gitkeep
+artifacts/model_analysis_subgraphs/*
+!artifacts/model_analysis_subgraphs/.gitkeep
 reports/pruning_execution/*
 !reports/pruning_execution/.gitkeep
 reports/pruning_diffs/*

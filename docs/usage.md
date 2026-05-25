@@ -1236,3 +1236,34 @@ If the virtual environment does not exist but dependencies are installed globall
 ```bash
 pytest -q
 ```
+
+## Full-Model Static Analysis Reports
+
+Milestone 30 assembles existing op semantics, region pruning semantics, ranking, plans, validation, and layer subgraph packs into a structured report tree.
+
+```bash
+python scripts/build_full_model_analysis_report.py \
+  --model bert-base-uncased \
+  --layers all \
+  --export-onnx-subgraphs \
+  --verbose
+
+python scripts/build_all_model_analysis_reports.py \
+  --models all \
+  --layers all \
+  --no-export-onnx-subgraphs \
+  --verbose
+
+python scripts/compare_model_analysis_reports.py --models all --verbose
+```
+
+Outputs:
+
+```text
+reports/model_analysis_reports/<model>/index.md
+reports/model_analysis_reports/<model>/layers/layer_<N>/index.md
+reports/model_analysis_reports/cross_model/index.md
+artifacts/model_analysis_subgraphs/<model>/
+```
+
+The report is a static projection of existing analysis artifacts. ONNX subgraphs are visualization evidence only.

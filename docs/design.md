@@ -667,3 +667,9 @@ The Netron index places the canonical original ONNX file under `data/models/onnx
 `scripts/export_static_shape_onnx.py` creates independent fixed-shape visualization exports under `data/models/onnx_static/`. Text exports trace a wrapper that reconstructs keyword model inputs, preventing Hugging Face positional-signature differences from changing semantics; tokenizer fields unsupported by a model are recorded and dropped. Image exports likewise trace a named `pixel_values` wrapper.
 
 The exporter retains static axes, runs ONNX shape inference and validation, and writes metadata beside each artifact. These files support Netron visualization with concrete shapes only. The dynamic export under `data/models/onnx/` remains the source for analysis passes.
+
+## Full-Model Analysis Reports
+
+Full-model analysis reports are a presentation layer over existing static artifacts. They aggregate Op Semantics, Region Pruning Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, Pruning Plan Validation, and per-layer subgraph validation packs into one structured folder per model.
+
+The report layer does not create new pruning decisions. It improves learner-facing explanations, contextualizes duplicated names such as LayerNorm sites, records why constrained/blocked/auxiliary nodes do not receive plans, and writes cross-model summaries when multiple model reports are present. ONNX subgraphs under `artifacts/model_analysis_subgraphs/` remain visualization artifacts only and are not treated as independent models for re-analysis.
