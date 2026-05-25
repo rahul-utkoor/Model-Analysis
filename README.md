@@ -335,6 +335,21 @@ Validate symbolic plans before any optional executable backend consumes them:
 
 Outputs include `reports/pruning_plan_validation/<model>.json`, `reports/pruning_plan_validation_dumps/<model>.pvalid`, and `reports/pruning_plan_validation_explanations/<model>.md`. Validation checks candidate safety, required actions, op-semantics agreement, required repairs, preserved hidden dimensions, forbidden actions, blockers, and unknown critical ops. It is static reporting only and does not choose concrete indices or modify models.
 
+## Layer Subgraph Validation Packs
+
+Build a learner-facing evidence pack for one encoder layer:
+
+```bash
+./conda-env/bin/python scripts/build_layer_subgraph_validation_pack.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --export-onnx \
+  --render-svg \
+  --verbose
+```
+
+Outputs include `reports/layer_subgraph_validation/<model>/layer_<N>/index.md` and per-node folders under both `reports/layer_subgraph_validation/` and `artifacts/layer_subgraphs/`. Each node folder slices the full-model analysis into primitive ops, op semantics, region semantics, ranking, plans, validation, and an optional ONNX visualization fragment. ONNX subgraphs are evidence artifacts for Netron, not standalone analysis sources.
+
 ## Structural Region Tree over Tensor IR
 
 Organize Tensor IR operations into compiler-inspired semantic regions:

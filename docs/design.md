@@ -1,6 +1,6 @@
 # Design Notes
 
-Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, Region-Aware Dimension IR lowers region interfaces into symbolic equations, Region Pruning Semantics and Op Semantics explain pruning-relevant behavior, Pruning Opportunity Ranking prioritizes safe/constrained/blocked candidates, symbolic Pruning Plans specify static FFN repair obligations, Pruning Plan Validation checks those plans for consistency, and region-aware legality analysis evaluates symbolic requests. The current analysis path intentionally stops before modifying weights.
+Model Analysis is a research infrastructure repository for static structural analysis of neural networks. The long-term goal is pruning analysis with forward and backward propagation of pruning constraints. ONNX is a frontend representation; Tensor Graph IR is the frontend-independent substrate, Structural Region Tree is its compiler-inspired semantic hierarchy, Region-Aware Dimension IR lowers region interfaces into symbolic equations, Region Pruning Semantics and Op Semantics explain pruning-relevant behavior, Pruning Opportunity Ranking prioritizes safe/constrained/blocked candidates, symbolic Pruning Plans specify static FFN repair obligations, Pruning Plan Validation checks those plans for consistency, Layer Subgraph Validation Packs project the analysis onto learner-facing encoder-layer nodes, and region-aware legality analysis evaluates symbolic requests. The current analysis path intentionally stops before modifying weights.
 
 ## Pipeline Design
 
@@ -37,6 +37,7 @@ The pipeline is staged:
 29. Region pruning opportunity ranking
 30. Symbolic pruning plan synthesis for safe FFN candidates
 31. Static pruning plan validation and consistency checking
+32. Encoder-layer subgraph evidence and validation packs
 
 Each stage writes JSON and/or Markdown artifacts. JSON files are intended as machine-readable intermediate representation. Markdown files are intended for manual research review.
 
@@ -60,6 +61,7 @@ Model checkpoint
   -> Pruning Opportunity Ranking
   -> Symbolic Pruning Plans
   -> Pruning Plan Validation
+  -> Layer Subgraph Validation Packs
   -> Region-Aware Legality Analysis
   -> Dependency graph
   -> Correspondence and shape evidence
@@ -209,6 +211,9 @@ Milestones 6-8 are documented as optional experimental backend demos. They are u
 
 `pruning_plan_validation.py`
 : Validates symbolic plans against ranking, region semantics, op semantics, required repairs, preserved dimensions, forbidden actions, blockers, and unknown critical ops.
+
+`layer_subgraph_validation_pack.py`
+: Builds per-layer learner evidence folders that slice primitive ops, op semantics, region semantics, rankings, plans, validations, and optional ONNX visualization fragments for each expandable abstract node.
 
 `pruning_map_compare.py`
 : Aggregates and compares pruning map summaries across configured models.

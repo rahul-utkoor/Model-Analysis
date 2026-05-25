@@ -39,6 +39,14 @@ reports/pruning_plan_validation_explanations/*
 !reports/pruning_plan_validation_explanations/.gitkeep
 reports/pruning_plan_validation_compare/*
 !reports/pruning_plan_validation_compare/.gitkeep
+reports/layer_subgraph_validation/*
+!reports/layer_subgraph_validation/.gitkeep
+reports/layer_subgraph_validation_dumps/*
+!reports/layer_subgraph_validation_dumps/.gitkeep
+reports/layer_subgraph_validation_explanations/*
+!reports/layer_subgraph_validation_explanations/.gitkeep
+reports/layer_subgraph_validation_compare/*
+!reports/layer_subgraph_validation_compare/.gitkeep
 reports/propagation_traces/*
 !reports/propagation_traces/.gitkeep
 reports/pruning_action_checks/*
@@ -53,6 +61,8 @@ artifacts/pruned_models/*
 !artifacts/pruned_models/.gitkeep
 artifacts/subgraph_onnx/*
 !artifacts/subgraph_onnx/.gitkeep
+artifacts/layer_subgraphs/*
+!artifacts/layer_subgraphs/.gitkeep
 reports/pruning_execution/*
 !reports/pruning_execution/.gitkeep
 reports/pruning_diffs/*

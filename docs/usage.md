@@ -441,6 +441,44 @@ reports/pruning_plan_validation_compare/summary.md
 
 Validation is the final static gate before any optional executable pruning backend. It does not choose concrete indices, modify models, execute pruning, or rewrite ONNX.
 
+## Layer Subgraph Validation Packs
+
+Build local evidence folders for learner-facing abstract nodes in one encoder layer:
+
+```bash
+./conda-env/bin/python scripts/build_layer_subgraph_validation_pack.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --export-onnx \
+  --render-svg \
+  --verbose
+```
+
+Explain selected records:
+
+```bash
+./conda-env/bin/python scripts/explain_layer_subgraph_validation.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --contains "Feed Forward"
+
+./conda-env/bin/python scripts/explain_layer_subgraph_validation.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --class safe
+```
+
+Generated outputs:
+
+```text
+reports/layer_subgraph_validation/<model>/layer_<N>/index.json
+reports/layer_subgraph_validation/<model>/layer_<N>/index.md
+reports/layer_subgraph_validation/<model>/layer_<N>/<node>/explanation.md
+artifacts/layer_subgraphs/<model>/layer_<N>/<node>/subgraph.onnx
+```
+
+Layer subgraph packs are local projections of the full-model analysis. The ONNX fragments are visualization/evidence artifacts for Netron and are not treated as standalone full models.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

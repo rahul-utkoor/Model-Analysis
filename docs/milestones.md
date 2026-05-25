@@ -690,3 +690,26 @@ Primary commands:
 ```
 
 This is static reporting/analysis only. Validation does not choose concrete indices, modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.
+
+## Milestone 29: Encoder-Layer Subgraph Evidence and Validation Pack
+
+Status: complete.
+
+Implemented:
+
+- Layer Subgraph Validation Pack IR for learner-facing encoder-layer nodes
+- Per-node analysis folders with primitive ops, op semantics, region semantics, ranking, plan, validation, and explanation slices
+- Best-effort ONNX visualization fragment export under `artifacts/layer_subgraphs/`
+- JSON, Markdown, and text dump reports plus explain/compare CLIs
+- Synthetic tests for selection, deduplication, learner ordering, classification, local slices, ONNX failure handling, Markdown, and comparison summaries
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/build_layer_subgraph_validation_pack.py --model bert-base-uncased --layer 0 --export-onnx --render-svg --verbose
+./conda-env/bin/python scripts/explain_layer_subgraph_validation.py --model bert-base-uncased --layer 0 --contains "Feed Forward"
+./conda-env/bin/python scripts/explain_layer_subgraph_validation.py --model bert-base-uncased --layer 0 --class safe
+./conda-env/bin/python scripts/compare_layer_subgraph_validation.py --models bert-base-uncased --layer 0
+```
+
+This is static reporting/visualization only. ONNX fragments are evidence artifacts for Netron and are not treated as standalone full models.
