@@ -317,6 +317,8 @@ def _ranking_summary(loaded: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "auxiliary": summary.get("auxiliary_candidates", 0),
         "unknown": summary.get("unknown_candidates", 0),
         "mlp_safe_candidates": summary.get("mlp_safe_candidates", 0),
+        "generic_mlp_safe_candidates": summary.get("generic_mlp_safe_candidates", 0),
+        "generic_mlp_constrained_candidates": summary.get("generic_mlp_constrained_candidates", 0),
         "attention_constrained_candidates": summary.get("attention_constrained_candidates", 0),
         "residual_blocked_candidates": summary.get("residual_blocked_candidates", 0),
         "layernorm_blocked_candidates": summary.get("layernorm_blocked_candidates", 0),

@@ -1320,3 +1320,22 @@ reports/rule_gap_diagnosis_compare/index.md
 ```
 
 The matcher recognizes BERT `intermediate/output dense`, DistilBERT `ffn.lin1/lin2`, OPT `fc1/fc2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj` evidence. It only binds static plan evidence; it does not choose pruning indices or execute pruning.
+
+## Generic MLP Region Fusion
+
+Milestone 33 recovers FFN/MLP regions from op semantics when model-family naming prevents a native structural `FeedForwardRegion`.
+
+```bash
+python scripts/build_region_pruning_semantics.py --model distilbert-base-uncased --verbose
+python scripts/rank_pruning_opportunities.py --model distilbert-base-uncased --verbose
+python scripts/synthesize_pruning_plans.py --model distilbert-base-uncased --verbose
+python scripts/validate_pruning_plans.py --model distilbert-base-uncased --verbose
+```
+
+The generic rule matches:
+
+- expansion projection: `hidden_dim -> intermediate_dim`
+- activation: index-preserving `intermediate_dim -> intermediate_dim`
+- contraction projection: `intermediate_dim -> hidden_dim`
+
+Generated `GenericMLPRegion` records map to the same symbolic FFN pruning plan shape as BERT and OPT. This remains static analysis/reporting only.

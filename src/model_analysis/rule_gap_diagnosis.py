@@ -103,6 +103,7 @@ def diagnose_rule_gaps_for_model(root: Path, model_name: str) -> RuleGapDiagnosi
     safe = safe_model_name(model_name)
     status = _load(root / "reports" / "static_pipeline_status" / f"{safe}.json")
     op_sem = _load(root / "reports" / "op_semantics" / f"{safe}.json")
+    region_sem = _load(root / "reports" / "region_pruning_semantics" / f"{safe}.json")
     ranking = _load(root / "reports" / "pruning_opportunity_rankings" / f"{safe}.json")
     plans = _load(root / "reports" / "pruning_plans" / f"{safe}.json")
     validations = _load(root / "reports" / "pruning_plan_validation" / f"{safe}.json")
@@ -110,6 +111,7 @@ def diagnose_rule_gaps_for_model(root: Path, model_name: str) -> RuleGapDiagnosi
     plan_summary = plans.get("summary", {})
     validation_summary = validations.get("summary", {})
     ranking_summary = ranking.get("summary", {})
+    region_summary = region_sem.get("summary", {})
     ffn_counts = _ffn_like_counts(op_sem)
     gaps: list[RuleGap] = []
     repairs: list[RuleRepairSuggestion] = []
@@ -149,7 +151,12 @@ def diagnose_rule_gaps_for_model(root: Path, model_name: str) -> RuleGapDiagnosi
         candidate_repairs=repairs,
         evidence_summary={
             "ranking_summary": ranking_summary,
+            "region_semantics_summary": region_summary,
             "ffn_like_op_counts": ffn_counts,
+            "generic_mlp_matches": region_summary.get("generic_mlp_regions", 0),
+            "generic_mlp_safe_candidates": ranking_summary.get("generic_mlp_safe_candidates", 0),
+            "generic_mlp_constrained_candidates": ranking_summary.get("generic_mlp_constrained_candidates", 0),
+            "generic_mlp_valid_plans": validation_summary.get("valid_plans", 0) if region_summary.get("generic_mlp_regions", 0) else 0,
             "unknown_ops": unknown_ops,
         },
         conclusion=conclusion,
@@ -171,4 +178,3 @@ def compare_rule_gap_diagnoses(diagnoses: list[dict[str, Any]]) -> dict[str, Any
         "gap_type_counts": dict(sorted(gap_counts.items())),
         "diagnoses": diagnoses,
     }
-

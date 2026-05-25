@@ -685,3 +685,9 @@ The coverage study does not download models or create missing base artifacts. Op
 Rule-gap diagnosis turns the static coverage audit into concrete semantic-rule work items. It inspects status manifests, op semantics, region pruning semantics, rankings, plans, and validation reports to distinguish missing layer grouping, missing feed-forward fusion, missing FFN evidence binding, missing activation semantics, and validation policies that are too tied to a single model family.
 
 Generic FFN evidence matching separates the symbolic plan pattern from BERT-specific names. The same safe plan shape can be bound to expansion projection, index-preserving activation, contraction projection, hidden preservation, and optional/fused bias evidence for BERT `intermediate/output dense`, DistilBERT `ffn.lin1/lin2`, OPT `fc1/fc2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj` paths when the upstream artifacts expose those ops. This remains conservative static analysis; attention contractions stay blocked unless a future head-axis mapping proof is added.
+
+## Generic MLP Region Fusion
+
+Generic MLP fusion promotes complete primitive op-semantics evidence into region-level pruning semantics when the structural tree does not already contain a feed-forward region. The abstraction is intentionally small: expansion projection from hidden to intermediate width, index-preserving activation over the intermediate width, and contraction projection back to hidden width.
+
+The synthesized `GenericMLPRegion` records reuse the established region pruning semantics contract: `intermediate_dim` is prunable, `hidden_dim` is protected, the same indices must propagate through the MLP, the contraction input must be repaired, and hidden output dimensions are preserved. This gives DistilBERT, ViT, and GPT-2 the same static plan shape as BERT/OPT when the evidence is complete, without changing model weights or executing pruning.

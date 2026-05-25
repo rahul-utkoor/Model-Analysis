@@ -813,6 +813,19 @@ python scripts/compare_rule_gaps.py --models all
 
 Reports are written under `reports/rule_gap_diagnosis/` and `reports/rule_gap_diagnosis_compare/`. Generic FFN evidence matching now recognizes BERT `intermediate/output dense`, DistilBERT `ffn.lin1/lin2`, OPT `fc1/fc2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj` naming where op evidence exists. This remains static reporting and does not modify models or execute pruning.
 
+## Generic MLP Region Fusion
+
+Generic MLP fusion recovers feed-forward blocks directly from op semantics when the Structural Region Tree does not already expose a native `FeedForwardRegion`.
+
+```bash
+python scripts/build_region_pruning_semantics.py --model distilbert-base-uncased --verbose
+python scripts/rank_pruning_opportunities.py --model distilbert-base-uncased --verbose
+python scripts/synthesize_pruning_plans.py --model distilbert-base-uncased --verbose
+python scripts/validate_pruning_plans.py --model distilbert-base-uncased --verbose
+```
+
+The fusion rule looks for expansion projection, index-preserving activation, and contraction projection evidence. It is still static analysis only; attention contractions remain blocked unless a separate head-axis mapping proof exists.
+
 ## First Push
 
 ```bash

@@ -54,7 +54,7 @@ def static_coverage_report_to_markdown(report: dict[str, Any]) -> str:
         "",
         _table(
             report.get("opportunity_coverage_table", []),
-            ["model_name", "safe", "constrained", "blocked", "auxiliary", "unknown", "mlp_safe", "valid_plans"],
+            ["model_name", "safe", "constrained", "blocked", "auxiliary", "unknown", "mlp_safe", "generic_mlp_safe", "generic_mlp_constrained", "valid_plans"],
         ),
         "",
         "## 5. Semantic coverage table",
@@ -67,6 +67,7 @@ def static_coverage_report_to_markdown(report: dict[str, Any]) -> str:
                 "attention_score",
                 "attention_context",
                 "ffn_blocks",
+                "generic_mlp_regions",
                 "residuals",
                 "layernorms",
                 "unknown_ops",
@@ -121,4 +122,3 @@ def next_work(status: dict[str, Any]) -> str:
     if missing:
         return "build or provide missing static artifacts: " + ", ".join(missing[:3])
     return "inspect failed/skipped stages and add model-specific semantics where needed."
-

@@ -24,8 +24,8 @@ run_cmd "${PYTHON_BIN}" scripts/build_tensor_ir.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/analyze_semantic_fusion.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_structural_region_tree.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_region_dimension_ir.py --model "${MODEL}" --verbose
-run_cmd "${PYTHON_BIN}" scripts/build_region_pruning_semantics.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/build_op_semantics.py --model "${MODEL}" --verbose
+run_cmd "${PYTHON_BIN}" scripts/build_region_pruning_semantics.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/rank_pruning_opportunities.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/synthesize_pruning_plans.py --model "${MODEL}" --verbose
 run_cmd "${PYTHON_BIN}" scripts/validate_pruning_plans.py --model "${MODEL}" --verbose

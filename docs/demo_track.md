@@ -80,6 +80,7 @@ Executable backend dry run
 | 30 | Full-Model Reports | Model and cross-model report trees | Full-model and cross-model static summaries |
 | 31 | Static Coverage Study | Status manifests and coverage report | Cross-model support audit |
 | 32 | Rule-Gap Diagnosis | Diagnosis reports and generic FFN evidence matching | Cross-model semantic-rule generalization |
+| 33 | Generic MLP Region Fusion | Synthesized `GenericMLPRegion` semantics | FFN/MLP recovery beyond BERT/OPT |
 
 ## Mainline vs Backend
 
@@ -96,7 +97,7 @@ Milestones 6, 7, and 8 are experimental execution backends. They are useful for 
 1. Start with `demos/README.md` to frame pruning as compiler analysis.
 2. Run `demo_scripts/run_demo_01_setup_check.sh`.
 3. If model files are not present, run the download and ONNX export commands manually.
-4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, pruning opportunity ranking, pruning plan synthesis, pruning plan validation, layer subgraph validation pack, full-model reports, static coverage, rule-gap diagnosis, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
+4. Run the structural inventory, Tensor IR, semantic fusion, Structural Region Tree, control-tree trace, Region-Aware Dimension IR, region pruning semantics, Op Semantics, pruning opportunity ranking, pruning plan synthesis, pruning plan validation, layer subgraph validation pack, full-model reports, static coverage, rule-gap diagnosis, generic MLP fusion, region-aware legality, dependency graph, correspondence, subgraph analysis, DAG-region analysis, Netron export, pruning map, Dimension IR, and legality demos.
 5. Open the reports in the artifact ladder order.
 6. Mention backend demos only as optional lowering experiments.
 

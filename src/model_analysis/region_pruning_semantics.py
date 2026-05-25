@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from model_analysis.generic_mlp_fusion import GenericMLPMatch, detect_generic_mlp_matches
 from model_analysis.paths import ensure_dir
 
 
@@ -712,8 +713,75 @@ def _summary(records: list[RegionSemanticsRecord]) -> dict[str, Any]:
         "attention_blocked_regions": sum(1 for item in records if any(blocker.blocker_type == "attention_head_mapping_unproven" for blocker in item.blockers)),
         "residual_blocked_regions": sum(1 for item in records if any(blocker.blocker_type == "residual_hidden_dim" for blocker in item.blockers)),
         "layernorm_protected_regions": sum(1 for item in records if item.region_type == "LayerNormRegion"),
-        "mlp_pruning_opportunities": sum(1 for item in records if item.region_type == "FeedForwardRegion" and item.pruning_role == "directly_prunable"),
+        "mlp_pruning_opportunities": sum(1 for item in records if item.semantic_category in {"feed_forward_block", "mlp_block"} and item.pruning_role == "directly_prunable"),
+        "generic_mlp_regions": sum(1 for item in records if item.region_type == "GenericMLPRegion"),
+        "generic_mlp_safe_regions": sum(1 for item in records if item.region_type == "GenericMLPRegion" and item.pruning_role == "directly_prunable"),
+        "generic_mlp_constrained_regions": sum(1 for item in records if item.region_type == "GenericMLPRegion" and item.pruning_role == "constraint_carrier"),
     }
+
+
+def _generic_mlp_section(match: GenericMLPMatch) -> str:
+    if match.family == "gpt2":
+        return f"Decoder Block {match.layer_index}"
+    if match.family == "vit":
+        return f"ViT Layer {match.layer_index}"
+    return f"Encoder Layer {match.layer_index}"
+
+
+def _generic_mlp_record(model_name: str, match: GenericMLPMatch, index: int) -> RegionSemanticsRecord:
+    region_id = f"generic_mlp::{match.family}::{match.layer_index:04d}"
+    dimensions: list[DimensionSemantics] = []
+    rules: list[PropagationRule] = []
+    repairs: list[RepairObligation] = []
+    blockers: list[Blocker] = []
+    _add_dim(dimensions, "intermediate_dim", "intermediate_dim", "prunable", "generic_mlp_fusion", "Generic MLP expansion output is the local pruning axis.")
+    _add_dim(dimensions, "hidden_dim", "hidden_dim", "protected", "generic_mlp_fusion", "Generic MLP contraction output preserves the model hidden path.")
+    rules.append(_rule(region_id, 0, "same_indices_across_mlp", "intermediate_dim", ["expansion.output_dim", "activation.intermediate_dim", "contraction.input_dim"], "same_indices", "bidirectional", "Use the same intermediate_dim indices through expansion, activation, and contraction."))
+    repairs.append(_repair(region_id, 0, "same_indices_across_mlp", [region_id], ["intermediate_dim"], True, "Use one index set across the generic MLP block."))
+    repairs.append(_repair(region_id, 1, "prune_consumer_input", [region_id], ["intermediate_dim"], True, "Prune contraction projection input columns to match expansion output pruning."))
+    repairs.append(_repair(region_id, 2, "preserve_hidden_output", [region_id], ["hidden_dim"], True, "Preserve the contraction projection output hidden_dim."))
+    if match.expansion_bias_op or (match.expansion_op and str(match.expansion_op.get("op_type", "")).lower() == "gemm"):
+        repairs.append(_repair(region_id, 3, "prune_bias", [region_id], ["intermediate_dim"], True, "Prune expansion projection bias entries when present or fused in Gemm."))
+    for missing in match.missing_evidence:
+        blockers.append(_blocker(region_id, len(blockers), missing, "blocker", f"Generic MLP evidence is incomplete: {missing}."))
+    pruning_role = "directly_prunable" if match.evidence_status == "complete" and not any(blocker.severity == "blocker" for blocker in blockers) else "constraint_carrier"
+    evidence = {
+        "source_ops": [str(op.get("op_id", "")) for op in match.source_ops if op.get("op_id")],
+        "source_region_type": "GenericMLPRegion",
+        "generic_mlp_family": match.family,
+        "generic_mlp_evidence_status": match.evidence_status,
+        "generic_mlp_missing_evidence": match.missing_evidence,
+        "generic_mlp_warnings": ["synthesized_from_generic_mlp_match", *match.warnings],
+        "confidence": match.confidence,
+    }
+    return RegionSemanticsRecord(
+        region_id=f"{region_id}::{index:04d}",
+        region_name=match.block_name,
+        source_region_type="GenericMLPRegion",
+        semantic_category="feed_forward_block",
+        region_type="GenericMLPRegion",
+        section=_generic_mlp_section(match),
+        op_range=match.op_range,
+        primitive_leaf_count=len(match.source_ops),
+        pruning_role=pruning_role,
+        dimensions=dimensions,
+        propagation_rules=rules,
+        repair_obligations=repairs,
+        blockers=blockers,
+        evidence=evidence,
+    )
+
+
+def _append_generic_mlp_records(records: list[RegionSemanticsRecord], model_name: str, op_semantics: dict[str, Any] | None) -> None:
+    if not op_semantics:
+        return
+    native_ffn_count = sum(1 for record in records if record.region_type == "FeedForwardRegion")
+    if native_ffn_count:
+        return
+    for index, match in enumerate(detect_generic_mlp_matches(model_name, op_semantics)):
+        if match.evidence_status == "missing":
+            continue
+        records.append(_generic_mlp_record(model_name, match, index))
 
 
 def build_region_pruning_semantics(
@@ -721,6 +789,7 @@ def build_region_pruning_semantics(
     tensor_ir: dict[str, Any],
     *,
     region_dimension_ir: dict[str, Any] | None = None,
+    op_semantics: dict[str, Any] | None = None,
     abstract_expansion_report: dict[str, Any] | None = None,
     source_region_tree_path: str = "",
     source_region_dimension_ir_path: str | None = None,
@@ -751,6 +820,7 @@ def build_region_pruning_semantics(
             constraints_by_region.get(region_id, []),
         )
         records.append(record)
+    _append_generic_mlp_records(records, structural_region_tree.get("model_name", tensor_ir.get("model_name", "model")), op_semantics)
 
     return RegionPruningSemantics(
         model_name=structural_region_tree.get("model_name", tensor_ir.get("model_name", "model")),

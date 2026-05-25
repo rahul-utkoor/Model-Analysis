@@ -783,3 +783,27 @@ Primary commands:
 ```
 
 This is static diagnosis/reporting only. Generic FFN matching improves symbolic plan evidence binding; it does not choose pruning indices, modify models, execute pruning, rewrite ONNX, download models, or evaluate accuracy.
+
+## Milestone 33: Generalized FFN/MLP Region Fusion and Ranking
+
+Status: complete.
+
+Implemented:
+
+- Generic MLP fusion from op semantics into synthesized `GenericMLPRegion` records
+- Expansion/activation/contraction matching for DistilBERT `ffn.lin1/lin2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj`
+- Region pruning semantics and ranking support for generic MLP safe/constrained candidates
+- Static coverage and diagnosis summaries for recovered generic MLP regions and plans
+- Regression checks preserving BERT and OPT valid FFN plans
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/build_region_pruning_semantics.py --model distilbert-base-uncased --verbose
+./conda-env/bin/python scripts/rank_pruning_opportunities.py --model distilbert-base-uncased --verbose
+./conda-env/bin/python scripts/synthesize_pruning_plans.py --model distilbert-base-uncased --verbose
+./conda-env/bin/python scripts/validate_pruning_plans.py --model distilbert-base-uncased --verbose
+./conda-env/bin/python scripts/build_static_pipeline_for_all_models.py --models all --build-missing-analysis --build-layer-packs --verbose
+```
+
+This is static analysis/reporting only. It recovers symbolic MLP pruning opportunities and validated plans where evidence is complete; it does not choose concrete indices or modify models.

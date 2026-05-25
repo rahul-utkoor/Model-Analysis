@@ -46,6 +46,7 @@ def build_one(root: Path, config: dict, verbose: bool, include_auxiliary_details
     tree_path = root / "reports" / "structural_region_trees" / f"{safe}.json"
     tensor_path = root / "reports" / "tensor_ir" / f"{safe}.json"
     rdim_path = root / "reports" / "region_dimension_ir" / f"{safe}.json"
+    op_semantics_path = root / "reports" / "op_semantics" / f"{safe}.json"
     expansion_path = root / "reports" / "abstract_node_expansions" / safe / "abstract_node_expansions_main.json"
 
     if not tree_path.exists():
@@ -59,6 +60,7 @@ def build_one(root: Path, config: dict, verbose: bool, include_auxiliary_details
         _load_json(tree_path),
         _load_json(tensor_path),
         region_dimension_ir=_maybe(rdim_path),
+        op_semantics=_maybe(op_semantics_path),
         abstract_expansion_report=_maybe(expansion_path),
         source_region_tree_path=str(tree_path),
         source_region_dimension_ir_path=str(rdim_path) if rdim_path.exists() else None,

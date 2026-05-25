@@ -220,10 +220,10 @@ def _classify_region(region: dict[str, Any], evidence: list[dict[str, Any]]) -> 
     role = region.get("pruning_role", "unknown")
     warnings: list[str] = []
 
-    if category == "feed_forward_block" and role == "directly_prunable" and _has_dim(region, "intermediate_dim", "prunable") and _has_repair(region, "same_indices_across_mlp") and _has_repair(region, "prune_consumer_input") and not region.get("blockers"):
+    if category in {"feed_forward_block", "mlp_block"} and role == "directly_prunable" and _has_dim(region, "intermediate_dim", "prunable") and _has_repair(region, "same_indices_across_mlp") and _has_repair(region, "prune_consumer_input") and not region.get("blockers"):
         confidence = _confidence_with_op_evidence("high", evidence, warnings)
         kinds = {item.get("semantic_kind") for item in evidence}
-        if evidence and not ({"parameterized_linear_matmul", "gelu_erf"} & kinds and "parameterized_linear_matmul" in kinds):
+        if evidence and not ({"parameterized_linear_matmul", "parameterized_linear_gemm"} & kinds and {"gelu_erf", "gelu_mul", "gelu_elementwise"} & kinds):
             warnings.append("incomplete_feedforward_op_semantics_evidence")
             confidence = "medium"
         return (
@@ -234,6 +234,18 @@ def _classify_region(region: dict[str, Any], evidence: list[dict[str, Any]]) -> 
             95,
             confidence,
             "FFN intermediate_dim pruning is structurally local: intermediate projection output, GELU, and FFN output input must use the same indices.",
+            warnings,
+        )
+    if category in {"feed_forward_block", "mlp_block"} and role == "constraint_carrier" and _has_dim(region, "intermediate_dim", "prunable"):
+        confidence = _confidence_with_op_evidence("medium", evidence, warnings)
+        return (
+            "feedforward_intermediate_pruning",
+            "intermediate_dim",
+            "producer_output",
+            "constrained",
+            70,
+            confidence,
+            "Generic MLP intermediate_dim pruning is structurally visible, but one or more preservation or evidence proofs remain unresolved.",
             warnings,
         )
     if category == "ffn_intermediate_projection" and role == "directly_prunable":
@@ -428,6 +440,8 @@ def _summary(candidates: list[PruningOpportunityCandidate]) -> dict[str, Any]:
         "auxiliary_candidates": class_counts.get("auxiliary", 0),
         "unknown_candidates": class_counts.get("unknown", 0),
         "mlp_safe_candidates": sum(1 for item in candidates if item.candidate_kind == "feedforward_intermediate_pruning" and item.pruning_class == "safe"),
+        "generic_mlp_safe_candidates": sum(1 for item in candidates if item.source_region_type == "GenericMLPRegion" and item.candidate_kind == "feedforward_intermediate_pruning" and item.pruning_class == "safe"),
+        "generic_mlp_constrained_candidates": sum(1 for item in candidates if item.source_region_type == "GenericMLPRegion" and item.candidate_kind == "feedforward_intermediate_pruning" and item.pruning_class == "constrained"),
         "attention_constrained_candidates": sum(1 for item in candidates if item.candidate_kind == "attention_projection_constrained_pruning"),
         "residual_blocked_candidates": sum(1 for item in candidates if item.candidate_kind == "residual_hidden_blocked" and item.pruning_class == "blocked"),
         "layernorm_blocked_candidates": sum(1 for item in candidates if item.candidate_kind == "layernorm_hidden_blocked"),
@@ -546,4 +560,3 @@ def pruning_opportunity_ranking_to_markdown(value: PruningOpportunityRanking | d
         ]
     )
     return "\n".join(lines)
-

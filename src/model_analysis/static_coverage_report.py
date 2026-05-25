@@ -36,6 +36,8 @@ def _artifact_counts(status: dict[str, Any]) -> dict[str, Any]:
         "auxiliary": ranking.get("auxiliary", 0),
         "unknown": ranking.get("unknown", 0),
         "mlp_safe": ranking.get("mlp_safe", 0),
+        "generic_mlp_safe": ranking.get("generic_mlp_safe", 0),
+        "generic_mlp_constrained": ranking.get("generic_mlp_constrained", 0),
         "plans": artifacts.get("plans", {}).get("plans", 0),
         "valid_plans": validation.get("valid_plans", 0),
         "layers": report.get("layers", 0),
@@ -57,6 +59,7 @@ def _semantic_counts(status: dict[str, Any], root: Path) -> dict[str, int]:
         "attention_score": op_counts.get("attention_score_matmul", 0),
         "attention_context": op_counts.get("attention_context_matmul", 0),
         "ffn_blocks": region_counts.get("feed_forward_block", 0),
+        "generic_mlp_regions": region.get("summary", {}).get("generic_mlp_regions", 0),
         "residuals": region_counts.get("residual_merge", 0),
         "layernorms": region_counts.get("layer_norm", 0),
         "unknown_ops": op_counts.get("unknown", 0),
@@ -108,6 +111,8 @@ def build_static_coverage_report(root: Path, statuses: list[dict[str, Any]]) -> 
                 "auxiliary": counts["auxiliary"],
                 "unknown": counts["unknown"],
                 "mlp_safe": counts["mlp_safe"],
+                "generic_mlp_safe": counts["generic_mlp_safe"],
+                "generic_mlp_constrained": counts["generic_mlp_constrained"],
                 "valid_plans": counts["valid_plans"],
             }
         )
@@ -150,4 +155,3 @@ def write_static_coverage_report(report: dict[str, Any], output_root: Path, mark
     ensure_dir(output_root)
     (output_root / "index.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     (output_root / "index.md").write_text(markdown_fn(report), encoding="utf-8")
-

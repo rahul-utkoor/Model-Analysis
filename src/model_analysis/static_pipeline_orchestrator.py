@@ -170,6 +170,8 @@ def _safe_candidate_counts(path: Path) -> dict[str, int]:
         "auxiliary": int(summary.get("auxiliary_candidates", 0) or 0),
         "unknown": int(summary.get("unknown_candidates", 0) or 0),
         "mlp_safe": int(summary.get("mlp_safe_candidates", 0) or 0),
+        "generic_mlp_safe": int(summary.get("generic_mlp_safe_candidates", 0) or 0),
+        "generic_mlp_constrained": int(summary.get("generic_mlp_constrained_candidates", 0) or 0),
     }
 
 
