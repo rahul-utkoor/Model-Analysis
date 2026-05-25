@@ -95,7 +95,10 @@ def missing_required_artifacts(missing: list[dict[str, str]]) -> list[dict[str, 
 
 def detect_layers(region_semantics: dict[str, Any] | None, abstract_expansion: dict[str, Any] | None = None) -> list[int]:
     observed: set[int] = set()
-    layer_pattern = re.compile(r"(?:layer\.|Layer\s+)(\d+)")
+    layer_pattern = re.compile(
+        r"(?:layer\.|layers\.|/layer/|/layers/|Layer\s+|Decoder Block\s+|Block\s+|h\.|/h/)(\d+)",
+        re.IGNORECASE,
+    )
     sources: list[str] = []
     if region_semantics:
         for region in _safe_list(region_semantics.get("regions")):
@@ -374,7 +377,7 @@ def _safe_opportunities(loaded: dict[str, dict[str, Any]], plans: dict[str, dict
 
 
 def _infer_layer(text: str) -> int | None:
-    match = re.search(r"Layer\s+(\d+)|layer\.(\d+)", str(text))
+    match = re.search(r"Layer\s+(\d+)|layer\.(\d+)|layers\.(\d+)|Decoder Block\s+(\d+)|Block\s+(\d+)|h\.(\d+)", str(text), re.IGNORECASE)
     if not match:
         return None
     return int(next(group for group in match.groups() if group is not None))

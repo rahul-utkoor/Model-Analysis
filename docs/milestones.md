@@ -807,3 +807,26 @@ Primary commands:
 ```
 
 This is static analysis/reporting only. It recovers symbolic MLP pruning opportunities and validated plans where evidence is complete; it does not choose concrete indices or modify models.
+
+## Milestone 34: Generic Transformer Block Layer Grouping and Subgraph Atlases
+
+Status: complete.
+
+Implemented:
+
+- Generic transformer block grouping for BERT, DistilBERT, OPT, GPT-2, and ViT source-path families
+- Layer/subgraph validation pack fallback from op semantics when BERT abstract-expansion records are unavailable
+- Family-aware learner groups for attention projections, attention internals, residuals, LayerNorms, MLP blocks, MLP expansion, activation, and contraction
+- Full-model report layer detection for encoder layers, decoder blocks, GPT-2 blocks, and ViT layers
+- Validation summary aliases exposing both canonical `valid/warning/invalid/unknown` fields and backward-compatible `valid_plans/invalid_plans` fields
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/build_layer_subgraph_validation_pack.py --model facebook/opt-125m --layer 0 --export-onnx --render-svg --verbose
+./conda-env/bin/python scripts/build_layer_subgraph_validation_pack.py --model gpt2 --layer 0 --export-onnx --render-svg --verbose
+./conda-env/bin/python scripts/build_full_model_analysis_report.py --model google/vit-base-patch16-224 --layers all --export-onnx-subgraphs --render-svg --verbose
+./conda-env/bin/python scripts/build_static_pipeline_for_all_models.py --models all --build-missing-analysis --build-layer-packs --verbose
+```
+
+This is static analysis/reporting/visualization only. ONNX subgraphs are evidence artifacts for inspection; they are not treated as standalone models and no pruning or model mutation is performed.

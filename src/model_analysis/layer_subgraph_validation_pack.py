@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from model_analysis.generic_block_grouping import detect_family, generic_layer_records
 from model_analysis.paths import ensure_dir, safe_model_name
 
 
@@ -311,11 +312,11 @@ def _boundary(primitive_ops: list[dict[str, Any]], tensor_ops: dict[str, dict[st
     }
 
 
-def _match_candidates(candidates: list[dict[str, Any]], region_id: str, name: str, source_names: set[str]) -> list[dict[str, Any]]:
+def _match_candidates(candidates: list[dict[str, Any]], region_id: str, name: str, source_names: set[str], allow_source_match: bool = False) -> list[dict[str, Any]]:
     out = []
     for candidate in candidates:
         evidence_sources = {item.get("source_name", "") for item in _safe_list(candidate.get("op_semantics_evidence"))}
-        if candidate.get("region_id") == region_id or candidate.get("region_name") == name or (not region_id and evidence_sources & source_names):
+        if candidate.get("region_id") == region_id or candidate.get("region_name") == name or (allow_source_match and evidence_sources & source_names):
             out.append(candidate)
     return out
 
@@ -533,6 +534,18 @@ def build_layer_subgraph_validation_pack(
     op_sem_by_source = {op.get("source_name", ""): op for op in _safe_list(op_semantics.get("ops"))}
     region_by_id = {item.get("region_id", ""): item for item in _safe_list(region_pruning_semantics.get("regions"))}
     selected = select_expandable_layer_nodes(abstract_expansion, region_pruning_semantics, layer_index, include_auxiliary)
+    generic_selected = generic_layer_records(
+        model_name,
+        layer_index,
+        op_semantics,
+        region_pruning_semantics,
+        ranking,
+        plans,
+        validations,
+    )
+    family = detect_family(model_name, generic_selected[0]["recursive_primitive_leaves"][0].get("source_name", "") if generic_selected and generic_selected[0].get("recursive_primitive_leaves") else "")
+    if generic_selected and (not selected or family in {"distilbert", "opt", "gpt2", "vit"}):
+        selected = generic_selected
     if max_subgraphs is not None:
         selected = selected[:max_subgraphs]
     if report_root:
@@ -554,7 +567,10 @@ def build_layer_subgraph_validation_pack(
         local_op_sem = [item for item in local_op_sem if item.get("op_id") or item.get("source_name")]
         region = region_by_id.get(region_id, {})
         local_regions = [_summarize_region(region)] if region else []
-        candidates = _match_candidates(_safe_list(ranking.get("candidates")), region_id or "", display, source_names)
+        generic_group = raw.get("generic_group") if isinstance(raw.get("generic_group"), dict) else {}
+        candidates = _match_candidates(_safe_list(ranking.get("candidates")), region_id or "", display, source_names, allow_source_match=bool(generic_group))
+        if generic_group and generic_group.get("group_kind") != "mlp_block":
+            candidates = [item for item in candidates if item.get("candidate_kind") != "feedforward_intermediate_pruning"]
         local_plans = _match_plans(_safe_list(plans.get("plans")), region_id or "", candidates, source_names)
         local_validations = _match_validations(_safe_list(validations.get("validations")), local_plans)
         category = region.get("semantic_category") or raw.get("semantic_category", "")
@@ -565,6 +581,12 @@ def build_layer_subgraph_validation_pack(
             if len(set(kinds)) == 1:
                 category = kinds[0]
         classification = _classification(display, category, candidates, local_plans, local_validations)
+        if generic_group and not local_plans:
+            classification = {
+                "pruning_class": generic_group.get("pruning_class", classification.get("pruning_class", "unknown")),
+                "plan_status": generic_group.get("plan_status", classification.get("plan_status", "no_plan_expected")),
+                "validation_status": generic_group.get("validation_status", classification.get("validation_status", "not_applicable")),
+            }
         slug = f"{ordinal:02d}_{_slug(display)}"
         onnx_path = (artifact_root / safe / f"layer_{layer_index}" / slug / "subgraph.onnx") if artifact_root else Path("")
         onnx_status = _export_onnx(primitive_ops, raw, source_onnx_path, onnx_path, model_name, strict_onnx_export) if export_onnx else {"attempted": False, "status": "skipped", "source_model_path": str(source_onnx_path or ""), "output_path": str(onnx_path), "error": "ONNX export disabled."}

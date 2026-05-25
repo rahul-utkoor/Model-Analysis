@@ -495,12 +495,22 @@ def _summary(validations: list[PruningPlanValidation]) -> dict[str, Any]:
     kind_counts = Counter(item.plan_kind for item in validations)
     failed = Counter(check.check_type for item in validations for check in item.checks if check.status == "fail")
     warnings = Counter(check.check_type for item in validations for check in item.checks if check.status == "warning")
+    total = len(validations)
+    valid = status_counts.get("valid", 0)
+    warning = status_counts.get("warning", 0)
+    invalid = status_counts.get("invalid", 0)
+    unknown = status_counts.get("unknown", 0)
     return {
-        "total_plans": len(validations),
-        "valid_plans": status_counts.get("valid", 0),
-        "warning_plans": status_counts.get("warning", 0),
-        "invalid_plans": status_counts.get("invalid", 0),
-        "unknown_plans": status_counts.get("unknown", 0),
+        "total_validations": total,
+        "valid": valid,
+        "warning": warning,
+        "invalid": invalid,
+        "unknown": unknown,
+        "total_plans": total,
+        "valid_plans": valid,
+        "warning_plans": warning,
+        "invalid_plans": invalid,
+        "unknown_plans": unknown,
         "ready_symbolic_plans": sum(1 for item in validations if item.plan_status == "ready_symbolic"),
         "validated_ready_symbolic_plans": sum(1 for item in validations if item.plan_status == "ready_symbolic" and item.validation_status == "valid"),
         "failed_checks_by_type": dict(sorted(failed.items())),

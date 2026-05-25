@@ -93,6 +93,11 @@ def test_complete_ffn_plan_validates_as_valid() -> None:
     data = validated()
 
     assert data["summary"]["valid_plans"] == 1
+    assert data["summary"]["total_validations"] == 1
+    assert data["summary"]["valid"] == 1
+    assert data["summary"]["warning"] == 0
+    assert data["summary"]["invalid"] == 0
+    assert data["summary"]["unknown"] == 0
     assert data["validations"][0]["validation_score"] == 100
 
 

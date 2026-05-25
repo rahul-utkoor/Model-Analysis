@@ -826,6 +826,18 @@ python scripts/validate_pruning_plans.py --model distilbert-base-uncased --verbo
 
 The fusion rule looks for expansion projection, index-preserving activation, and contraction projection evidence. It is still static analysis only; attention contractions remain blocked unless a separate head-axis mapping proof exists.
 
+## Generic Transformer Block Atlases
+
+Generic block grouping builds learner-facing layer/block atlases for BERT, DistilBERT, OPT, GPT-2, and ViT from existing op semantics, rankings, plans, and validation reports.
+
+```bash
+python scripts/build_layer_subgraph_validation_pack.py --model facebook/opt-125m --layer 0 --export-onnx --verbose
+python scripts/build_layer_subgraph_validation_pack.py --model gpt2 --layer 0 --export-onnx --verbose
+python scripts/build_full_model_analysis_report.py --model google/vit-base-patch16-224 --layers all --export-onnx-subgraphs --verbose
+```
+
+The atlases group decoder/encoder blocks into attention, residual/LayerNorm, and MLP subgraphs so valid symbolic MLP plans are visible beyond BERT. Plan validation summaries expose both `valid/warning/invalid/unknown` and `valid_plans/invalid_plans` compatibility fields. This remains static reporting/visualization only.
+
 ## First Push
 
 ```bash

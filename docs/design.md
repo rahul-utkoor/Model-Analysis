@@ -690,4 +690,12 @@ Generic FFN evidence matching separates the symbolic plan pattern from BERT-spec
 
 Generic MLP fusion promotes complete primitive op-semantics evidence into region-level pruning semantics when the structural tree does not already contain a feed-forward region. The abstraction is intentionally small: expansion projection from hidden to intermediate width, index-preserving activation over the intermediate width, and contraction projection back to hidden width.
 
+## Generic Transformer Block Grouping
+
+Generic block grouping is a presentation/reporting layer over existing static artifacts. It detects BERT/DistilBERT encoder layers, OPT/GPT-2 decoder blocks, and ViT encoder layers from op-semantics source paths, then groups local ops into attention, residual/LayerNorm, and MLP subgraphs.
+
+The grouping is deliberately not a new analysis source. It projects full-model TensorIR, op semantics, region semantics, rankings, symbolic plans, and plan validation into learner-facing layer atlases. ONNX subgraphs exported from those groups are visualization evidence only.
+
+Validation summaries expose canonical `total_validations`, `valid`, `warning`, `invalid`, and `unknown` fields while preserving older `valid_plans` and `invalid_plans` fields for compatibility.
+
 The synthesized `GenericMLPRegion` records reuse the established region pruning semantics contract: `intermediate_dim` is prunable, `hidden_dim` is protected, the same indices must propagate through the MLP, the contraction input must be repaired, and hidden output dimensions are preserved. This gives DistilBERT, ViT, and GPT-2 the same static plan shape as BERT/OPT when the evidence is complete, without changing model weights or executing pruning.

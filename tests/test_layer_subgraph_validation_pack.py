@@ -236,3 +236,39 @@ def test_per_node_explanation_contains_verdict() -> None:
 
     assert "## Verdict" in text
     assert "safe" in text
+
+
+def test_generic_opt_layer_pack_falls_back_to_block_grouping() -> None:
+    base = "/model/decoder/layers.0"
+    ops = [
+        {"op_id": "fc1", "name": f"{base}/fc1/MatMul", "source_node_name": f"{base}/fc1/MatMul", "op_type": "MatMul", "inputs": [], "outputs": [], "predecessor_ops": [], "successor_ops": []},
+        {"op_id": "act", "name": f"{base}/activation_fn/Relu", "source_node_name": f"{base}/activation_fn/Relu", "op_type": "Relu", "inputs": [], "outputs": [], "predecessor_ops": [], "successor_ops": []},
+        {"op_id": "fc2", "name": f"{base}/fc2/MatMul", "source_node_name": f"{base}/fc2/MatMul", "op_type": "MatMul", "inputs": [], "outputs": [], "predecessor_ops": [], "successor_ops": []},
+    ]
+    opsem = {
+        "ops": [
+            {"op_id": "fc1", "source_name": f"{base}/fc1/MatMul", "op_type": "MatMul", "topological_index": 1, "semantic_kind": "parameterized_linear_matmul", "semantic_category": "parameterized_projection", "parameterized": True, "dimension_roles": {"input": "hidden_dim", "output": "intermediate_dim"}, "pruning_effect": {"direct_pruning": "allowed"}},
+            {"op_id": "act", "source_name": f"{base}/activation_fn/Relu", "op_type": "Relu", "topological_index": 2, "semantic_kind": "gelu_elementwise", "semantic_category": "elementwise_index_preserving", "parameterized": False, "dimension_roles": {"input": "intermediate_dim", "output": "intermediate_dim"}, "pruning_effect": {"direct_pruning": "not_applicable"}},
+            {"op_id": "fc2", "source_name": f"{base}/fc2/MatMul", "op_type": "MatMul", "topological_index": 3, "semantic_kind": "parameterized_linear_matmul", "semantic_category": "parameterized_projection", "parameterized": True, "dimension_roles": {"input": "intermediate_dim", "output": "hidden_dim"}, "pruning_effect": {"direct_pruning": "allowed"}},
+        ]
+    }
+    rank = {"candidates": [{"candidate_id": "cand", "candidate_kind": "feedforward_intermediate_pruning", "semantic_category": "feed_forward_block", "pruning_class": "safe", "op_semantics_evidence": [{"source_name": item["source_name"]} for item in opsem["ops"]]}]}
+    plan = {"plans": [{"plan_id": "plan", "candidate_id": "cand", "plan_status": "ready_symbolic"}]}
+    valid = {"validations": [{"validation_id": "val", "plan_id": "plan", "validation_status": "valid", "validation_score": 100, "checks": []}]}
+    pack = build_layer_subgraph_validation_pack(
+        model_name="facebook/opt-125m",
+        layer_index=0,
+        tensor_ir={"ops": ops},
+        op_semantics=opsem,
+        structural_region_tree={},
+        region_pruning_semantics={"regions": []},
+        ranking=rank,
+        plans=plan,
+        validations=valid,
+        abstract_expansion=None,
+        export_onnx=False,
+    )
+    data = layer_subgraph_pack_to_dict(pack)
+
+    assert by_name(data, "OPT Decoder Block 0 MLP Block")["classification"]["plan_status"] == "valid_plan"
+    assert any(item["display_name"].endswith("MLP Expansion Projection") for item in data["subgraphs"])

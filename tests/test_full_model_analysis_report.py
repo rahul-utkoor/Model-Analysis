@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from model_analysis.full_model_analysis_report import (
+    detect_layers,
     layer_summary_from_pack,
     polish_subgraph,
     polished_verdict,
@@ -107,3 +108,15 @@ def test_model_index_markdown_has_layer_table():
     markdown = model_report_to_markdown(report)
     assert "## 4. Layer summary table" in markdown
     assert "## 10. Research conclusions" in markdown
+
+
+def test_detect_layers_handles_decoder_and_vit_sections() -> None:
+    semantics = {
+        "regions": [
+            {"region_name": "GPT2 Block 0 MLP", "section": "Decoder Block 0", "evidence": {"source_ops": []}},
+            {"region_name": "OPT Layer 11 FFN", "section": "Decoder Block 11", "evidence": {"source_ops": []}},
+            {"region_name": "ViT Layer 3 MLP", "section": "ViT Layer 3", "evidence": {"source_ops": []}},
+        ]
+    }
+
+    assert detect_layers(semantics) == [0, 3, 11]

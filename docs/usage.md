@@ -1339,3 +1339,24 @@ The generic rule matches:
 - contraction projection: `intermediate_dim -> hidden_dim`
 
 Generated `GenericMLPRegion` records map to the same symbolic FFN pruning plan shape as BERT and OPT. This remains static analysis/reporting only.
+
+## Generic Transformer Block Atlases
+
+Milestone 34 adds family-aware block grouping for learner-facing reports. When BERT-style abstract expansion records are unavailable, the layer pack builder groups op semantics into transformer blocks for DistilBERT, OPT, GPT-2, and ViT.
+
+```bash
+python scripts/build_layer_subgraph_validation_pack.py --model facebook/opt-125m --layer 0 --export-onnx --render-svg --verbose
+python scripts/build_layer_subgraph_validation_pack.py --model gpt2 --layer 0 --export-onnx --render-svg --verbose
+python scripts/build_layer_subgraph_validation_pack.py --model google/vit-base-patch16-224 --layer 0 --export-onnx --render-svg --verbose
+python scripts/build_full_model_analysis_report.py --model facebook/opt-125m --layers all --export-onnx-subgraphs --render-svg --verbose
+```
+
+Generated reports remain under `reports/layer_subgraph_validation/` and `reports/model_analysis_reports/`; ONNX subgraphs remain visualization artifacts under `artifacts/layer_subgraphs/` and `artifacts/model_analysis_subgraphs/`.
+
+Validation summaries now support canonical queries:
+
+```bash
+jq '.summary | {total_validations, valid, warning, invalid, unknown}' reports/pruning_plan_validation/bert-base-uncased.json
+```
+
+and keep compatibility fields such as `valid_plans` and `invalid_plans`. This is reporting/visualization only and does not mutate models.
