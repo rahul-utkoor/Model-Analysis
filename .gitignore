@@ -47,6 +47,8 @@ reports/layer_subgraph_validation_explanations/*
 !reports/layer_subgraph_validation_explanations/.gitkeep
 reports/layer_subgraph_validation_compare/*
 !reports/layer_subgraph_validation_compare/.gitkeep
+reports/compact_analysis_snapshots/*
+!reports/compact_analysis_snapshots/.gitkeep
 reports/propagation_traces/*
 !reports/propagation_traces/.gitkeep
 reports/pruning_action_checks/*
