@@ -31,6 +31,14 @@ reports/pruning_plan_explanations/*
 !reports/pruning_plan_explanations/.gitkeep
 reports/pruning_plan_compare/*
 !reports/pruning_plan_compare/.gitkeep
+reports/pruning_plan_validation/*
+!reports/pruning_plan_validation/.gitkeep
+reports/pruning_plan_validation_dumps/*
+!reports/pruning_plan_validation_dumps/.gitkeep
+reports/pruning_plan_validation_explanations/*
+!reports/pruning_plan_validation_explanations/.gitkeep
+reports/pruning_plan_validation_compare/*
+!reports/pruning_plan_validation_compare/.gitkeep
 reports/propagation_traces/*
 !reports/propagation_traces/.gitkeep
 reports/pruning_action_checks/*

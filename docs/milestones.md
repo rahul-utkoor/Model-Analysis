@@ -667,3 +667,26 @@ Primary commands:
 ```
 
 This is static reporting/analysis only. Plans are parameterized by symbolic index sets; they do not choose concrete indices, modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.
+
+## Milestone 28: Pruning Plan Validation and Consistency Checking
+
+Status: complete.
+
+Implemented:
+
+- Pruning Plan Validation IR over symbolic plans, ranking, region semantics, and op semantics
+- JSON, Markdown, and `.pvalid` text reports
+- Build, explain, and compare CLIs
+- Static FFN plan checks for candidate safety, ready status, symbolic index set, required actions, op-semantics agreement, repair consistency, hidden-dimension preservation, forbidden actions, blockers, and unknown critical ops
+- Synthetic tests for valid plans, missing actions, wrong op semantics, missing repairs, forbidden-action violations, text dumps, and comparison summaries
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/validate_pruning_plans.py --model bert-base-uncased --verbose
+./conda-env/bin/python scripts/explain_pruning_plan_validation.py --model bert-base-uncased --status valid --limit 20
+./conda-env/bin/python scripts/explain_pruning_plan_validation.py --model bert-base-uncased --contains "Layer 0 Feed Forward"
+./conda-env/bin/python scripts/compare_pruning_plan_validation.py --models all
+```
+
+This is static reporting/analysis only. Validation does not choose concrete indices, modify models, execute pruning, rewrite ONNX, export ONNX, download models, or evaluate quality.

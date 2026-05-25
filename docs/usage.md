@@ -403,6 +403,44 @@ reports/pruning_plan_compare/summary.md
 
 Plan synthesis is the static bridge from "this opportunity is safe" to "these dimensions and components must be transformed together." The current planner emits feed-forward `intermediate_dim` plans parameterized by symbolic index sets. It does not choose concrete indices, modify weights, execute pruning, or rewrite ONNX.
 
+## Pruning Plan Validation
+
+Validate symbolic plans against ranking, region semantics, op semantics, repairs, preserved dimensions, and forbidden actions:
+
+```bash
+./conda-env/bin/python scripts/validate_pruning_plans.py \
+  --model bert-base-uncased \
+  --verbose
+```
+
+Explain validation records:
+
+```bash
+./conda-env/bin/python scripts/explain_pruning_plan_validation.py \
+  --model bert-base-uncased \
+  --status valid \
+  --limit 20
+
+./conda-env/bin/python scripts/explain_pruning_plan_validation.py \
+  --model bert-base-uncased \
+  --contains "Layer 0 Feed Forward"
+
+./conda-env/bin/python scripts/explain_pruning_plan_validation.py \
+  --model bert-base-uncased \
+  --failed-only
+```
+
+Generated outputs:
+
+```text
+reports/pruning_plan_validation/<model>.json
+reports/pruning_plan_validation_dumps/<model>.pvalid
+reports/pruning_plan_validation_explanations/<model>.md
+reports/pruning_plan_validation_compare/summary.md
+```
+
+Validation is the final static gate before any optional executable pruning backend. It does not choose concrete indices, modify models, execute pruning, or rewrite ONNX.
+
 ## Structural Region Tree over Tensor IR
 
 Build the first compiler-style semantic-region hierarchy from a persisted Tensor IR:

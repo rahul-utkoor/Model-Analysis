@@ -1,6 +1,6 @@
 # Model Analysis
 
-Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, and region legality analysis are the intended substrate for pruning-propagation research.
+Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, Pruning Plan Validation, and region legality analysis are the intended substrate for pruning-propagation research.
 
 The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
 
@@ -12,7 +12,7 @@ The best way to understand the repository is the guided demo track:
 - [Full Research Pipeline](demos/full_research_pipeline.md)
 - `demo_scripts/run_full_analysis_pipeline.sh`
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, region-aware legality reports, pruning maps, Dimension IR, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
+The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, Pruning Plan Validation, region-aware legality reports, pruning maps, Dimension IR, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
 
 ## Initial Supported Models
 
@@ -317,6 +317,23 @@ Synthesize symbolic plans for the top safe FFN pruning opportunities:
 ```
 
 Outputs include `reports/pruning_plans/<model>.json`, `reports/pruning_plan_dumps/<model>.plan`, and `reports/pruning_plan_explanations/<model>.md`. Plans are parameterized by symbolic index sets such as `I_layer_0_intermediate`; they specify producer-output pruning, bias repair, GELU propagation, consumer-input repair, preserved hidden dimensions, and forbidden residual/LayerNorm hidden pruning. They do not choose concrete indices or modify models.
+
+## Pruning Plan Validation
+
+Validate symbolic plans before any optional executable backend consumes them:
+
+```bash
+./conda-env/bin/python scripts/validate_pruning_plans.py \
+  --model bert-base-uncased \
+  --verbose
+
+./conda-env/bin/python scripts/explain_pruning_plan_validation.py \
+  --model bert-base-uncased \
+  --status valid \
+  --limit 20
+```
+
+Outputs include `reports/pruning_plan_validation/<model>.json`, `reports/pruning_plan_validation_dumps/<model>.pvalid`, and `reports/pruning_plan_validation_explanations/<model>.md`. Validation checks candidate safety, required actions, op-semantics agreement, required repairs, preserved hidden dimensions, forbidden actions, blockers, and unknown critical ops. It is static reporting only and does not choose concrete indices or modify models.
 
 ## Structural Region Tree over Tensor IR
 
