@@ -1,115 +1,107 @@
 # Model Analysis
 
-Model Analysis is a research scaffold for structural analysis of neural networks, with an emphasis on pruning opportunities, dependency tracking, and forward/backward propagation of pruning information across model graphs. ONNX is a current frontend; frontend-independent Tensor Graph IR, its Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, Pruning Plan Validation, and region legality analysis are the intended substrate for pruning-propagation research.
+Model Analysis is a research infrastructure project for **static structural analysis of neural-network models** with a focus on pruning legality, dependency propagation, and learner-facing explanations.
 
-The first milestone is infrastructure: a clean repository structure, reproducible setup, model download scripts, ONNX export scripts, and basic inspection summaries.
+The current system analyzes models without changing them. It builds compiler-style intermediate representations, recovers pruning-relevant regions, ranks pruning opportunities, synthesizes symbolic pruning plans, validates those plans, and exposes the evidence through reports, a terminal explorer, and a React web UI.
 
-## Guided Demo Track
+> **Scope:** this repository currently performs static analysis, reporting, and visualization. It does **not** execute pruning, choose concrete pruning indices, modify weights, rewrite full ONNX models, download models implicitly, or evaluate accuracy unless an explicitly experimental command is invoked.
 
-The best way to understand the repository is the guided demo track:
+---
 
-- [Model-Analysis Demo Track](demos/README.md)
-- [Full Research Pipeline](demos/full_research_pipeline.md)
-- `demo_scripts/run_full_analysis_pipeline.sh`
+## Current Status
 
-The demo path explains each milestone, the command to run, the report to inspect, and the compiler/pruning concept demonstrated. The main research artifacts are Tensor IR, Structural Region Tree, Region-Aware Dimension IR, Region Pruning Semantics, Op Semantics, Pruning Opportunity Ranking, symbolic Pruning Plans, Pruning Plan Validation, region-aware legality reports, pruning maps, Dimension IR, local/join-aware subgraph evidence, bounded DAG-region evidence, and visualization-only ONNX fragments for inspection. Executable pruning support is optional and experimental backend work.
+The current pipeline is complete for the configured model set.
 
-## Initial Supported Models
+| Model | Layers / Blocks | Subgraphs | Valid MLP/FFN plans |
+| --- | ---: | ---: | ---: |
+| `bert-base-uncased` | 12 | 204 | 12 |
+| `distilbert-base-uncased` | 6 | 36 | 6 |
+| `facebook/opt-125m` | 12 | 108 | 12 |
+| `google/vit-base-patch16-224` | 12 | 72 | 12 |
+| `gpt2` | 12 | 72 | 12 |
 
-| Name | Hugging Face ID | Task |
-| --- | --- | --- |
-| `bert-base-uncased` | `bert-base-uncased` | masked-lm |
-| `distilbert-base-uncased` | `distilbert-base-uncased` | masked-lm |
-| `gpt2` | `gpt2` | causal-lm |
-| `opt-125m` | `facebook/opt-125m` | causal-lm |
-| `vit-base-patch16-224` | `google/vit-base-patch16-224` | image-classification |
+The main recovered pruning pattern is:
+
+```text
+expansion projection:  hidden_dim -> intermediate_dim
+index-preserving activation
+contraction projection: intermediate_dim -> hidden_dim
+```
+
+This pattern is recognized across BERT-style FFN blocks, OPT/GPT-2 decoder MLP blocks, DistilBERT FFN blocks, and ViT MLP blocks.
+
+---
+
+## What the Pipeline Produces
+
+For each supported model, the pipeline can generate:
+
+- op-semantics reports over primitive Tensor/ONNX operations,
+- structural region trees and pruning semantics,
+- pruning opportunity rankings,
+- symbolic MLP/FFN pruning plans,
+- plan validation reports,
+- layer/block subgraph atlases,
+- ONNX/SVG/DOT subgraph evidence artifacts,
+- cross-model static coverage reports,
+- rule-gap diagnosis reports,
+- terminal and browser interfaces for exploration.
+
+The analysis flow is:
+
+```text
+Model / ONNX
+  -> Tensor IR
+  -> Op Semantics
+  -> Structural Region Tree
+  -> Region Pruning Semantics
+  -> Opportunity Ranking
+  -> Symbolic Pruning Plan
+  -> Plan Validation
+  -> Layer / Block Subgraph Atlas
+  -> CLI and Web Exploration
+```
+
+---
 
 ## Repository Layout
 
 ```text
-configs/                  Model registry configuration
-scripts/                  CLI utilities for downloads, ONNX export, and inspection
-demo_scripts/             Guided demo shell wrappers
-demos/                    Milestone-by-milestone learning walkthroughs
-src/model_analysis/       Reusable Python package code
-data/models/hf/           Local Hugging Face model snapshots (ignored by git)
-data/models/onnx/         Exported ONNX models (ignored by git)
-reports/model_summaries/  Generated Markdown summaries (ignored by git)
-reports/structural_inventory/  Generated PyTorch inventory reports (ignored by git)
-reports/onnx_graphs/      Generated ONNX graph reports (ignored by git)
-reports/pruning_hints/    Generated pruning hint reports (ignored by git)
-reports/dependency_graphs/  Generated dependency graph reports (ignored by git)
-reports/dependency_summaries/  Generated dependency analyzer summaries (ignored by git)
-reports/correspondence/  Generated PyTorch-to-ONNX correspondence reports (ignored by git)
-reports/shape_evidence/  Generated static shape evidence reports (ignored by git)
-reports/validated_dependency_graphs/  Dependency graph validation reports (ignored by git)
-artifacts/pruned_models/  Generated pruned model checkpoints (ignored by git)
-artifacts/subgraph_onnx/  Netron-visualizable extracted ONNX fragments (ignored by git)
-reports/pruning_execution/  Generated pruning execution reports (ignored by git)
-reports/pruning_diffs/  Generated pruning structural diffs (ignored by git)
-reports/rollback_manifests/  Generated rollback manifests (ignored by git)
-reports/repair_plans/  Generated paired Linear repair plans (ignored by git)
-reports/repair_transactions/  Generated paired repair transaction logs (ignored by git)
-reports/forward_smoke_tests/  Generated forward smoke validation reports (ignored by git)
-reports/block_pruning/  Generated BERT MLP block pruning reports (ignored by git)
-reports/block_validation/  Generated block-level forward smoke reports (ignored by git)
-reports/block_pruning_diffs/  Generated block-level structural diffs (ignored by git)
-reports/model_pruning_maps/  Compiler-style pruning opportunity maps (ignored by git)
-reports/pruning_opportunities/  Focused opportunity reports (ignored by git)
-reports/propagation_constraints/  Focused constraint reports (ignored by git)
-reports/structural_risk_maps/  Focused structural risk reports (ignored by git)
-reports/dimension_ir/  Symbolic Dimension IR reports (ignored by git)
-reports/constraint_equations/  Focused symbolic constraint equations (ignored by git)
-reports/dimension_equivalence/  Dimension equivalence class reports (ignored by git)
-reports/pruning_ir_dumps/  MLIR-like pruning IR text dumps (ignored by git)
-reports/legality_checks/  Static Dimension-IR legality reports (ignored by git)
-reports/propagation_slices/  Forward/backward propagation slice reports (ignored by git)
-reports/repair_sets/  Minimal structural repair-set reports (ignored by git)
-reports/ir_analysis/  Dimension IR helper analysis reports (ignored by git)
-reports/subgraphs/  k-node ONNX path and join-aware report bundles (ignored by git)
-reports/subgraph_patterns/  Aggregated local pattern reports (ignored by git)
-reports/subgraph_pruning_analysis/  Subgraph pruning evidence reports (ignored by git)
-reports/subgraph_dimension_evidence/  Candidate constraint evidence reports (ignored by git)
-reports/join_subgraphs/  Branch-merge subgraph reports (ignored by git)
-reports/residual_subgraphs/  Residual-like join candidate reports (ignored by git)
-reports/dag_regions/  Fork, diamond, and join-fork-join region reports (ignored by git)
-reports/dag_region_patterns/  Aggregated DAG motif reports (ignored by git)
-reports/dag_region_pruning_evidence/  Multi-branch constraint evidence reports (ignored by git)
-reports/subgraph_exports/  Extracted ONNX fragment manifests (ignored by git)
-reports/netron_subgraph_index/  Netron command indexes for fragments (ignored by git)
-reports/tensor_ir/  Frontend-independent Tensor Graph IR reports (ignored by git)
-reports/tensor_ir_dumps/  Readable tensor dataflow IR dumps (ignored by git)
-reports/tensor_ir_stats/  Canonical op/fork/join statistics (ignored by git)
-reports/structural_region_trees/  Compiler-inspired Tensor IR region trees (ignored by git)
-reports/structural_region_dumps/  Readable structural tree dumps (ignored by git)
-reports/structural_region_interfaces/  Preliminary region propagation interfaces (ignored by git)
-reports/structural_region_patterns/  Region type summaries (ignored by git)
-reports/region_dimension_ir/  Semantic-region-derived symbolic dimensions (ignored by git)
-reports/region_dimension_equivalence/  Region-scoped equivalence classes (ignored by git)
-reports/region_constraint_equations/  Region-derived constraints (ignored by git)
-reports/region_pruning_ir_dumps/  Textual region dimension IR dumps (ignored by git)
-reports/region_legality_checks/  Region-aware static legality checks (ignored by git)
-reports/region_propagation_slices/  Region-aware propagation slices (ignored by git)
-reports/region_repair_sets/  Region-level repair obligations (ignored by git)
-reports/region_blocked_analysis/  Protected/blocked region diagnostics (ignored by git)
-reports/control_tree_steps/  Stepwise dataflow control-tree traces (ignored by git)
-reports/control_tree_step_graphs/  DOT/SVG trace graph snapshots (ignored by git)
-reports/control_tree_step_dumps/  Textual control-tree trace dumps (ignored by git)
-reports/control_tree_step_summaries/  Trace construction summaries (ignored by git)
-docs/                     Design notes, milestone notes, and detailed usage
-tests/                    Lightweight pytest coverage
+configs/                         Model registry
+scripts/                         Pipeline CLIs
+tools/                           Explorers, viewers, and local API servers
+src/model_analysis/              Reusable analysis modules
+ui/pruning-analysis-explorer/    React + Vite web UI
+docs/                            Usage and design notes
+demos/                           Milestone walkthroughs
+demo_scripts/                    Reproducible demo commands
+
+data/models/                     Local model and ONNX artifacts, ignored by git
+reports/                         Generated analysis reports, ignored by git
+artifacts/                       Generated subgraphs and evidence artifacts, ignored by git
 ```
 
-## Documentation
+Important generated directories include:
 
-Detailed project documentation lives in:
+```text
+reports/model_analysis_reports/
+reports/layer_subgraph_validation/
+reports/op_semantics/
+reports/region_pruning_semantics/
+reports/pruning_opportunity_rankings/
+reports/pruning_plans/
+reports/pruning_plan_validation/
+reports/static_coverage_study/
+reports/rule_gap_diagnosis/
+artifacts/model_analysis_subgraphs/
+artifacts/layer_subgraphs/
+```
 
-- [Usage Guide](docs/usage.md)
-- [Design Notes](docs/design.md)
-- [Milestones](docs/milestones.md)
-- [Demo Track](docs/demo_track.md)
+---
 
 ## Setup
+
+Create and activate a Python environment:
 
 ```bash
 python -m venv .venv
@@ -118,226 +110,246 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## Usage
-
-Download all configured models:
+If you are using the repository-local conda environment used in the examples, replace `python` with:
 
 ```bash
-python scripts/download_models.py --model all
+./conda-env/bin/python
 ```
 
-Export one model to ONNX:
+For the web UI, install frontend dependencies:
 
 ```bash
-python scripts/export_to_onnx.py --model bert-base-uncased
+cd ui/pruning-analysis-explorer
+npm install
+npm run build
+cd ../..
 ```
 
-Inspect one local model:
+---
 
-```bash
-python scripts/inspect_model.py --model bert-base-uncased
-```
+## Supported Models
 
-## Structural Inventory
+Configured models are listed in `configs/models.yaml`.
 
-Generate structural inventory reports for one downloaded model:
-
-```bash
-python scripts/generate_structural_inventory.py --model bert-base-uncased
-```
-
-Suggested first flow:
-
-```bash
-python scripts/download_models.py --model bert-base-uncased
-python scripts/export_to_onnx.py --model bert-base-uncased
-python scripts/generate_structural_inventory.py --model bert-base-uncased
-```
-
-Generated outputs:
+Common model names:
 
 ```text
-reports/structural_inventory/<model>.json  PyTorch module, parameter, layer, and pruning-group inventory
-reports/structural_inventory/<model>.md    Human-readable PyTorch structural inventory
-reports/onnx_graphs/<model>.json           ONNX graph node, initializer, IO, and pruning-relevant node inventory
-reports/onnx_graphs/<model>.md             Human-readable ONNX graph summary
-reports/pruning_hints/<model>.md           Conservative structural pruning hints and dependency caveats
+bert-base-uncased
+distilbert-base-uncased
+gpt2
+facebook/opt-125m
+google/vit-base-patch16-224
 ```
 
-Use `--require-onnx` when an ONNX report must exist, and `--format json|md|both` to control generated structural and ONNX report formats.
+Some commands also accept aliases such as `opt-125m` and `vit-base-patch16-224`, depending on registry normalization.
 
-## Frontend-Independent Tensor Graph IR
+---
 
-Import the currently available ONNX frontend summary into Tensor IR:
+## Quick Start: Web UI
+
+The easiest way to inspect the analysis is the browser UI.
+
+Build the UI:
 
 ```bash
-python scripts/build_tensor_ir.py --model bert-base-uncased --verbose
+cd ui/pruning-analysis-explorer
+npm install
+npm run build
+cd ../..
 ```
 
-For all models and comparison:
+Start the local API/UI server:
 
 ```bash
-python scripts/build_tensor_ir.py --model all --verbose
-python scripts/compare_tensor_ir.py --models all
-```
-
-Outputs include `reports/tensor_ir/<model>.json`, `reports/tensor_ir/<model>.md`, and `reports/tensor_ir_dumps/<model>.tir`. Tensor IR records canonical operations, tensor values, producer/consumer links, forks, joins, semantic roles, and region hints. ONNX supplies the current frontend input; Structural Region Tree analysis operates over Tensor IR rather than depending directly on ONNX.
-
-## Semantic Fusion for Activation and Feed-Forward Regions
-
-Recover decomposed activation idioms such as BERT's exported GELU structure and use them during semantic region construction:
-
-```bash
-python scripts/analyze_semantic_fusion.py --model bert-base-uncased --verbose
-python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
-python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
-python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 20
-```
-
-Outputs include `reports/semantic_fusion/<model>.md` and `reports/fused_region_patterns/<model>.md`. Semantic fusion recognizes `Div/Mul -> Erf -> Add -> Mul -> Mul` activation graphs and projection-activation-projection feed-forward regions so Region-Aware Dimension IR can expose `intermediate_dim` for BERT-style models. It is static structural recovery only and does not modify models.
-
-## Stepwise Dataflow Control-Tree Trace
-
-Build an explanatory trace showing how primitive TensorOps are collapsed into semantic regions:
-
-```bash
-python scripts/build_control_tree_trace.py --model bert-base-uncased --format all --max-dot-steps 20 --verbose
-python tools/export_control_tree_trace_mindnode.py --model bert-base-uncased
-```
-
-Outputs include `reports/control_tree_steps/<model>.md`, `reports/control_tree_step_dumps/<model>.ctrace`, DOT graph snapshots under `reports/control_tree_step_graphs/<model>/`, and a MindNode outline under `reports/mindnode_outlines/`. The trace is a teaching/debug artifact over Tensor IR; the final Structural Region Tree remains authoritative and no models or pruning logic are modified.
-
-## Lightweight Control-Tree Trace Viewer
-
-Start a lazy API-backed browser for the construction trace:
-
-```bash
-python tools/control_tree_trace_api_server.py --model bert-base-uncased --port 8766
-```
-
-Open `http://127.0.0.1:8766/`. The browser requests only the trace index, pages of step summaries, the selected step, and a small local collapse graph. It does not load the full trace JSON into browser memory and it does not modify models.
-
-## Ordered Dataflow Control-Tree Browser
-
-Browse the final Structural Region Tree as a lazy, ordered hierarchy:
-
-```bash
-python tools/ordered_control_tree_api_server.py --model bert-base-uncased --port 8767
-```
-
-Open `http://127.0.0.1:8767/`. This browser starts from the `ModelRegion`, expands children on demand, preserves Tensor IR/source operation order, and maps abstract regions down to primitive TensorOps. It complements the step trace viewer: the trace viewer explains how collapses happened; the ordered tree browser shows the final hierarchy in model order.
-
-## Abstract Node Expansion Report
-
-Generate learner-facing expansion reports for the final structural hierarchy:
-
-```bash
-./conda-env/bin/python tools/export_abstract_node_expansion_report.py \
-  --model bert-base-uncased \
-  --view main \
-  --max-leaf-names 30
-
-./conda-env/bin/python tools/export_abstract_node_expansion_report.py \
-  --model bert-base-uncased \
-  --view shape \
-  --max-leaf-names 30
-```
-
-The report complements the learner hierarchical dataflow PDF. It separates `immediate_expansion` from `recursive_primitive_leaves`, so the reader can distinguish direct abstract children from source ONNX/TensorIR evidence. Main view hides auxiliary shape/mask flow; shape view groups that flow into `ShapeMotifRegion` records. Debug flags expose root leaves and raw one-op shape regions when needed.
-
-## Region Pruning Semantics
-
-Build static pruning-flow semantics over learner structural regions:
-
-```bash
-./conda-env/bin/python scripts/build_region_pruning_semantics.py \
-  --model bert-base-uncased \
+./conda-env/bin/python tools/analysis_ui_api_server.py \
+  --host 127.0.0.1 \
+  --port 8777 \
   --verbose
-
-./conda-env/bin/python scripts/explain_region_pruning_semantics.py \
-  --model bert-base-uncased \
-  --contains "Feed Forward" \
-  --limit 5
 ```
 
-Outputs include `reports/region_pruning_semantics/<model>.json`, `reports/region_pruning_semantics_dumps/<model>.rpsem`, and `reports/region_pruning_semantics_explanations/<model>.md`. This layer explains which region dimensions are prunable, propagated, protected, repair-required, or blocked. It is static analysis only and does not modify models or invoke pruning backends.
+Open:
 
-The report treats attention-internal score/context MatMuls as dataflow contractions, not parameterized projections. Q/K/V projections remain directly prunable candidates with head-axis mapping warnings; attention head/channel pruning remains blocked until that mapping is proven. The clean executable opportunity remains FFN `intermediate_dim` pruning.
+```text
+http://127.0.0.1:8777/
+```
 
-Region records carry both `source_region_type` and `semantic_category`. For example, attention score MatMul may originate from a `LinearProjectionRegion` structural shape, but its pruning category is `attention_score_matmul`, which prevents readers from mistaking it for a parameterized projection.
-Attention-mask auxiliary Axis/Fork/Join plumbing is categorized separately from the true per-layer `attention_mask_add` score-bias node.
+Suggested walkthrough:
 
-## Op Semantics
+```text
+Dashboard
+  -> bert-base-uncased
+  -> Layer 0
+  -> Feed Forward
+  -> Plan
+  -> Validation
+  -> Artifacts
 
-Build pruning-relevant annotations for primitive Tensor IR operations:
+Dashboard
+  -> facebook/opt-125m
+  -> Layer 0
+  -> MLP Block
+  -> Plan
+  -> Validation
+```
+
+See [`README_analysis_ui.md`](README_analysis_ui.md) for the full web UI guide.
+
+---
+
+## Quick Start: Terminal Explorer
+
+The terminal explorer provides a guided console over the same reports.
+
+```bash
+./conda-env/bin/python tools/interactive_analysis_explorer.py
+```
+
+Direct launch into BERT Layer 0:
+
+```bash
+./conda-env/bin/python tools/interactive_analysis_explorer.py \
+  --model bert-base-uncased \
+  --layer 0 \
+  --no-open
+```
+
+Typical commands inside the explorer:
+
+```text
+summary
+layers
+layer 0
+nodes
+subgraph Feed Forward
+plan
+validation
+onnx
+back
+quit
+```
+
+See [`README_interactive_analysis_explorer.md`](README_interactive_analysis_explorer.md) for the command reference.
+
+---
+
+## Rebuild the Static Analysis Pipeline
+
+The full demo pipeline is available through:
+
+```bash
+PYTHON=./conda-env/bin/python MODEL=bert-base-uncased \
+  bash demo_scripts/run_full_analysis_pipeline.sh
+```
+
+To rebuild reports for all configured models:
+
+```bash
+./conda-env/bin/python scripts/build_static_pipeline_for_all_models.py \
+  --models all \
+  --build-missing-analysis \
+  --build-layer-packs \
+  --verbose
+```
+
+Regenerate cross-model coverage:
+
+```bash
+./conda-env/bin/python scripts/report_static_pipeline_coverage.py \
+  --models all \
+  --verbose
+```
+
+Open the coverage report:
+
+```bash
+open reports/static_coverage_study/index.md
+```
+
+---
+
+## Core Analysis Commands
+
+### Op Semantics
 
 ```bash
 ./conda-env/bin/python scripts/build_op_semantics.py \
   --model bert-base-uncased \
   --verbose
-
-./conda-env/bin/python scripts/explain_op_semantics.py \
-  --model bert-base-uncased \
-  --semantic-kind attention_score_matmul \
-  --limit 5
 ```
 
-Outputs include `reports/op_semantics/<model>.json`, `reports/op_semantics_dumps/<model>.opsem`, and `reports/op_semantics_explanations/<model>.md`. Op Semantics is the primitive-op companion to Region Pruning Semantics: it says whether a Tensor IR op is a learned projection, bias add, attention contraction, residual merge, GELU elementwise op, axis transform, or metadata-only helper. It is static reporting only and does not modify models.
+Output:
 
-## Pruning Opportunity Ranking
+```text
+reports/op_semantics/<model>.json
+reports/op_semantics_dumps/<model>.opsem
+reports/op_semantics_explanations/<model>.md
+```
 
-Rank static pruning opportunities by combining Region Pruning Semantics with Op Semantics:
+### Region Pruning Semantics
+
+```bash
+./conda-env/bin/python scripts/build_region_pruning_semantics.py \
+  --model bert-base-uncased \
+  --verbose
+```
+
+Output:
+
+```text
+reports/region_pruning_semantics/<model>.json
+reports/region_pruning_semantics_dumps/<model>.rpsem
+reports/region_pruning_semantics_explanations/<model>.md
+```
+
+### Opportunity Ranking
 
 ```bash
 ./conda-env/bin/python scripts/rank_pruning_opportunities.py \
   --model bert-base-uncased \
   --verbose
-
-./conda-env/bin/python scripts/explain_pruning_opportunity.py \
-  --model bert-base-uncased \
-  --class safe \
-  --limit 20
 ```
 
-Outputs include `reports/pruning_opportunity_rankings/<model>.json`, `reports/pruning_opportunity_ranking_dumps/<model>.rank`, and `reports/pruning_opportunity_explanations/<model>.md`. The ranking separates safe FFN intermediate pruning, constrained attention projections, blocked residual/LayerNorm/attention contractions, auxiliary metadata flow, and unknown candidates. It is static reporting only.
+Output:
 
-## Pruning Plan Synthesis
+```text
+reports/pruning_opportunity_rankings/<model>.json
+reports/pruning_opportunity_ranking_dumps/<model>.rank
+reports/pruning_opportunity_explanations/<model>.md
+```
 
-Synthesize symbolic plans for the top safe FFN pruning opportunities:
+### Symbolic Plan Synthesis
 
 ```bash
 ./conda-env/bin/python scripts/synthesize_pruning_plans.py \
   --model bert-base-uncased \
   --verbose
-
-./conda-env/bin/python scripts/explain_pruning_plan.py \
-  --model bert-base-uncased \
-  --status ready_symbolic \
-  --limit 20
 ```
 
-Outputs include `reports/pruning_plans/<model>.json`, `reports/pruning_plan_dumps/<model>.plan`, and `reports/pruning_plan_explanations/<model>.md`. Plans are parameterized by symbolic index sets such as `I_layer_0_intermediate`; they specify producer-output pruning, bias repair, GELU propagation, consumer-input repair, preserved hidden dimensions, and forbidden residual/LayerNorm hidden pruning. They do not choose concrete indices or modify models.
+Output:
 
-## Pruning Plan Validation
+```text
+reports/pruning_plans/<model>.json
+reports/pruning_plan_dumps/<model>.plan
+reports/pruning_plan_explanations/<model>.md
+```
 
-Validate symbolic plans before any optional executable backend consumes them:
+### Plan Validation
 
 ```bash
 ./conda-env/bin/python scripts/validate_pruning_plans.py \
   --model bert-base-uncased \
   --verbose
-
-./conda-env/bin/python scripts/explain_pruning_plan_validation.py \
-  --model bert-base-uncased \
-  --status valid \
-  --limit 20
 ```
 
-Outputs include `reports/pruning_plan_validation/<model>.json`, `reports/pruning_plan_validation_dumps/<model>.pvalid`, and `reports/pruning_plan_validation_explanations/<model>.md`. Validation checks candidate safety, required actions, op-semantics agreement, required repairs, preserved hidden dimensions, forbidden actions, blockers, and unknown critical ops. It is static reporting only and does not choose concrete indices or modify models.
+Output:
 
-## Layer Subgraph Validation Packs
+```text
+reports/pruning_plan_validation/<model>.json
+reports/pruning_plan_validation_dumps/<model>.pvalid
+reports/pruning_plan_validation_explanations/<model>.md
+```
 
-Build a learner-facing evidence pack for one encoder layer:
+### Layer / Block Subgraph Atlas
 
 ```bash
 ./conda-env/bin/python scripts/build_layer_subgraph_validation_pack.py \
@@ -348,524 +360,145 @@ Build a learner-facing evidence pack for one encoder layer:
   --verbose
 ```
 
-Outputs include `reports/layer_subgraph_validation/<model>/layer_<N>/index.md` and per-node folders under both `reports/layer_subgraph_validation/` and `artifacts/layer_subgraphs/`. Each node folder slices the full-model analysis into primitive ops, op semantics, region semantics, ranking, plans, validation, and an optional ONNX visualization fragment. ONNX subgraphs are evidence artifacts for Netron, not standalone analysis sources.
-
-## Structural Region Tree over Tensor IR
-
-Organize Tensor IR operations into compiler-inspired semantic regions:
-
-```bash
-python scripts/build_structural_region_tree.py --model bert-base-uncased --verbose
-```
-
-For all available Tensor IR graphs and comparison:
-
-```bash
-python scripts/build_structural_region_tree.py --model all --verbose
-python scripts/compare_structural_region_trees.py --models all
-```
-
-Outputs include `reports/structural_region_trees/<model>.md`, `reports/structural_region_dumps/<model>.srtree`, and preliminary interfaces in `reports/structural_region_interfaces/`. Primitive TensorOps remain leaves; internal regions capture projections, joins, forks, axis transforms, residual merges, and bounded attention skeletons for future propagation analysis.
-
-## Region-Aware Dimension IR
-
-Derive symbolic dimensions and propagation constraints from semantic Structural Region Tree interfaces:
-
-```bash
-python scripts/build_region_dimension_ir.py --model bert-base-uncased --verbose
-```
-
-For all region trees and cross-model comparison:
-
-```bash
-python scripts/build_region_dimension_ir.py --model all --verbose
-python scripts/compare_region_dimension_ir.py --models all
-```
-
-Outputs include `reports/region_dimension_ir/<model>.md`, `reports/region_pruning_ir_dumps/<model>.rdim`, `reports/region_constraint_equations/`, and `reports/region_dimension_equivalence/`. This path makes semantic regions responsible for prunable, protected, propagated, blocked, and unresolved symbolic dimensions; it complements rather than replaces the existing pruning-map-derived Dimension IR.
-
-## Region-Aware Pruning Propagation Analysis
-
-List semantic-region dimensions and explain blocked/protected obligations:
-
-```bash
-python scripts/list_region_dimensions.py --model bert-base-uncased --contains intermediate --limit 10
-python scripts/explain_region_blocked_dimensions.py --model bert-base-uncased
-```
-
-Check a symbolic or concrete request selected from the dimension list:
-
-```bash
-python scripts/check_region_pruning_legality.py \
-  --model bert-base-uncased \
-  --dimension-var <region_dimension_var_id> \
-  --count 4 \
-  --verbose
-```
-
-Outputs include `reports/region_legality_checks/`, `reports/region_propagation_slices/`, `reports/region_repair_sets/`, and `reports/region_blocked_analysis/`. The analyzer computes semantic-region propagation obligations, protected dimensions, unresolved mappings, and blockers; it is static analysis only.
-
-## Region Tree Browsing and MindNode Export
-
-Large Structural Region Trees are easier to inspect through lazy browsing tools than by opening the full JSON. Build an abstract structure catalog:
-
-```bash
-python abstract_structure_collector.py \
-  --model bert-base-uncased \
-  --write
-```
-
-Run the API-backed structure browser:
-
-```bash
-python region_structure_api_server.py \
-  --model bert-base-uncased \
-  --port 8765
-```
-
-The server exposes lazy endpoints such as `/api/index`, `/api/region/<region_id>`, `/api/children/<region_id>`, `/api/search`, `/api/blocked`, `/api/structures`, and `/api/structures/<structure_id>/instances?offset=0&limit=100`. The focused viewer shows a structure catalog, selected instances, and one region's dimensions/children without loading the full tree into browser memory.
-
-Export a MindNode-friendly outline:
-
-```bash
-./conda-env/bin/python tools/export_region_tree_mindnode.py \
-  --model bert-base-uncased \
-  --label-mode semantic \
-  --include-counts \
-  --max-depth 3
-```
-
-Generated viewer data, abstract-structure reports, and MindNode outlines are ignored by git. These tools are for visualization and exploration only; they do not modify models or pruning logic.
-
-## Dependency Graph Construction
-
-Build a conservative pruning-dependency graph from existing structural inventory reports:
-
-```bash
-python scripts/generate_structural_inventory.py --model bert-base-uncased
-python scripts/build_dependency_graph.py --model bert-base-uncased
-```
-
-Full single-model flow:
-
-```bash
-python scripts/download_models.py --model bert-base-uncased
-python scripts/export_to_onnx.py --model bert-base-uncased
-python scripts/generate_structural_inventory.py --model bert-base-uncased
-python scripts/build_dependency_graph.py --model bert-base-uncased
-```
-
-Generated dependency outputs:
+Output:
 
 ```text
-reports/dependency_graphs/<model>.json      Dependency graph IR with prunable units and dependency edges
-reports/dependency_graphs/<model>.md        Human-readable dependency graph report
-reports/dependency_summaries/<model>.json   Analyzer summary for targets, paths, constraints, and review items
-reports/dependency_summaries/<model>.md     Human-readable dependency summary
+reports/layer_subgraph_validation/<model>/layer_<N>/
+artifacts/model_analysis_subgraphs/<model>/layers/layer_<N>/
 ```
 
-The dependency graph is a conservative static pruning-dependency IR. It is not an executable pruning transform yet and does not prove that a pruning decision is safe.
-
-## Pruning Action Simulation
-
-Generate and simulate small candidate pruning actions:
+### Full Model Report
 
 ```bash
-python scripts/download_models.py --model bert-base-uncased
-python scripts/export_to_onnx.py --model bert-base-uncased
-python scripts/generate_structural_inventory.py --model bert-base-uncased
-python scripts/build_dependency_graph.py --model bert-base-uncased
-python scripts/generate_candidate_actions.py --model bert-base-uncased --simulate --limit 5
-```
-
-Simulate one manual action:
-
-```bash
-python scripts/simulate_pruning_action.py \
+./conda-env/bin/python scripts/build_full_model_analysis_report.py \
   --model bert-base-uncased \
-  --target-unit <unit_id> \
-  --dim out_features \
-  --indices 0,1,2,3 \
+  --layers all \
+  --export-onnx-subgraphs \
+  --render-svg \
   --verbose
 ```
 
-This does not prune weights, rewrite PyTorch modules, or rewrite ONNX. It only simulates dependency propagation and emits candidate plans, propagation traces, and validation diagnostics. Ambiguous results are expected for complex transformer structures until later milestones add stronger PyTorch/ONNX correspondence and executable pruning transforms.
+Output:
 
-## PyTorch-to-ONNX Correspondence and Shape Evidence
-
-Build static correspondence and shape evidence after structural inventory and dependency graph reports exist:
-
-```bash
-python scripts/download_models.py --model bert-base-uncased
-python scripts/export_to_onnx.py --model bert-base-uncased
-python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
-python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
-python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph --verbose
+```text
+reports/model_analysis_reports/<model>/index.md
+reports/model_analysis_reports/<model>/layers/layer_<N>/index.md
+artifacts/model_analysis_subgraphs/<model>/
 ```
 
-Use evidence during pruning simulation:
+---
 
-```bash
-python scripts/simulate_pruning_action.py \
-  --model bert-base-uncased \
-  --target-unit <unit_id> \
-  --dim out_features \
-  --indices 0,1,2,3 \
-  --use-evidence \
-  --verbose
+## What Counts as a Valid MLP/FFN Plan?
+
+A valid symbolic intermediate-dimension pruning plan includes:
+
+```text
+1. prune expansion projection output
+2. prune expansion bias, when present
+3. propagate the same index set through the activation
+4. prune contraction projection input
+5. preserve contraction projection output hidden_dim
+6. preserve residual and LayerNorm hidden dimensions
 ```
 
-Correspondence is heuristic and conservative. Shape evidence is static ONNX metadata. This still does not perform pruning.
+The plan is validated before it is reported as valid. Validation is symbolic and static; it does not mutate model weights.
 
-## k-Node and Join-Aware Subgraph Analysis
+---
 
-Analyze consecutive ONNX paths of one through five nodes and separately capture branch-merge regions such as residual-style `Add` joins:
+## Cross-Model Generalization
 
-```bash
-python scripts/analyze_subgraphs.py \
-  --model bert-base-uncased \
-  --max-nodes 5 \
-  --branch-depth 2 \
-  --post-join-depth 2 \
-  --verbose
+The generic MLP/FFN fusion recognizes equivalent blocks despite different naming conventions.
+
+| Family | Expansion | Activation | Contraction |
+| --- | --- | --- | --- |
+| BERT | `intermediate.dense` | GELU | `output.dense` |
+| DistilBERT | `ffn.lin1` | GELU | `ffn.lin2` |
+| OPT | `fc1` | activation | `fc2` |
+| ViT | `mlp.fc1` | GELU | `mlp.fc2` |
+| GPT-2 | `mlp.c_fc` | GELU | `mlp.c_proj` |
+
+Attention score/context MatMuls remain blocked as direct pruning targets because they are contractions, not learned projection weights. Attention projection pruning is treated conservatively unless head-axis mapping is proven.
+
+---
+
+## Generated Report Safety
+
+Generated reports and artifacts are intentionally ignored by git. They can be regenerated from the local model/ONNX artifacts.
+
+This repository distinguishes:
+
+```text
+analysis evidence     -> reports/
+visual evidence       -> artifacts/
+source implementation -> src/, scripts/, tools/, ui/
 ```
 
-Compare existing subgraph reports across models:
+Do not commit large generated reports, ONNX files, SVGs, or local model checkpoints unless explicitly needed for a small reproducible fixture.
+
+---
+
+## Tests
+
+Run Python tests:
 
 ```bash
-python scripts/compare_subgraphs.py --models all
+python -m compileall src scripts tests tools *.py
+.venv/bin/pytest -q
 ```
 
-This report pass distinguishes bias additions from residual candidates, preserving join semantics that ordinary directed paths cannot represent. It produces local pruning and propagation evidence for future refinement of pruning maps and Dimension IR; it does not modify models.
-
-## DAG Motif and Multi-Join Region Analysis
-
-Detect bounded fork, diamond, and join-fork-join regions that cannot be represented as one linear path or one merge-centered subgraph:
+Run with the conda environment:
 
 ```bash
-python scripts/analyze_dag_regions.py \
-  --model bert-base-uncased \
-  --max-branch-depth 4 \
-  --verbose
+./conda-env/bin/python -m compileall src scripts tests tools *.py
+./conda-env/bin/pytest -q
 ```
 
-Compare existing DAG-region reports across models:
-
-```bash
-python scripts/compare_dag_regions.py --models all
-```
-
-For example, `A,B -> C -> D,E -> F` is represented as a `join_fork_join` region: `C` is both merge and fanout, and `F` is the reconvergence join. This pass records multi-branch propagation evidence only and does not modify models.
-
-## Netron ONNX Subgraph Export
-
-Materialize selected path, join, or DAG-region analysis records as standalone ONNX visualization artifacts:
-
-```bash
-python scripts/export_demo_subgraphs.py \
-  --model bert-base-uncased \
-  --max-per-category 3 \
-  --verbose
-```
-
-Export a selected subset, such as DAG regions:
-
-```bash
-python scripts/export_subgraph_onnx.py \
-  --model bert-base-uncased \
-  --kind dag_region \
-  --max-exports 5 \
-  --verbose
-```
-
-Open the original full graph and an exported fragment using the commands listed in `reports/netron_subgraph_index/bert-base-uncased__demo.md`. The index identifies `data/models/onnx/bert-base-uncased/model.onnx` as the comparison baseline. The fragments preserve selected nodes, boundary tensors, required initializers, available value/shape information, and provenance metadata. They are visualization artifacts with artificial boundaries, not semantically complete standalone models, and the source ONNX model is not modified.
-
-## Static-Shape ONNX Export for Netron
-
-Dynamic ONNX under `data/models/onnx/` remains the main export for structural analysis. For Netron inspection with concrete tensor shapes, generate a separate static artifact under `data/models/onnx_static/<model>/model.static.onnx`:
-
-```bash
-./conda-env/bin/python scripts/export_static_shape_onnx.py \
-  --model bert-base-uncased \
-  --seq-len max \
-  --batch-size 1 \
-  --opset 17 \
-  --device cpu
-```
-
-For a best-effort visualization export of all registered models:
-
-```bash
-./conda-env/bin/python scripts/export_static_shape_onnx.py \
-  --model all \
-  --seq-len 128 \
-  --batch-size 1 \
-  --opset 17 \
-  --device cpu \
-  --continue-on-error
-```
-
-Static-shape exports are visualization artifacts and do not replace the dynamic ONNX analysis pipeline.
-
-## Reversible PyTorch Linear Pruning
-
-Dry-run a Linear-only pruning action:
-
-```bash
-python scripts/execute_pruning_plan.py \
-  --model bert-base-uncased \
-  --target-unit torch:linear:bert.encoder.layer.0.attention.self.query \
-  --dim out_features \
-  --indices 0,1,2,3 \
-  --only-target \
-  --dry-run \
-  --verbose
-```
-
-Execute the same Linear-only structural surgery into a new artifact directory:
-
-```bash
-python scripts/execute_pruning_plan.py \
-  --model bert-base-uncased \
-  --target-unit torch:linear:bert.encoder.layer.0.attention.self.query \
-  --dim out_features \
-  --indices 0,1,2,3 \
-  --only-target \
-  --allow-ambiguous \
-  --verbose
-```
-
-This creates a new checkpoint under `artifacts/pruned_models/`. The original model directory remains untouched. This is not full transformer-valid pruning yet; it is a controlled prototype for module-level `nn.Linear` structural surgery.
-
-## Paired Linear Repair and Forward Smoke Tests
-
-Write a repair plan for an MLP expansion/projection pair:
-
-```bash
-python scripts/execute_pruning_plan.py \
-  --model bert-base-uncased \
-  --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense \
-  --dim out_features \
-  --indices 0,1,2,3 \
-  --repair-pairs \
-  --write-repair-plan-only \
-  --allow-ambiguous \
-  --verbose
-```
-
-Dry-run paired repair detection:
-
-```bash
-python scripts/execute_pruning_plan.py \
-  --model bert-base-uncased \
-  --target-unit torch:linear:bert.encoder.layer.0.intermediate.dense \
-  --dim out_features \
-  --indices 0,1,2,3 \
-  --repair-pairs \
-  --dry-run \
-  --allow-ambiguous \
-  --verbose
-```
-
-Run a standalone forward smoke test:
-
-```bash
-python scripts/run_forward_smoke_test.py --model bert-base-uncased --device cpu --verbose
-```
-
-MLP paired repair is the first supported consistency repair. Attention-head pruning, residual repair, and LayerNorm repair remain manual-review items. Forward smoke tests only check executable shape consistency; they do not prove model quality.
-
-## BERT MLP Block-Level Pruning
-
-List executable BERT MLP targets:
-
-```bash
-python scripts/list_bert_mlp_targets.py --model bert-base-uncased
-```
-
-Dry-run layer 0 intermediate pruning:
-
-```bash
-python scripts/prune_bert_mlp_block.py \
-  --model bert-base-uncased \
-  --layer 0 \
-  --indices 0,1,2,3 \
-  --dry-run \
-  --smoke-test-before \
-  --verbose
-```
-
-Execute the same architecture-specific pruning path:
-
-```bash
-python scripts/prune_bert_mlp_block.py \
-  --model bert-base-uncased \
-  --layer 0 \
-  --indices 0,1,2,3 \
-  --smoke-test-before \
-  --smoke-test-after \
-  --verbose
-```
-
-This is an experimental execution backend. It only reduces the BERT MLP intermediate dimension by pruning `intermediate.dense` `out_features` and `output.dense` `in_features` with the same indices. It preserves hidden size, does not prune attention heads, does not rewrite ONNX, and still requires downstream evaluation or fine-tuning for quality. Single-layer BERT MLP pruning creates non-uniform intermediate sizes, so standard Hugging Face reload paths may need custom metadata support in a later milestone.
-
-## Compiler-Style Pruning Opportunity Maps
-
-The primary research path of this repository is compiler-style structural analysis: identify pruning dimensions, propagation constraints, coupled regions, blocked regions, and structural risks before transforming weights.
-
-Full one-model analysis flow:
-
-```bash
-python scripts/download_models.py --model bert-base-uncased
-python scripts/export_to_onnx.py --model bert-base-uncased
-python scripts/generate_structural_inventory.py --model bert-base-uncased --require-onnx
-python scripts/build_dependency_graph.py --model bert-base-uncased --require-onnx
-python scripts/build_correspondence.py --model bert-base-uncased --require-dependency-graph
-python scripts/analyze_subgraphs.py --model bert-base-uncased --max-nodes 5 --branch-depth 2 --post-join-depth 2 --verbose
-python scripts/analyze_dag_regions.py --model bert-base-uncased --max-branch-depth 4 --verbose
-python scripts/export_demo_subgraphs.py --model bert-base-uncased --max-per-category 3 --verbose
-python scripts/build_pruning_map.py --model bert-base-uncased --verbose
-```
-
-Build and compare maps for all configured models:
-
-```bash
-python scripts/build_pruning_map.py --model all --verbose
-python scripts/compare_pruning_maps.py --models all
-```
-
-Executable pruning modules are experimental validation backends. The main artifact is the model pruning map: a static IR for legal pruning spaces and propagation constraints.
-
-## Dimension Variable IR
-
-Dimension variables are the compiler-style representation of prunable model dimensions. Index variables represent symbolic pruning selections, constraint equations encode propagation rules, and equivalence classes capture dimensions that must be pruned consistently. The `.pir` dump is a research textual IR inspired by MLIR; it does not require MLIR tooling.
-
-Build one model’s Dimension IR:
-
-```bash
-python scripts/build_pruning_map.py --model bert-base-uncased --verbose
-python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
-```
-
-Build and compare Dimension IRs for all configured models:
-
-```bash
-python scripts/build_pruning_map.py --model all --verbose
-python scripts/build_dimension_ir.py --model all --verbose
-python scripts/compare_dimension_irs.py --models all
-```
-
-Tensor IR, Structural Region Tree, Region-Aware Dimension IR, region-aware legality analysis, pruning maps, and Dimension IR are the main research artifacts. Executable pruning remains experimental backend support only.
-
-## Dimension-IR Legality Analysis
-
-Legality analysis checks symbolic pruning requests against the Dimension IR without touching weights. It reports required same-index propagation, forward/backward slices, blocking constraints, unresolved mappings, and minimal structural repair sets.
-
-Example flow:
-
-```bash
-python scripts/build_pruning_map.py --model bert-base-uncased --verbose
-python scripts/build_dimension_ir.py --model bert-base-uncased --verbose
-python scripts/list_pruning_dimensions.py --model bert-base-uncased --contains intermediate.dense
-python scripts/check_pruning_legality.py \
-  --model bert-base-uncased \
-  --dimension-var <dimension_var_id> \
-  --count 4 \
-  --verbose
-python scripts/explain_blocked_regions.py --model bert-base-uncased
-```
-
-This performs static legality analysis only. It does not modify models, execute pruning, rewrite ONNX, or evaluate accuracy.
-
-## Full-Model Static Analysis Reports
-
-Full-model reports collect the static pruning-analysis pipeline into one structured folder per model, with per-layer learner-node reports and a cross-model summary.
-
-```bash
-python scripts/build_full_model_analysis_report.py --model bert-base-uncased --layers all --export-onnx-subgraphs --verbose
-python scripts/build_all_model_analysis_reports.py --models all --layers all --no-export-onnx-subgraphs --verbose
-python scripts/compare_model_analysis_reports.py --models all --verbose
-```
-
-Reports are written under `reports/model_analysis_reports/`; visualization-only ONNX fragments are written under `artifacts/model_analysis_subgraphs/`. These reports do not choose pruning indices, modify models, execute pruning, rewrite full ONNX models, download models, or evaluate accuracy.
-
-## Cross-Model Static Coverage Study
-
-The coverage study checks how far the static pipeline gets for each configured model and records complete, partial, skipped, or failed support.
-
-```bash
-python scripts/build_static_pipeline_for_all_models.py --models all --build-missing-analysis --build-layer-packs --verbose
-python scripts/report_static_pipeline_coverage.py --models all --verbose
-python scripts/explain_static_pipeline_status.py --model bert-base-uncased
-```
-
-Coverage reports are written under `reports/static_pipeline_status/` and `reports/static_coverage_study/`. The study is reporting only; it does not download models, execute pruning, rewrite full ONNX models, or evaluate accuracy.
-
-## Cross-Model Rule-Gap Diagnosis
-
-Rule-gap diagnosis explains why a configured model is complete, partial, or missing valid symbolic FFN plans, then reports candidate semantic-rule repairs.
-
-```bash
-python scripts/diagnose_rule_gaps.py --models all --verbose
-python scripts/explain_rule_gap.py --model facebook/opt-125m
-python scripts/compare_rule_gaps.py --models all
-```
-
-Reports are written under `reports/rule_gap_diagnosis/` and `reports/rule_gap_diagnosis_compare/`. Generic FFN evidence matching now recognizes BERT `intermediate/output dense`, DistilBERT `ffn.lin1/lin2`, OPT `fc1/fc2`, ViT `mlp.fc1/fc2`, and GPT-2 `mlp.c_fc/c_proj` naming where op evidence exists. This remains static reporting and does not modify models or execute pruning.
-
-## Generic MLP Region Fusion
-
-Generic MLP fusion recovers feed-forward blocks directly from op semantics when the Structural Region Tree does not already expose a native `FeedForwardRegion`.
-
-```bash
-python scripts/build_region_pruning_semantics.py --model distilbert-base-uncased --verbose
-python scripts/rank_pruning_opportunities.py --model distilbert-base-uncased --verbose
-python scripts/synthesize_pruning_plans.py --model distilbert-base-uncased --verbose
-python scripts/validate_pruning_plans.py --model distilbert-base-uncased --verbose
-```
-
-The fusion rule looks for expansion projection, index-preserving activation, and contraction projection evidence. It is still static analysis only; attention contractions remain blocked unless a separate head-axis mapping proof exists.
-
-## Generic Transformer Block Atlases
-
-Generic block grouping builds learner-facing layer/block atlases for BERT, DistilBERT, OPT, GPT-2, and ViT from existing op semantics, rankings, plans, and validation reports.
-
-```bash
-python scripts/build_layer_subgraph_validation_pack.py --model facebook/opt-125m --layer 0 --export-onnx --verbose
-python scripts/build_layer_subgraph_validation_pack.py --model gpt2 --layer 0 --export-onnx --verbose
-python scripts/build_full_model_analysis_report.py --model google/vit-base-patch16-224 --layers all --export-onnx-subgraphs --verbose
-```
-
-The atlases group decoder/encoder blocks into attention, residual/LayerNorm, and MLP subgraphs so valid symbolic MLP plans are visible beyond BERT. Plan validation summaries expose both `valid/warning/invalid/unknown` and `valid_plans/invalid_plans` compatibility fields. This remains static reporting/visualization only.
-
-## Interactive Static Analysis Explorer
-
-The interactive explorer is a read-only terminal console over generated static reports.
-
-```bash
-python tools/interactive_analysis_explorer.py --model bert-base-uncased --layer 0 --no-open
-```
-
-Use it to choose a model/layer, list subgraphs, inspect Feed Forward or MLP plans, view validation evidence, print ONNX artifact paths, and compare cross-model coverage. See `README_interactive_analysis_explorer.md` for the command reference.
-
-## Pruning Analysis Web UI
-
-The web UI is a read-only React dashboard over the same generated static reports and artifacts.
+Build the web UI:
 
 ```bash
 cd ui/pruning-analysis-explorer
-npm install
 npm run build
 cd ../..
-python tools/analysis_ui_api_server.py --port 8777
 ```
 
-Open `http://127.0.0.1:8777/` to browse cross-model coverage, model summaries, layer/block atlases, abstract subgraphs, ONNX/SVG artifacts, op semantics, rankings, symbolic plans, and validation checks. See `README_analysis_ui.md` for the full command reference.
+---
 
-## First Push
+## Documentation
 
-```bash
-git add .
-git commit -m "Initial model analysis project scaffold"
-git push -u origin main
-```
+Useful entry points:
+
+- [`docs/usage.md`](docs/usage.md): command-oriented usage guide
+- [`docs/design.md`](docs/design.md): design and pipeline notes
+- [`docs/milestones.md`](docs/milestones.md): milestone history
+- [`demos/README.md`](demos/README.md): guided demo track
+- [`demos/full_research_pipeline.md`](demos/full_research_pipeline.md): complete research walkthrough
+- [`README_analysis_ui.md`](README_analysis_ui.md): browser UI guide
+- [`README_interactive_analysis_explorer.md`](README_interactive_analysis_explorer.md): terminal explorer guide
+
+---
+
+## Suggested Demo Narrative
+
+For a compact demonstration:
+
+1. Open the web UI.
+2. Show that all five configured models are complete.
+3. Select BERT Layer 0 and inspect `Feed Forward`.
+4. Show its symbolic plan and validation checks.
+5. Switch to OPT Layer 0 and inspect the `MLP Block`.
+6. Explain that the same static pruning legality pattern applies across different model families.
+7. Open the ONNX/SVG artifact to show the concrete subgraph evidence.
+
+---
+
+## Project Direction
+
+Near-term research directions:
+
+- classify remaining unknown op semantics by criticality,
+- prove whether unknown ops are outside pruning-critical paths,
+- extend attention head-axis mapping proofs,
+- export validated symbolic plans into an executable pruning backend,
+- connect static plan validation with runtime/accuracy evaluation.
+
+The current codebase is intentionally conservative: it prefers to report constrained or blocked opportunities rather than overclaim pruning safety.
