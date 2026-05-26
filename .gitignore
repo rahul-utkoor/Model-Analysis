@@ -227,5 +227,9 @@ reports/pruning_opportunity_compare/*
 !reports/pruning_opportunity_compare/.gitkeep
 viewer_data/
 
+ui/pruning-analysis-explorer/node_modules/
+ui/pruning-analysis-explorer/dist/
+ui/pruning-analysis-explorer/*.tsbuildinfo
+
 *.onnx
 .DS_Store

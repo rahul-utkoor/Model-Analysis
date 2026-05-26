@@ -848,6 +848,20 @@ python tools/interactive_analysis_explorer.py --model bert-base-uncased --layer 
 
 Use it to choose a model/layer, list subgraphs, inspect Feed Forward or MLP plans, view validation evidence, print ONNX artifact paths, and compare cross-model coverage. See `README_interactive_analysis_explorer.md` for the command reference.
 
+## Pruning Analysis Web UI
+
+The web UI is a read-only React dashboard over the same generated static reports and artifacts.
+
+```bash
+cd ui/pruning-analysis-explorer
+npm install
+npm run build
+cd ../..
+python tools/analysis_ui_api_server.py --port 8777
+```
+
+Open `http://127.0.0.1:8777/` to browse cross-model coverage, model summaries, layer/block atlases, abstract subgraphs, ONNX/SVG artifacts, op semantics, rankings, symbolic plans, and validation checks. See `README_analysis_ui.md` for the full command reference.
+
 ## First Push
 
 ```bash

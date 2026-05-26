@@ -1385,3 +1385,23 @@ quit
 ```
 
 The explorer reads existing files under `reports/model_analysis_reports/`, `reports/layer_subgraph_validation/`, and `artifacts/model_analysis_subgraphs/`. It does not regenerate reports or mutate models.
+
+## Pruning Analysis Web UI
+
+Milestone 36 adds a local React + Vite browser UI over the same generated static reports.
+
+```bash
+cd ui/pruning-analysis-explorer
+npm install
+npm run build
+cd ../..
+python tools/analysis_ui_api_server.py --host 127.0.0.1 --port 8777
+```
+
+Open:
+
+```text
+http://127.0.0.1:8777/
+```
+
+The UI shows cross-model coverage, model summaries, layer/block atlases, subgraph tables, explanations, ONNX/SVG artifact links, op semantics, rankings, symbolic plans, and plan validation checks. It is read-only and does not execute pruning, mutate models, rewrite ONNX, download models, or evaluate accuracy.

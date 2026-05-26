@@ -853,3 +853,31 @@ Primary commands:
 ```
 
 This is read-only static analysis/reporting/visualization only. It does not regenerate reports, execute pruning, modify models, rewrite ONNX, download models, or evaluate accuracy.
+
+## Milestone 36: React Web UI for Pruning Analysis Explorer
+
+Status: complete.
+
+Implemented:
+
+- Python stdlib API server under `tools/analysis_ui_api_server.py`
+- React + Vite + TypeScript frontend under `ui/pruning-analysis-explorer/`
+- Cross-model coverage dashboard
+- Model overview, pipeline overview, layer/block navigator, subgraph table, and subgraph detail panels
+- Tabs for explanation, primitive ops, op/region semantics, ranking, symbolic plan, validation, and artifacts
+- Safe artifact serving for ONNX/SVG/DOT/Markdown/JSON files
+- Backend route tests and production frontend build
+
+Primary commands:
+
+```bash
+cd ui/pruning-analysis-explorer
+npm install
+npm run build
+cd ../..
+./conda-env/bin/python tools/analysis_ui_api_server.py --host 127.0.0.1 --port 8777
+```
+
+Open `http://127.0.0.1:8777/`.
+
+This is read-only static analysis/reporting/visualization only. It does not execute pruning, choose indices, modify models, rewrite ONNX, download models, or evaluate accuracy.

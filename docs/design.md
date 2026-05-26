@@ -705,3 +705,9 @@ The synthesized `GenericMLPRegion` records reuse the established region pruning 
 The interactive explorer is a terminal presentation layer over generated reports. It discovers model reports, layers, subgraphs, plans, validations, explanations, and ONNX evidence paths, then lets a user navigate them without manually opening many files.
 
 It is intentionally read-only. It never chooses pruning indices, executes pruning, modifies model weights, rewrites ONNX, downloads models, or regenerates upstream artifacts.
+
+## Pruning Analysis Web UI
+
+The web UI is a browser presentation layer over the same generated reports. A small Python stdlib API server reads existing report JSON/Markdown and serves safe artifact links; the React + Vite frontend provides dashboards, layer/block navigation, subgraph details, plan panels, validation panels, and search.
+
+The UI does not become a new analysis source of truth. It projects existing full-model reports, layer subgraph packs, ranking files, symbolic plans, validation files, rule-gap diagnoses, and ONNX/SVG evidence artifacts into a learner-facing dashboard. It is read-only and does not execute pruning, mutate models, rewrite ONNX, download models, or evaluate accuracy.
