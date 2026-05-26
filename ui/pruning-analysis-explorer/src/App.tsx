@@ -214,7 +214,7 @@ export default function App() {
       <PipelineOverview detail={modelDetail} />
       <div className="workspace-grid">
         <LayerNavigator layers={layers} selectedLayer={selectedLayer} onSelect={handleSelectLayer} />
-        <div className="middle-column">
+        <div className="analysis-column">
           {activeLayer ? (
             <section className="panel layer-summary-card">
               <h2>Layer {activeLayer.layer_index}</h2>
@@ -223,9 +223,9 @@ export default function App() {
               </p>
             </section>
           ) : null}
+          <SubgraphDetail detail={subgraphDetail} />
           <SubgraphTable subgraphs={subgraphs} selectedNode={selectedNode} onSelect={handleSelectNode} />
         </div>
-        <SubgraphDetail detail={subgraphDetail} />
       </div>
     </Layout>
   );

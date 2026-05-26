@@ -247,6 +247,15 @@ select {
   font-size: 0.88rem;
 }
 
+.subgraph-table-panel {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.subgraph-table-panel .data-table {
+  min-width: 760px;
+}
+
 .data-table.clickable tbody tr {
   cursor: pointer;
 }
@@ -371,14 +380,19 @@ select {
 }
 
 .workspace-grid {
-  grid-template-columns: 250px minmax(420px, 1fr) minmax(360px, 0.9fr);
+  grid-template-columns: 250px minmax(0, 1fr);
   align-items: start;
 }
 
-.layer-panel,
-.detail-panel {
+.layer-panel {
   position: sticky;
   top: 16px;
+}
+
+.detail-panel {
+  position: static;
+  width: 100%;
+  overflow: hidden;
 }
 
 .layer-row {
@@ -386,9 +400,11 @@ select {
   gap: 5px;
 }
 
-.middle-column {
+.middle-column,
+.analysis-column {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .filters {
@@ -448,6 +464,15 @@ select {
   color: #fff;
 }
 
+.tab-body {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.detail-panel .data-table {
+  min-width: 760px;
+}
+
 .markdown-block {
   white-space: pre-wrap;
   background: #f8fafb;
@@ -485,12 +510,16 @@ select {
   border-radius: 6px;
   background: #fff;
   padding: 8px;
-  max-height: 320px;
+  max-height: 520px;
   overflow: auto;
 }
 
 .svg-preview img {
-  max-width: 100%;
+  display: block;
+  width: auto;
+  max-width: none;
+  min-width: 100%;
+  height: auto;
 }
 
 .error-banner {

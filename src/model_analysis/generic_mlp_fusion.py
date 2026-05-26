@@ -43,6 +43,20 @@ def _source(op: dict[str, Any] | None) -> str:
     return str((op or {}).get("source_name", ""))
 
 
+def _in_prefix(source: str, prefix: str) -> bool:
+    """Return true only when source is inside the exact normalized layer/block prefix.
+
+    A plain startswith(prefix) is unsafe for GPT-2 because
+    /transformer/h/1 also matches /transformer/h/10 and /transformer/h/11.
+    Require a path boundary after the prefix.
+    """
+    normalized_source = _norm(source)
+    normalized_prefix = _norm(prefix).rstrip("/")
+    if not normalized_prefix:
+        return True
+    return normalized_source == normalized_prefix or normalized_source.startswith(normalized_prefix + "/")
+
+
 def _index(op: dict[str, Any] | None) -> int:
     if not op:
         return 10**12
@@ -172,13 +186,137 @@ def _activation_prefix(source: str) -> str | None:
 def _support_op(ops: list[dict[str, Any]], prefix: str, kinds: set[str], tokens: tuple[str, ...]) -> dict[str, Any] | None:
     for op in sorted(ops, key=_index):
         source = _norm(_source(op))
-        if not source.startswith(prefix):
+        if not _in_prefix(source, prefix):
             continue
         if op.get("semantic_kind") not in kinds:
             continue
         if any(token in source for token in tokens):
             return op
     return None
+
+
+def _support_op_near(
+    ops: list[dict[str, Any]],
+    *,
+    prefix: str,
+    anchor_index: int,
+    kinds: set[str] | None = None,
+    op_types: set[str] | None = None,
+    tokens: tuple[str, ...] = (),
+    before: bool = True,
+) -> dict[str, Any] | None:
+    """Return the nearest support op around an anchor.
+
+    This is mainly used for decoder MLP evidence. GPT-2 blocks contain two
+    LayerNorms; choosing the first LayerNorm in the block gives the attention
+    pre-norm, not the MLP pre-norm. For MLP evidence we want the nearest
+    LayerNorm before c_fc, and the nearest residual Add after c_proj.
+    """
+    candidates: list[dict[str, Any]] = []
+    for op in ops:
+        source = _norm(_source(op))
+        if prefix and not _in_prefix(source, prefix):
+            continue
+        if kinds is not None and op.get("semantic_kind") not in kinds:
+            continue
+        if op_types is not None and str(op.get("op_type", "")) not in op_types:
+            continue
+        if tokens and not any(token in source for token in tokens):
+            continue
+        idx = _index(op)
+        if before and idx < anchor_index:
+            candidates.append(op)
+        elif not before and idx > anchor_index:
+            candidates.append(op)
+    if not candidates:
+        return None
+    if before:
+        return max(candidates, key=_index)
+    return min(candidates, key=_index)
+
+
+def _path_ops(
+    ops: list[dict[str, Any]],
+    *,
+    prefix: str,
+    token: str,
+    op_types: set[str],
+) -> list[dict[str, Any]]:
+    """Return compact visual ops from one MLP path segment.
+
+    ONNX exports of GPT-2 Conv1D-style projections often contain reshape nodes
+    around Gemm. If the report selects only Gemm + activation ops, the exported
+    visualization can look disconnected even though the semantic plan is valid.
+    Keep the learner-facing path compact but connected by including the reshape
+    nodes that are directly in the c_fc/c_proj path.
+    """
+    out: list[dict[str, Any]] = []
+    normalized_token = _norm(token)
+    for op in sorted(ops, key=_index):
+        source = _norm(_source(op))
+        if prefix and not _in_prefix(source, prefix):
+            continue
+        if normalized_token not in source:
+            continue
+        if str(op.get("op_type", "")) in op_types:
+            out.append(op)
+    return out
+
+
+def _activation_path_ops(ops: list[dict[str, Any]], *, prefix: str) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for op in sorted(ops, key=_index):
+        source = _norm(_source(op))
+        if prefix and not _in_prefix(source, prefix):
+            continue
+        if "/mlp/act/" not in source and "/activation" not in source and "/intermediate/intermediate_act_fn/" not in source and "/ffn/activation/" not in source:
+            continue
+        if str(op.get("op_type", "")) in {"Pow", "Mul", "Add", "Tanh", "Erf", "Div", "Relu", "Gelu"}:
+            out.append(op)
+    return out
+
+
+def _dedup_full_ops(ops: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for op in sorted([item for item in ops if item], key=_index):
+        key = str(op.get("op_id") or op.get("source_name") or _index(op))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(op)
+    return out
+
+
+def _visual_mlp_source_ops(
+    *,
+    family: str,
+    ops: list[dict[str, Any]],
+    prefix: str,
+    expansion: dict[str, Any] | None,
+    expansion_bias: dict[str, Any] | None,
+    activations: list[dict[str, Any]],
+    contraction: dict[str, Any] | None,
+    contraction_bias: dict[str, Any] | None,
+    residual: dict[str, Any] | None,
+    layernorm: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if family == "gpt2":
+        source_ops: list[dict[str, Any]] = []
+        if layernorm:
+            source_ops.append(layernorm)
+        # Keep the exported GPT-2 MLP evidence connected:
+        # ln_2 -> Reshape -> c_fc/Gemm -> Reshape -> NewGELU -> Reshape -> c_proj/Gemm -> Reshape -> residual Add.
+        source_ops.extend(_path_ops(ops, prefix=prefix, token="/mlp/c_fc/", op_types={"Reshape", "Gemm"}))
+        source_ops.extend(_activation_path_ops(ops, prefix=prefix))
+        source_ops.extend(_path_ops(ops, prefix=prefix, token="/mlp/c_proj/", op_types={"Reshape", "Gemm"}))
+        if residual:
+            source_ops.append(residual)
+        return _dedup_full_ops(source_ops)
+
+    # Other families already export compact connected paths with the learned
+    # projection, optional bias, activation, and contraction projection.
+    return _dedup_full_ops([expansion, expansion_bias, *activations, contraction, contraction_bias, residual, layernorm])
 
 
 def _display_name(family: str, layer: int) -> str:
@@ -255,13 +393,73 @@ def detect_generic_mlp_matches(model_name: str, op_semantics: dict[str, Any]) ->
             warnings.append("no_expansion_bias")
         if not item.get("contraction_bias") and not (contraction and str(contraction.get("op_type", "")).lower() == "gemm"):
             warnings.append("no_contraction_bias")
-        residual = _support_op(ops, prefix, {"residual_add"}, ("/output/add", "/add"))
-        layernorm = _support_op(ops, prefix, {"layernorm"}, ("layernorm", "layer_norm", "ln_2", "ln/2"))
+        expansion_index = _index(expansion)
+        contraction_index = _index(contraction)
+        if family == "gpt2":
+            layernorm = _support_op_near(
+                ops,
+                prefix=prefix,
+                anchor_index=expansion_index,
+                kinds={"layernorm"},
+                tokens=("ln/2", "ln_2", "layernormalization"),
+                before=True,
+            )
+            # GPT-2 residual Add is currently often categorized as unknown in
+            # op semantics, so select the nearest Add after c_proj by topology.
+            residual = _support_op_near(
+                ops,
+                prefix=prefix,
+                anchor_index=contraction_index,
+                op_types={"Add"},
+                before=False,
+            )
+        elif family == "opt":
+            # OPT has both self_attn_layer_norm and final_layer_norm in the same
+            # decoder block.  The MLP evidence path starts at the nearest
+            # LayerNorm before fc1, not the earlier self-attention LayerNorm.
+            layernorm = _support_op_near(
+                ops,
+                prefix=prefix,
+                anchor_index=expansion_index,
+                kinds={"layernorm"},
+                before=True,
+            )
+            # The post-fc2 residual add is not always semantically categorized,
+            # so use the nearest Add after fc2 as visual evidence.
+            residual = _support_op_near(
+                ops,
+                prefix=prefix,
+                anchor_index=contraction_index,
+                op_types={"Add"},
+                before=False,
+            )
+        else:
+            # For encoder families, the nearest hidden-dim LayerNorm before the
+            # expansion projection gives a compact connected visual path.
+            layernorm = _support_op_near(
+                ops,
+                prefix=prefix,
+                anchor_index=expansion_index,
+                kinds={"layernorm"},
+                before=True,
+            ) or _support_op(ops, prefix, {"layernorm"}, ("layernorm", "layer_norm", "ln_2", "ln/2"))
+            residual = _support_op(ops, prefix, {"residual_add"}, ("/output/add", "/add"))
         if not residual:
             warnings.append("missing_residual_evidence")
         if not layernorm:
             warnings.append("missing_layernorm_evidence")
-        source_ops = [op for op in [expansion, item.get("expansion_bias"), *activations, contraction, item.get("contraction_bias"), residual, layernorm] if op]
+        source_ops = _visual_mlp_source_ops(
+            family=family,
+            ops=ops,
+            prefix=prefix,
+            expansion=expansion,
+            expansion_bias=item.get("expansion_bias"),
+            activations=activations,
+            contraction=contraction,
+            contraction_bias=item.get("contraction_bias"),
+            residual=residual,
+            layernorm=layernorm,
+        )
         required_missing = [value for value in missing if value in {"missing_expansion_projection", "missing_activation_evidence", "missing_contraction_projection"}]
         status = "complete" if not required_missing else "partial" if source_ops else "missing"
         confidence = "high" if status == "complete" else "medium" if status == "partial" else "low"
