@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
 import { CoverageDashboard } from './components/CoverageDashboard';
 import { LayerNavigator } from './components/LayerNavigator';
@@ -7,7 +7,28 @@ import { ModelOverview } from './components/ModelOverview';
 import { PipelineOverview } from './components/PipelineOverview';
 import { SubgraphDetail } from './components/SubgraphDetail';
 import { SubgraphTable } from './components/SubgraphTable';
+import {
+  chooseDefaultSubgraph,
+  makePreviousSubgraphIntent,
+  subgraphBelongsToLoadedLayer,
+  type PreviousSubgraphIntent,
+} from './selection';
 import type { CoverageResponse, LayerSummary, ModelDetail, ModelSummary, SearchMatch, SubgraphDetailResponse, SubgraphSummary } from './types';
+
+type LoadedSubgraphContext = {
+  model: string;
+  layer: number;
+};
+
+type PendingNavigation = {
+  model: string;
+  layer?: number;
+  nodeSlug?: string;
+};
+
+function sameContext(ctx: LoadedSubgraphContext | undefined, model?: string, layer?: number): boolean {
+  return Boolean(ctx && model && layer !== undefined && ctx.model === model && ctx.layer === layer);
+}
 
 export default function App() {
   const [models, setModels] = useState<ModelSummary[]>([]);
@@ -18,9 +39,16 @@ export default function App() {
   const [layers, setLayers] = useState<LayerSummary[]>([]);
   const [selectedLayer, setSelectedLayer] = useState<number>();
   const [subgraphs, setSubgraphs] = useState<SubgraphSummary[]>([]);
+  const [subgraphsContext, setSubgraphsContext] = useState<LoadedSubgraphContext>();
   const [selectedNode, setSelectedNode] = useState<string>();
   const [subgraphDetail, setSubgraphDetail] = useState<SubgraphDetailResponse>();
   const [error, setError] = useState<string>();
+
+  const modelRequestId = useRef(0);
+  const layerRequestId = useRef(0);
+  const detailRequestId = useRef(0);
+  const previousIntentRef = useRef<PreviousSubgraphIntent | undefined>(undefined);
+  const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined);
 
   useEffect(() => {
     Promise.all([api.models(), api.coverage()])
@@ -34,55 +62,158 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedModel) return;
+
+    const requestId = ++modelRequestId.current;
     setSelectedLayer(undefined);
     setSelectedNode(undefined);
     setSubgraphDetail(undefined);
+    setSubgraphs([]);
+    setSubgraphsContext(undefined);
+    setModelDetail(undefined);
+    setDiagnosis(undefined);
+
     Promise.all([api.model(selectedModel), api.layers(selectedModel), api.diagnosis(selectedModel)])
       .then(([detail, layerRows, diagnosisData]) => {
+        if (requestId !== modelRequestId.current) return;
+
         setModelDetail(detail);
         setLayers(layerRows);
         setDiagnosis(diagnosisData);
-        if (layerRows.length) setSelectedLayer(layerRows[0].layer_index);
+
+        if (!layerRows.length) {
+          setSelectedLayer(undefined);
+          return;
+        }
+
+        const pending = pendingNavigationRef.current;
+        const requestedLayer = pending?.model === selectedModel ? pending.layer : undefined;
+        const nextLayer =
+          requestedLayer !== undefined && layerRows.some((row) => row.layer_index === requestedLayer)
+            ? requestedLayer
+            : layerRows[0].layer_index;
+        setSelectedLayer(nextLayer);
       })
-      .catch((err) => setError(String(err)));
+      .catch((err) => {
+        if (requestId !== modelRequestId.current) return;
+        setError(String(err));
+      });
   }, [selectedModel]);
 
   useEffect(() => {
     if (!selectedModel || selectedLayer === undefined) return;
+
+    const requestId = ++layerRequestId.current;
+    const modelAtRequest = selectedModel;
+    const layerAtRequest = selectedLayer;
+
     setSelectedNode(undefined);
     setSubgraphDetail(undefined);
-    api.subgraphs(selectedModel, selectedLayer)
+    setSubgraphs([]);
+    setSubgraphsContext(undefined);
+
+    api.subgraphs(modelAtRequest, layerAtRequest)
       .then((rows) => {
+        if (requestId !== layerRequestId.current) return;
+        if (selectedModel !== modelAtRequest || selectedLayer !== layerAtRequest) return;
+
         setSubgraphs(rows);
-        const preferred = rows.find((row) => row.validation_status === 'valid') ?? rows[0];
-        if (preferred) setSelectedNode(preferred.node_slug);
+        setSubgraphsContext({ model: modelAtRequest, layer: layerAtRequest });
+
+        const pending = pendingNavigationRef.current;
+        const exactPendingNode = pending?.model === modelAtRequest && pending.layer === layerAtRequest ? pending.nodeSlug : undefined;
+        const nextNode = chooseDefaultSubgraph(rows, previousIntentRef.current, exactPendingNode);
+
+        previousIntentRef.current = undefined;
+        if (pending?.model === modelAtRequest && pending.layer === layerAtRequest) {
+          pendingNavigationRef.current = undefined;
+        }
+
+        setSelectedNode(nextNode);
       })
-      .catch((err) => setError(String(err)));
+      .catch((err) => {
+        if (requestId !== layerRequestId.current) return;
+        setError(String(err));
+      });
   }, [selectedModel, selectedLayer]);
 
   useEffect(() => {
-    if (!selectedModel || selectedLayer === undefined || !selectedNode) return;
-    api.subgraph(selectedModel, selectedLayer, selectedNode)
-      .then(setSubgraphDetail)
-      .catch((err) => setError(String(err)));
-  }, [selectedModel, selectedLayer, selectedNode]);
+    if (!selectedModel || selectedLayer === undefined || !selectedNode) {
+      setSubgraphDetail(undefined);
+      return;
+    }
+
+    // Critical guard: do not request details until the subgraph list currently
+    // loaded for this exact model/layer contains the selected node. This prevents
+    // stale calls such as /layers/1/subgraphs/12_layer_0_feed_forward.
+    if (!sameContext(subgraphsContext, selectedModel, selectedLayer) || !subgraphBelongsToLoadedLayer(subgraphs, selectedNode)) {
+      setSubgraphDetail(undefined);
+      return;
+    }
+
+    const requestId = ++detailRequestId.current;
+    const modelAtRequest = selectedModel;
+    const layerAtRequest = selectedLayer;
+    const nodeAtRequest = selectedNode;
+
+    setSubgraphDetail(undefined);
+
+    api.subgraph(modelAtRequest, layerAtRequest, nodeAtRequest)
+      .then((detail) => {
+        if (requestId !== detailRequestId.current) return;
+        if (selectedModel !== modelAtRequest || selectedLayer !== layerAtRequest || selectedNode !== nodeAtRequest) return;
+        setSubgraphDetail(detail);
+      })
+      .catch((err) => {
+        if (requestId !== detailRequestId.current) return;
+        setError(String(err));
+      });
+  }, [selectedModel, selectedLayer, selectedNode, subgraphs, subgraphsContext]);
 
   const activeLayer = useMemo(() => layers.find((layer) => layer.layer_index === selectedLayer), [layers, selectedLayer]);
 
+  function handleSelectModel(modelId: string) {
+    if (modelId === selectedModel) return;
+    previousIntentRef.current = undefined;
+    pendingNavigationRef.current = undefined;
+    setSelectedModel(modelId);
+  }
+
+  function handleSelectLayer(layer: number) {
+    if (layer === selectedLayer) return;
+    previousIntentRef.current = makePreviousSubgraphIntent(subgraphs, selectedNode);
+    pendingNavigationRef.current = selectedModel ? { model: selectedModel, layer } : undefined;
+    setSelectedLayer(layer);
+  }
+
+  function handleSelectNode(node: string) {
+    if (!subgraphBelongsToLoadedLayer(subgraphs, node)) return;
+    setSelectedNode(node);
+    setSubgraphDetail(undefined);
+  }
+
   function handleSearchResult(match: SearchMatch) {
-    setSelectedModel(match.model_id);
-    setSelectedLayer(match.layer);
-    setSelectedNode(match.node_slug);
+    previousIntentRef.current = undefined;
+    pendingNavigationRef.current = { model: match.model_id, layer: match.layer, nodeSlug: match.node_slug };
+    setSelectedNode(undefined);
+    setSubgraphDetail(undefined);
+    setSubgraphs([]);
+    setSubgraphsContext(undefined);
+
+    if (match.model_id !== selectedModel) {
+      setSelectedModel(match.model_id);
+    } else {
+      setSelectedLayer(match.layer);
+    }
   }
 
   return (
-    <Layout models={models} selectedModel={selectedModel} onSelectModel={setSelectedModel} onSearchResult={handleSearchResult}>
+    <Layout models={models} selectedModel={selectedModel} onSelectModel={handleSelectModel} onSearchResult={handleSearchResult}>
       {error ? <div className="error-banner">{error}</div> : null}
       <CoverageDashboard coverage={coverage} />
       <ModelOverview detail={modelDetail} diagnosis={diagnosis} />
       <PipelineOverview detail={modelDetail} />
       <div className="workspace-grid">
-        <LayerNavigator layers={layers} selectedLayer={selectedLayer} onSelect={setSelectedLayer} />
+        <LayerNavigator layers={layers} selectedLayer={selectedLayer} onSelect={handleSelectLayer} />
         <div className="middle-column">
           {activeLayer ? (
             <section className="panel layer-summary-card">
@@ -92,7 +223,7 @@ export default function App() {
               </p>
             </section>
           ) : null}
-          <SubgraphTable subgraphs={subgraphs} selectedNode={selectedNode} onSelect={setSelectedNode} />
+          <SubgraphTable subgraphs={subgraphs} selectedNode={selectedNode} onSelect={handleSelectNode} />
         </div>
         <SubgraphDetail detail={subgraphDetail} />
       </div>
