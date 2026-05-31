@@ -881,3 +881,26 @@ cd ../..
 Open `http://127.0.0.1:8777/`.
 
 This is read-only static analysis/reporting/visualization only. It does not execute pruning, choose indices, modify models, rewrite ONNX, download models, or evaluate accuracy.
+
+## Milestone 37: Attention Value-Path Deadness Propagation
+
+Status: complete.
+
+Implemented:
+
+- Static deadbranch propagation report over existing op semantics
+- Generic MLP `expansion -> contraction` channel-deadness pairs
+- Attention value-path `v_proj -> out_proj` pairs with reshape/transpose/context evidence
+- Explicitly blocked query/key records for `QK^T` score contraction
+- OPT SparseGPT alignment summary
+- Text dumps, Markdown explanations, comparison report, CLI tools, tests, API endpoint, and optional static coverage integration
+
+Primary commands:
+
+```bash
+./conda-env/bin/python scripts/analyze_deadbranch_propagation.py --model facebook/opt-125m --verbose
+./conda-env/bin/python scripts/explain_deadbranch_propagation.py --model facebook/opt-125m --contains v_proj --limit 5
+./conda-env/bin/python scripts/compare_deadbranch_propagation.py --models all --verbose
+```
+
+For OPT-125M, the expected report contains `12` FFN pairs, `12` attention value-path pairs, and `24` separately blocked Q/K records. This is static analysis/reporting only.

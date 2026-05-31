@@ -60,6 +60,7 @@ def make_tree(tmp_path: Path) -> object:
     onnx.parent.mkdir(parents=True)
     onnx.write_bytes(b"onnx")
     write_json(root / "reports/static_coverage_study/index.json", {"models": [{"model_name": "bert-base-uncased", "final_status": "complete", "artifacts": {"ranking": {"safe": 1}, "plans": {"plans": 1}, "validation": {"valid_plans": 1}, "full_model_report": {"layers": 1, "subgraphs": 1}}}]})
+    write_json(root / "reports/deadbranch_propagation/bert-base-uncased.json", {"model_name": "bert-base-uncased", "summary": {"total_pairs": 1}})
     return module.ServerConfig(
         root=root,
         report_root=report_root,
@@ -108,6 +109,15 @@ def test_search_finds_subgraph_by_name_and_class(tmp_path: Path) -> None:
 
     assert module.route_api(config, "/api/search", {"q": ["Feed Forward"]})[1]["matches"]
     assert module.route_api(config, "/api/search", {"q": ["safe"]})[1]["matches"]
+
+
+def test_deadbranch_endpoint_returns_optional_report(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, report = module.route_api(config, "/api/models/bert-base-uncased/deadbranch", {})
+    assert status == module.HTTPStatus.OK
+    assert report["summary"]["total_pairs"] == 1
 
 
 def test_artifact_serving_rejects_path_traversal(tmp_path: Path) -> None:

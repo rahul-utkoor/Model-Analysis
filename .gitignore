@@ -225,6 +225,14 @@ reports/pruning_opportunity_explanations/*
 !reports/pruning_opportunity_explanations/.gitkeep
 reports/pruning_opportunity_compare/*
 !reports/pruning_opportunity_compare/.gitkeep
+reports/deadbranch_propagation/*
+!reports/deadbranch_propagation/.gitkeep
+reports/deadbranch_propagation_dumps/*
+!reports/deadbranch_propagation_dumps/.gitkeep
+reports/deadbranch_propagation_explanations/*
+!reports/deadbranch_propagation_explanations/.gitkeep
+reports/deadbranch_propagation_compare/*
+!reports/deadbranch_propagation_compare/.gitkeep
 viewer_data/
 
 ui/pruning-analysis-explorer/node_modules/

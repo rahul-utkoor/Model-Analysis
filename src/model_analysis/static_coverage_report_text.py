@@ -45,6 +45,7 @@ def static_coverage_report_to_markdown(report: dict[str, Any]) -> str:
                 "ranking",
                 "plans",
                 "validation",
+                "deadbranch",
                 "layer_packs",
                 "full_report",
             ],
@@ -54,7 +55,7 @@ def static_coverage_report_to_markdown(report: dict[str, Any]) -> str:
         "",
         _table(
             report.get("opportunity_coverage_table", []),
-            ["model_name", "safe", "constrained", "blocked", "auxiliary", "unknown", "mlp_safe", "generic_mlp_safe", "generic_mlp_constrained", "valid_plans"],
+            ["model_name", "safe", "constrained", "blocked", "auxiliary", "unknown", "mlp_safe", "generic_mlp_safe", "generic_mlp_constrained", "valid_plans", "deadbranch_pairs", "deadbranch_ffn_pairs", "deadbranch_value_pairs", "deadbranch_qk_blocked"],
         ),
         "",
         "## 5. Semantic coverage table",

@@ -28,6 +28,7 @@ def _artifact_counts(status: dict[str, Any]) -> dict[str, Any]:
     artifacts = status.get("artifacts", {})
     ranking = artifacts.get("ranking", {})
     validation = artifacts.get("validation", {})
+    deadbranch = artifacts.get("deadbranch", {})
     report = artifacts.get("full_model_report", {})
     return {
         "safe": ranking.get("safe", 0),
@@ -42,6 +43,10 @@ def _artifact_counts(status: dict[str, Any]) -> dict[str, Any]:
         "valid_plans": validation.get("valid_plans", 0),
         "layers": report.get("layers", 0),
         "subgraphs": report.get("subgraphs", 0),
+        "deadbranch_pairs": deadbranch.get("total_pairs", 0),
+        "deadbranch_ffn_pairs": deadbranch.get("ffn_pairs", 0),
+        "deadbranch_value_pairs": deadbranch.get("attention_value_pairs", 0),
+        "deadbranch_qk_blocked": deadbranch.get("query_key_blocked_pairs", 0),
     }
 
 
@@ -98,6 +103,7 @@ def build_static_coverage_report(root: Path, statuses: list[dict[str, Any]]) -> 
                 "ranking": _stage_status(status, "pruning_opportunity_ranking"),
                 "plans": _stage_status(status, "pruning_plan_synthesis"),
                 "validation": _stage_status(status, "pruning_plan_validation"),
+                "deadbranch": _stage_status(status, "deadbranch_propagation"),
                 "layer_packs": _stage_status(status, "layer_subgraph_validation"),
                 "full_report": _stage_status(status, "full_model_report"),
             }
@@ -114,6 +120,10 @@ def build_static_coverage_report(root: Path, statuses: list[dict[str, Any]]) -> 
                 "generic_mlp_safe": counts["generic_mlp_safe"],
                 "generic_mlp_constrained": counts["generic_mlp_constrained"],
                 "valid_plans": counts["valid_plans"],
+                "deadbranch_pairs": counts["deadbranch_pairs"],
+                "deadbranch_ffn_pairs": counts["deadbranch_ffn_pairs"],
+                "deadbranch_value_pairs": counts["deadbranch_value_pairs"],
+                "deadbranch_qk_blocked": counts["deadbranch_qk_blocked"],
             }
         )
         semantic_rows.append({"model_name": model, **_semantic_counts(status, root)})

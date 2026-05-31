@@ -349,6 +349,18 @@ reports/pruning_plan_validation_dumps/<model>.pvalid
 reports/pruning_plan_validation_explanations/<model>.md
 ```
 
+### Deadbranch Propagation Analysis
+
+Predict structural channel-deadness propagation separately from fine-grained sparse-weight pruning:
+
+```bash
+./conda-env/bin/python scripts/analyze_deadbranch_propagation.py \
+  --model facebook/opt-125m \
+  --verbose
+```
+
+SparseGPT-style `2:4` / `V:N:M` pruning preserves tensor shapes and does not guarantee dead channels. Structural channel pruning can expose exact dead consumer columns. The static report models FFN `fc1 -> fc2` propagation and attention value-path `v_proj -> out_proj` propagation when index mappings are proven. Query/key paths remain blocked because `QK^T` score contraction mixes projected channels.
+
 ### Layer / Block Subgraph Atlas
 
 ```bash

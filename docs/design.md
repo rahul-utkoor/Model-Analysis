@@ -711,3 +711,17 @@ It is intentionally read-only. It never chooses pruning indices, executes prunin
 The web UI is a browser presentation layer over the same generated reports. A small Python stdlib API server reads existing report JSON/Markdown and serves safe artifact links; the React + Vite frontend provides dashboards, layer/block navigation, subgraph details, plan panels, validation panels, and search.
 
 The UI does not become a new analysis source of truth. It projects existing full-model reports, layer subgraph packs, ranking files, symbolic plans, validation files, rule-gap diagnoses, and ONNX/SVG evidence artifacts into a learner-facing dashboard. It is read-only and does not execute pruning, mutate models, rewrite ONNX, download models, or evaluate accuracy.
+
+## Deadbranch Propagation Analysis
+
+Deadbranch propagation is a separate static analysis over existing op semantics. It does not reinterpret fine-grained sparse weights as structural pruning.
+
+SparseGPT-style `2:4` / `V:N:M` pruning changes weight sparsity while preserving channel shapes and liveness. Structural channel deadness is stronger: an exact zero/dead consumer input column can make a producer output channel removable when the path preserves the index mapping.
+
+The initial rules are:
+
+- MLP intermediate path: contraction input channel `j` dead implies expansion output channel `j` dead.
+- Attention value path: attention output-projection input channel `j` dead implies context channel `j` dead and value-projection output channel `j` dead when reshape/transpose value-axis mapping is proven.
+- Query/key path: blocked for simple propagation because `QK^T` score contraction mixes projected channels.
+
+The pass reports propagatable, constrained, and blocked records without selecting indices or modifying a model.

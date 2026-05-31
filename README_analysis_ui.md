@@ -58,6 +58,7 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 - Opportunity ranking evidence
 - Symbolic pruning plans
 - Plan validation checks
+- Deadbranch propagation reports
 - Rule-gap diagnosis and status reports
 
 ## Typical Walkthrough

@@ -21,6 +21,7 @@ STAGE_NAMES = [
     "pruning_opportunity_ranking",
     "pruning_plan_synthesis",
     "pruning_plan_validation",
+    "deadbranch_propagation",
     "layer_subgraph_validation",
     "full_model_report",
     "cross_model_report",

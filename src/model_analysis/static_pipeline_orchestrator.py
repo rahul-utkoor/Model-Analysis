@@ -79,6 +79,12 @@ STAGE_SPECS: dict[str, dict[str, Any]] = {
         "build": "scripts/validate_pruning_plans.py",
         "not_applicable_if_no_plans": True,
     },
+    "deadbranch_propagation": {
+        "outputs": ["reports/deadbranch_propagation/{safe}.json"],
+        "inputs": ["reports/op_semantics/{safe}.json"],
+        "hint": "scripts/analyze_deadbranch_propagation.py --model {model}",
+        "build": "scripts/analyze_deadbranch_propagation.py",
+    },
     "layer_subgraph_validation": {
         "outputs": ["reports/model_analysis_reports/{safe}/layers"],
         "inputs": [
@@ -121,6 +127,7 @@ ORDERED_STAGES = [
     "pruning_opportunity_ranking",
     "pruning_plan_synthesis",
     "pruning_plan_validation",
+    "deadbranch_propagation",
     "layer_subgraph_validation",
     "full_model_report",
     "cross_model_report",
@@ -212,6 +219,19 @@ def _model_report_counts(path: Path) -> dict[str, int]:
     }
 
 
+def _deadbranch_counts(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    summary = json.loads(path.read_text(encoding="utf-8")).get("summary", {})
+    return {
+        "total_pairs": int(summary.get("total_pairs", 0) or 0),
+        "ffn_pairs": int(summary.get("ffn_pairs", 0) or 0),
+        "attention_value_pairs": int(summary.get("attention_value_pairs", 0) or 0),
+        "query_key_blocked_pairs": int(summary.get("query_key_blocked_pairs", 0) or 0),
+        "sparsegpt_alignment_status": summary.get("sparsegpt_alignment_status", "unknown"),
+    }
+
+
 def _layer_subgraph_count(root: Path, safe: str) -> int:
     model_report = root / "reports" / "model_analysis_reports" / safe / "index.json"
     if model_report.exists():
@@ -232,11 +252,13 @@ def collect_artifact_summary(root: Path, model_name: str) -> dict[str, Any]:
     ranking_path = root / "reports" / "pruning_opportunity_rankings" / f"{safe}.json"
     plan_path = root / "reports" / "pruning_plans" / f"{safe}.json"
     validation_path = root / "reports" / "pruning_plan_validation" / f"{safe}.json"
+    deadbranch_path = root / "reports" / "deadbranch_propagation" / f"{safe}.json"
     report_path = root / "reports" / "model_analysis_reports" / safe / "index.json"
     return {
         "ranking": _safe_candidate_counts(ranking_path),
         "plans": _plan_counts(plan_path),
         "validation": _validation_counts(validation_path),
+        "deadbranch": _deadbranch_counts(deadbranch_path),
         "full_model_report": _model_report_counts(report_path),
     }
 

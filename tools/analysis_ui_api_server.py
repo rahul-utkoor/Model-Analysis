@@ -297,7 +297,7 @@ def route_api(config: ServerConfig, path: str, query: dict[str, list[str]]) -> t
                     "explanation_md": read_text(explanation_path),
                     "artifact_paths": artifact_paths(config, model_dir.name, layer, node),
                 }
-        if len(parts) == 4 and parts[3] in {"ranking", "plans", "validation", "diagnosis", "status"}:
+        if len(parts) == 4 and parts[3] in {"ranking", "plans", "validation", "diagnosis", "status", "deadbranch"}:
             safe = model_dir.name
             mapping = {
                 "ranking": config.root / "reports" / "pruning_opportunity_rankings" / f"{safe}.json",
@@ -305,6 +305,7 @@ def route_api(config: ServerConfig, path: str, query: dict[str, list[str]]) -> t
                 "validation": config.root / "reports" / "pruning_plan_validation" / f"{safe}.json",
                 "diagnosis": config.root / "reports" / "rule_gap_diagnosis" / f"{safe}.json",
                 "status": config.root / "reports" / "static_pipeline_status" / f"{safe}.json",
+                "deadbranch": config.root / "reports" / "deadbranch_propagation" / f"{safe}.json",
             }
             return HTTPStatus.OK, load_json(mapping[parts[3]])
     return HTTPStatus.NOT_FOUND, {"error": "not found"}

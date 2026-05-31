@@ -1405,3 +1405,23 @@ http://127.0.0.1:8777/
 ```
 
 The UI shows cross-model coverage, model summaries, layer/block atlases, subgraph tables, explanations, ONNX/SVG artifact links, op semantics, rankings, symbolic plans, and plan validation checks. It is read-only and does not execute pruning, mutate models, rewrite ONNX, download models, or evaluate accuracy.
+
+## Deadbranch Propagation Analysis
+
+Milestone 37 adds a static report for SparseGPT-aligned structural channel deadness:
+
+```bash
+python scripts/analyze_deadbranch_propagation.py --model facebook/opt-125m --verbose
+python scripts/explain_deadbranch_propagation.py --model facebook/opt-125m --contains v_proj --limit 5
+python scripts/explain_deadbranch_propagation.py --model facebook/opt-125m --blocked-only --limit 10
+python scripts/compare_deadbranch_propagation.py --models all --verbose
+```
+
+SparseGPT `2:4` / `V:N:M` sparse-weight pruning is shape-preserving and does not guarantee fully dead channels. Exact structural dead channels support compiler-style backward propagation:
+
+```text
+fc1 output j dead <- fc2 input j dead
+v_proj output j dead <- attention out_proj input j dead
+```
+
+Query and key projections remain blocked for simple propagation because `QK^T` score contraction mixes projected channels.
