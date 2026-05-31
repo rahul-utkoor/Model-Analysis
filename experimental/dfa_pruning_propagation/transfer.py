@@ -7,6 +7,7 @@ from typing import Mapping
 
 from experimental.dfa_pruning_propagation.ir import Axis, Node
 from experimental.dfa_pruning_propagation.lattice import Fact, FactKind
+from experimental.dfa_pruning_propagation.semantics import SemanticAxisRole, SemanticRole
 
 
 STRUCTURAL_KINDS = {FactKind.DEAD, FactKind.PRUNED}
@@ -24,7 +25,8 @@ def _fact(axis: Axis, kind: FactKind, reason: str, node: Node, *evidence: str) -
 
 
 def _emit(axis: Axis, kind: FactKind, reason: str, node: Node, action: str, explanation: str) -> TransferEmission:
-    return TransferEmission(_fact(axis, kind, reason, node, node.op_kind), action, explanation)
+    semantic_role = node.semantic_role.value if node.semantic_role else SemanticRole.UNKNOWN.value
+    return TransferEmission(_fact(axis, kind, reason, node, f"semantic_role={semantic_role}"), action, explanation)
 
 
 def _other_axes(node: Node, changed_axis: Axis) -> list[Axis]:
@@ -32,32 +34,37 @@ def _other_axes(node: Node, changed_axis: Axis) -> list[Axis]:
 
 
 def transfer(node: Node, state: Mapping[Axis, Fact], changed_axis: Axis) -> list[TransferEmission]:
-    """Apply one local transfer function after an axis fact changes."""
+    """Apply one semantic transfer function after an axis fact changes."""
     changed = state.get(changed_axis)
     if changed is None or changed.kind in {FactKind.UNKNOWN, FactKind.BLOCKED}:
         return []
-    if node.op_kind == "activation":
+    role = node.semantic_role or SemanticRole.UNKNOWN
+    if role == SemanticRole.INDEX_PRESERVING_ACTIVATION:
         if changed.kind in STRUCTURAL_KINDS:
             return [
                 _emit(axis, changed.kind, "index-preserving activation", node, "propagated", "Activation preserves the intermediate-dimension index.")
                 for axis in _other_axes(node, changed_axis)
-                if axis.role == "intermediate_dim"
+                if axis.role == SemanticAxisRole.INTERMEDIATE
             ]
         return []
-    if node.op_kind == "linear_contract":
+    if role == SemanticRole.CONTRACTION_PROJECTION:
         if changed_axis in node.inputs and changed.kind in STRUCTURAL_KINDS:
             return [
                 _emit(axis, FactKind.PROTECTED, "linear contraction output hidden_dim is preserved", node, "protected", "Consumer-input pruning preserves the output hidden width.")
                 for axis in node.outputs
-                if axis.role == "hidden_dim"
+                if axis.role == SemanticAxisRole.HIDDEN
             ]
         if changed_axis in node.outputs and changed.kind in STRUCTURAL_KINDS:
             return [_emit(changed_axis, FactKind.BLOCKED, "linear contraction output hidden_dim is protected", node, "blocked", "The structural FFN plan prunes the contraction input, not its hidden output.")]
         return []
-    if node.op_kind == "attention_context":
+    if role == SemanticRole.ATTENTION_CONTEXT:
         if changed.kind not in STRUCTURAL_KINDS:
             return []
-        axes = [axis for axis in _other_axes(node, changed_axis) if axis.role in {"value_dim", "value_context_dim"}]
+        axes = [
+            axis
+            for axis in _other_axes(node, changed_axis)
+            if axis.role in {SemanticAxisRole.VALUE, SemanticAxisRole.VALUE_CONTEXT}
+        ]
         if node.attrs.get("value_axis_mapping") == "proven":
             return [
                 _emit(axis, changed.kind, "proven attention value-axis mapping", node, "propagated", "Attention context preserves the mapped V/context channel.")
@@ -67,34 +74,35 @@ def transfer(node: Node, state: Mapping[Axis, Fact], changed_axis: Axis) -> list
             _emit(axis, FactKind.BLOCKED, "value_axis_mapping_unproven", node, "blocked", "Value-path deadness cannot cross attention context without a proven axis mapping.")
             for axis in axes
         ]
-    if node.op_kind == "attention_output_projection":
+    if role == SemanticRole.ATTENTION_OUTPUT_PROJECTION:
         if changed_axis in node.inputs and changed.kind in STRUCTURAL_KINDS:
             return [
                 _emit(axis, FactKind.PROTECTED, "attention output hidden_dim is preserved", node, "protected", "Value-context input pruning preserves the attention output hidden width.")
                 for axis in node.outputs
-                if axis.role == "hidden_dim"
+                if axis.role == SemanticAxisRole.HIDDEN
             ]
         if changed_axis in node.outputs and changed.kind in STRUCTURAL_KINDS:
             return [_emit(changed_axis, FactKind.BLOCKED, "attention output hidden_dim is protected", node, "blocked", "The value-path rule prunes the projection input, not its hidden output.")]
         return []
-    if node.op_kind in {"residual_add", "layernorm"}:
+    if role in {SemanticRole.RESIDUAL_MERGE, SemanticRole.NORMALIZATION}:
+        semantic_name = role.value.lower()
         if changed.kind in STRUCTURAL_KINDS:
             return [
-                _emit(changed_axis, FactKind.BLOCKED, f"{node.op_kind}_hidden_dim_protected", node, "blocked", f"{node.name} protects hidden_dim from local structural pruning."),
+                _emit(changed_axis, FactKind.BLOCKED, f"{semantic_name}_hidden_dim_protected", node, "blocked", f"{node.name} protects hidden_dim from local structural pruning."),
                 *[
-                    _emit(axis, FactKind.PROTECTED, f"{node.op_kind} output hidden_dim protected", node, "protected", f"{node.name} preserves the hidden width.")
+                    _emit(axis, FactKind.PROTECTED, f"{semantic_name} output hidden_dim protected", node, "protected", f"{node.name} preserves the hidden width.")
                     for axis in node.outputs
-                    if axis.role == "hidden_dim"
+                    if axis.role == SemanticAxisRole.HIDDEN
                 ],
             ]
         if changed.kind == FactKind.PROTECTED:
             return [
-                _emit(axis, FactKind.PROTECTED, f"{node.op_kind} output hidden_dim protected", node, "protected", f"{node.name} preserves the hidden width.")
+                _emit(axis, FactKind.PROTECTED, f"{semantic_name} output hidden_dim protected", node, "protected", f"{node.name} preserves the hidden width.")
                 for axis in node.outputs
-                if axis.role == "hidden_dim"
+                if axis.role == SemanticAxisRole.HIDDEN
             ]
         return []
-    if node.op_kind == "score_matmul" and changed_axis in node.inputs and changed.kind in STRUCTURAL_KINDS:
+    if role == SemanticRole.SCORE_CONTRACTION and changed_axis in node.inputs and changed.kind in STRUCTURAL_KINDS:
         return [
             _emit(changed_axis, FactKind.BLOCKED, "qk_score_contraction_mixes_channels", node, "blocked", "QK^T mixes Q/K dimensions, so simple one-to-one deadness propagation is invalid.")
         ]

@@ -5,19 +5,24 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from experimental.dfa_pruning_propagation.semantics import SemanticAxisRole, SemanticRole, normalize_axis_role
+
 
 @dataclass(frozen=True, order=True)
 class Axis:
     tensor: str
     dim: str
-    role: str
+    role: SemanticAxisRole | str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "role", normalize_axis_role(self.role))
 
     @property
     def key(self) -> str:
-        return f"{self.tensor}:{self.dim}:{self.role}"
+        return f"{self.tensor}:{self.dim}:{self.role.value}"
 
     def label(self) -> str:
-        return f"{self.tensor}.{self.dim}<{self.role}>"
+        return f"{self.tensor}.{self.dim}<{self.role.value}>"
 
 
 @dataclass
@@ -27,6 +32,7 @@ class Node:
     op_kind: str
     inputs: list[Axis] = field(default_factory=list)
     outputs: list[Axis] = field(default_factory=list)
+    semantic_role: SemanticRole | None = None
     attrs: dict[str, Any] = field(default_factory=dict)
 
     def touches(self, axis: Axis) -> bool:
@@ -94,7 +100,8 @@ class Graph:
     def pretty_print(self) -> str:
         lines = ["graph {"]
         for node in self.nodes.values():
-            lines.append(f'  {node.node_id}: {node.name} [{node.op_kind}]')
+            semantic_role = node.semantic_role.value if node.semantic_role else "UNANNOTATED"
+            lines.append(f'  {node.node_id}: {node.name} [{node.op_kind}] <{semantic_role}>')
             for axis in node.inputs:
                 lines.append(f"    input  {axis.label()}")
             for axis in node.outputs:

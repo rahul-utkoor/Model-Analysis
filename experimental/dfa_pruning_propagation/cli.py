@@ -12,7 +12,19 @@ from experimental.dfa_pruning_propagation.worklist import analyze
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--example", choices=["ffn", "attention-value", "attention-qk", "residual"], required=True)
+    parser.add_argument(
+        "--example",
+        choices=[
+            "ffn",
+            "ffn-renamed",
+            "attention-value",
+            "attention-value-renamed",
+            "attention-qk",
+            "attention-qk-renamed",
+            "residual",
+        ],
+        required=True,
+    )
     parser.add_argument("--format", choices=["text", "markdown", "json"], default="text")
     parser.add_argument("--output")
     parser.add_argument("--show-trace", action="store_true")

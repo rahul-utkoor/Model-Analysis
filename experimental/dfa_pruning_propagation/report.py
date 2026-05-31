@@ -9,6 +9,26 @@ from experimental.dfa_pruning_propagation.lattice import FactKind
 from experimental.dfa_pruning_propagation.worklist import AnalysisResult, result_to_dict
 
 
+def render_semantic_roles(result: AnalysisResult) -> str:
+    lines = ["| node label | op kind | semantic role | confidence | evidence |", "| --- | --- | --- | --- | --- |"]
+    for node in result.graph.nodes.values():
+        annotation = result.annotations.nodes[node.node_id]
+        lines.append(
+            f"| {node.name} | {node.op_kind} | {annotation.semantic_role.value} | "
+            f"{annotation.confidence} | {'; '.join(annotation.evidence)} |"
+        )
+    return "\n".join(lines)
+
+
+def render_patterns(result: AnalysisResult) -> str:
+    if not result.annotations.patterns:
+        return "_None detected._"
+    return "\n".join(
+        f"- `{pattern.pattern.value}`: `{', '.join(pattern.node_ids)}` ({'; '.join(pattern.evidence)})"
+        for pattern in result.annotations.patterns
+    )
+
+
 def render_trace_table(result: AnalysisResult) -> str:
     lines = ["| step | node | action | output fact | explanation |", "| --- | --- | --- | --- | --- |"]
     for event in result.trace:
@@ -36,6 +56,14 @@ def render_markdown(example: Example, result: AnalysisResult) -> str:
         "```text",
         example.graph.pretty_print(),
         "```",
+        "",
+        "## Semantic Roles",
+        "",
+        render_semantic_roles(result),
+        "",
+        "## Detected Patterns",
+        "",
+        render_patterns(result),
         "",
         "## Seed Facts",
         "",
@@ -77,6 +105,15 @@ def render_text(example: Example, result: AnalysisResult, *, show_trace: bool = 
         "",
         "Seed facts:",
         *[f"  - {fact.describe()}" for fact in example.seed_facts],
+        "",
+        "Semantic roles:",
+        *[
+            f"  - {node.name} [{node.op_kind}] -> {result.annotations.nodes[node.node_id].semantic_role.value}"
+            for node in result.graph.nodes.values()
+        ],
+        "",
+        "Detected patterns:",
+        *[f"  - {pattern.pattern.value}: {', '.join(pattern.node_ids)}" for pattern in result.annotations.patterns],
         "",
     ]
     if show_trace:

@@ -50,12 +50,50 @@ The join operation is conservative:
 
 Transfer functions live in `transfer.py`.
 
+- Transfer functions dispatch on inferred semantic roles, not node names or low-level operator strings.
 - Activations preserve intermediate-axis indices in both directions.
 - FFN contraction inputs can be dead while the contraction hidden output remains protected.
 - Attention context propagates value-axis deadness only when `value_axis_mapping = proven`.
 - Attention output-projection input deadness preserves the output hidden width.
 - Residual additions and LayerNorm protect `hidden_dim`.
 - `QK^T` score contraction blocks simple Q/K one-to-one propagation.
+
+## Semantic Roles, Not Names
+
+Names such as `fc1`, `fc2`, `v_proj`, and `out_proj` are display labels only. The prototype first runs a semantic annotation pass:
+
+```text
+raw graph node
+  -> structural semantic-role inference
+  -> transfer-rule selection
+  -> DFA propagation
+```
+
+The pass uses low-level operator kinds, semantic axis roles, and graph connectivity. Semantic roles may also be provided explicitly when a frontend has stronger evidence.
+
+For example, arbitrary labels still form an FFN chain:
+
+```text
+alpha -> beta -> gamma
+```
+
+when:
+
+```text
+alpha produces INTERMEDIATE
+beta preserves INTERMEDIATE
+gamma consumes INTERMEDIATE and produces HIDDEN
+```
+
+The inferred roles are:
+
+```text
+alpha = EXPANSION_PROJECTION
+beta  = INDEX_PRESERVING_ACTIVATION
+gamma = CONTRACTION_PROJECTION
+```
+
+Likewise, `producer_X -> bridge_Y -> consumer_Z` is treated as an attention value path when the axes carry `VALUE -> VALUE_CONTEXT -> HIDDEN`. A `HEAD + HEAD -> SCORE` contraction is blocked regardless of its label.
 
 ## 5. Worklist Algorithm
 
@@ -157,8 +195,11 @@ This experimental package does not replace those modules. It is a clean referenc
 
 ```bash
 python -m experimental.dfa_pruning_propagation.cli --example ffn --show-trace
+python -m experimental.dfa_pruning_propagation.cli --example ffn-renamed --show-trace
 python -m experimental.dfa_pruning_propagation.cli --example attention-value --show-trace
+python -m experimental.dfa_pruning_propagation.cli --example attention-value-renamed --show-trace
 python -m experimental.dfa_pruning_propagation.cli --example attention-qk --show-trace
+python -m experimental.dfa_pruning_propagation.cli --example attention-qk-renamed --show-trace
 python -m experimental.dfa_pruning_propagation.cli --example residual --show-trace
 ```
 

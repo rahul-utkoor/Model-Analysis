@@ -8,6 +8,7 @@ from typing import Any
 
 from experimental.dfa_pruning_propagation.ir import Axis, Graph
 from experimental.dfa_pruning_propagation.lattice import Fact, FactKind, join, unknown
+from experimental.dfa_pruning_propagation.semantics import SemanticGraphAnnotations, annotate_graph
 from experimental.dfa_pruning_propagation.transfer import TransferEmission, transfer
 
 
@@ -24,6 +25,7 @@ class TraceEvent:
 @dataclass
 class AnalysisResult:
     graph: Graph
+    annotations: SemanticGraphAnnotations
     seed_facts: list[Fact]
     state: dict[Axis, Fact]
     trace: list[TraceEvent] = field(default_factory=list)
@@ -48,6 +50,7 @@ def _enqueue(queue: deque[Fact], emission: TransferEmission, trace: list[TraceEv
 
 def analyze(graph: Graph, seed_facts: list[Fact]) -> AnalysisResult:
     """Propagate facts until the queue reaches a fixed point."""
+    annotations = annotate_graph(graph)
     state = {axis: unknown(axis) for axis in graph.all_axes()}
     queue: deque[Fact] = deque(seed_facts)
     trace: list[TraceEvent] = []
@@ -79,6 +82,7 @@ def analyze(graph: Graph, seed_facts: list[Fact]) -> AnalysisResult:
     protected = sum(fact.kind == FactKind.PROTECTED for fact in state.values())
     return AnalysisResult(
         graph=graph,
+        annotations=annotations,
         seed_facts=seed_facts,
         state=state,
         trace=trace,
@@ -99,6 +103,11 @@ def result_to_dict(result: AnalysisResult) -> dict[str, Any]:
         "graph": {
             "nodes": {node_id: asdict(node) for node_id, node in result.graph.nodes.items()},
             "edges": [asdict(edge) for edge in result.graph.edges],
+        },
+        "semantic_annotations": {
+            "nodes": {node_id: asdict(annotation) for node_id, annotation in result.annotations.nodes.items()},
+            "axes": {axis_key: asdict(annotation) for axis_key, annotation in result.annotations.axes.items()},
+            "patterns": [asdict(pattern) for pattern in result.annotations.patterns],
         },
         "seed_facts": [asdict(fact) for fact in result.seed_facts],
         "state": {axis.key: asdict(fact) for axis, fact in sorted(result.state.items())},
