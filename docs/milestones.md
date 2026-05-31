@@ -904,3 +904,28 @@ Primary commands:
 ```
 
 For OPT-125M, the expected report contains `12` FFN pairs, `12` attention value-path pairs, and `24` separately blocked Q/K records. This is static analysis/reporting only.
+
+## Milestone 38: DFA Worklist Prototype for Static Pruning Propagation
+
+Status: complete.
+
+Implemented under `experimental/dfa_pruning_propagation/`:
+
+- Explicit operation/axis graph IR
+- Conservative pruning-fact lattice
+- Compiler-style transfer functions
+- Queue-based fixed-point worklist solver with trace diagnostics
+- FFN, attention value-path, Q/K blocked, and residual/LayerNorm protected examples
+- Markdown/text/JSON report rendering and standalone CLI
+- Fast deterministic teaching-prototype tests
+
+Primary commands:
+
+```bash
+python -m experimental.dfa_pruning_propagation.cli --example ffn --show-trace
+python -m experimental.dfa_pruning_propagation.cli --example attention-value --show-trace
+python -m experimental.dfa_pruning_propagation.cli --example attention-qk --show-trace
+python -m pytest -q experimental/dfa_pruning_propagation/tests
+```
+
+This is a separate experimental teaching prototype. It does not replace production analysis, select concrete indices, execute pruning, mutate models, download models, or evaluate accuracy.

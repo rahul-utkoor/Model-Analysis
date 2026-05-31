@@ -725,3 +725,9 @@ The initial rules are:
 - Query/key path: blocked for simple propagation because `QK^T` score contraction mixes projected channels.
 
 The pass reports propagatable, constrained, and blocked records without selecting indices or modifying a model.
+
+## Experimental DFA Worklist Prototype
+
+`experimental/dfa_pruning_propagation/` is a separate teaching/reference implementation of static pruning propagation as a compiler dataflow analysis. It defines a small graph IR, pruning-fact lattice, operation transfer functions, queue-based fixed-point solver, trace reports, and explicit FFN, attention-value, Q/K-blocked, and residual-protection examples.
+
+The prototype does not replace the production analysis pipeline. It exists to make the formal model easy to inspect and to compare against production deadbranch reports such as OPT `fc1 -> fc2` and `v_proj -> out_proj`.

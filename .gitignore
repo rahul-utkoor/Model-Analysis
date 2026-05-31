@@ -233,6 +233,8 @@ reports/deadbranch_propagation_explanations/*
 !reports/deadbranch_propagation_explanations/.gitkeep
 reports/deadbranch_propagation_compare/*
 !reports/deadbranch_propagation_compare/.gitkeep
+reports/dfa_pruning_propagation/*
+!reports/dfa_pruning_propagation/.gitkeep
 viewer_data/
 
 ui/pruning-analysis-explorer/node_modules/
