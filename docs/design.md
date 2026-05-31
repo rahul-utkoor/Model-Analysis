@@ -749,3 +749,9 @@ The bridge makes the semantic proof boundary explicit: graph names are syntax, l
 `experimental/onnx_axis_bridge/` reads selected local ONNX subgraph artifacts, summarizes topology and available shapes, emits conservative pattern hints, template-lowers supported motifs into loop/access `RegionSpec` records, and reuses the axis-transfer and DFA bridge prototypes.
 
 This is deliberately not full ONNX-to-MLIR lowering. It is a controlled local bridge that prepares the interface a future affine/linalg/scf extractor can replace without changing production analysis.
+
+## Experimental ONNX-MLIR Axis Bridge
+
+`experimental/mlir_axis_bridge/` uses the locally installed ONNX-MLIR compiler as a read-only evidence generator for selected ONNX subgraphs. It records ONNX dialect and lowered MLIR artifacts, scans for ONNX, Krnl, Linalg, SCF, Affine, and memref clues, and extracts affine/memref indexed loads and stores when available.
+
+The evidence boundary is explicit. `actual_loop_access_evidence` means indexed accesses proved a supported local relation. `high_level_mlir_dialect_evidence` means emitted MLIR operations plus conservative ONNX shape hints justified template lowering. `onnx_hint_fallback` means loop reconstruction was unavailable and the earlier ONNX-only local hint was used. The bridge reuses the existing axis-transfer and DFA prototypes without turning MLIR into the production pruning framework.

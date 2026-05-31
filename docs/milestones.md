@@ -1000,3 +1000,29 @@ python -m experimental.onnx_axis_bridge.cli --onnx artifacts/model_analysis_subg
 ```
 
 This is a separate experimental ONNX-subgraph bridge, not full MLIR lowering. It does not replace production analysis, execute pruning, mutate models, download models, or evaluate accuracy.
+
+## Milestone 43: ONNX-MLIR Access Semantics Bridge
+
+Status: complete.
+
+Implemented under `experimental/mlir_axis_bridge/`:
+
+- Local discovery for ONNX-MLIR and `mlir-opt`
+- Read-only lowering of selected ONNX subgraphs to ONNX dialect and lowered MLIR artifacts
+- Recursive discovery of preserved MLIR stages and dialect hints
+- Conservative text extraction for affine/scf loops plus affine/memref load-store accesses
+- Axis-summary construction that distinguishes actual loop accesses, high-level MLIR dialect evidence, and ONNX-hint fallback
+- Reuse of the existing axis-transfer recognizers and DFA propagation bridge
+- Markdown/text/JSON reports, standalone CLI, and synthetic parser/bridge tests
+
+Primary command:
+
+```bash
+python -m experimental.mlir_axis_bridge.cli \
+  --onnx artifacts/model_analysis_subgraphs/gpt2/layers/layer_0/03_gpt_2_block_0_mlp_block/subgraph.onnx \
+  --output-dir reports/mlir_axis_bridge/gpt2_layer0_mlp \
+  --format markdown \
+  --show-all
+```
+
+MLIR is used as a local evidence generator for selected subgraphs. This experiment does not replace production analysis, lower full models, execute pruning, mutate model weights, or evaluate accuracy.
