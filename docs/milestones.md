@@ -929,3 +929,28 @@ python -m pytest -q experimental/dfa_pruning_propagation/tests
 ```
 
 This is a separate experimental teaching prototype. It does not replace production analysis, select concrete indices, execute pruning, mutate models, download models, or evaluate accuracy.
+
+## Milestone 40: Axis Transfer Summary Prototype
+
+Status: complete.
+
+Implemented under `experimental/axis_transfer_analysis/`:
+
+- MLIR-inspired loop IV, tensor, indexed-access, operation, and region IR
+- Access-derived axis summaries for preserved, reduced, permuted, broadcast, protected, blocked, and unknown relations
+- FFN intermediate-chain recognition from projection, unary-preservation, and contraction accesses
+- Attention value-path recognition from preserved `V.value_dim -> Context.value_context_dim` evidence
+- Explicit Q/K score-contraction blocker derived from reduced feature-axis accesses
+- Residual and LayerNorm hidden-axis protection summaries
+- Markdown/text/JSON reports, standalone CLI, and deterministic tests
+
+Primary commands:
+
+```bash
+python -m experimental.axis_transfer_analysis.cli --example qk-score --format markdown --show-relations
+python -m experimental.axis_transfer_analysis.cli --example attention-context --format markdown --show-relations
+python -m experimental.axis_transfer_analysis.cli --example ffn --format markdown --show-patterns
+python -m experimental.axis_transfer_analysis.cli --example attention-value-path --format markdown --show-patterns
+```
+
+This is a separate experimental loop/access-analysis prototype. It does not replace production analysis, execute pruning, mutate models, download models, or evaluate accuracy.

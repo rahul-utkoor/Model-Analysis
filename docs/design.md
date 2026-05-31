@@ -731,3 +731,9 @@ The pass reports propagatable, constrained, and blocked records without selectin
 `experimental/dfa_pruning_propagation/` is a separate teaching/reference implementation of static pruning propagation as a compiler dataflow analysis. It defines a small graph IR, pruning-fact lattice, operation transfer functions, queue-based fixed-point solver, trace reports, and explicit FFN, attention-value, Q/K-blocked, and residual-protection examples.
 
 The prototype does not replace the production analysis pipeline. It exists to make the formal model easy to inspect and to compare against production deadbranch reports such as OPT `fc1 -> fc2` and `v_proj -> out_proj`.
+
+## Experimental Axis Transfer Prototype
+
+`experimental/axis_transfer_analysis/` is a separate loop/access-analysis teaching prototype. It uses MLIR-inspired indexed tensor accesses to infer whether axes are preserved, reduced, permuted, broadcast, protected, or blocked, then recognizes FFN chains, attention value paths, Q/K score blockers, and protected residual/LayerNorm paths.
+
+This prototype explores evidence below graph-level semantic annotations. It does not replace production analysis or the DFA worklist prototype; it is a bridge toward future affine/linalg/scf-derived axis summaries.
