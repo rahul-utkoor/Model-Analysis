@@ -1026,3 +1026,19 @@ python -m experimental.mlir_axis_bridge.cli \
 ```
 
 MLIR is used as a local evidence generator for selected subgraphs. This experiment does not replace production analysis, lower full models, execute pruning, mutate model weights, or evaluate accuracy.
+
+## Milestone 44: Native MLIR Dependence Evidence Prototype
+
+Status: complete.
+
+Extended `experimental/mlir_axis_bridge/` with:
+
+- A shared native-style dependence JSON model for Python extraction and future MLIR passes
+- Loop-nesting context on extracted affine/scf load-store records
+- Conservative Python summaries for preserved, reduced, and mixed indexed-access relations
+- Native dependence JSON import and Python dependence JSON emission
+- Evidence precedence for `native_mlir_dependence_evidence`, `actual_loop_access_evidence`, high-level MLIR evidence, and ONNX fallback
+- Native dependence lowering into the existing axis-transfer and DFA bridge when supported motifs are proven
+- An optional out-of-tree C++ `pruning-axis-dependence` pass scaffold under `experimental/mlir_axis_bridge/native/`
+
+The native C++ pass is scaffold-only and is not required by automated tests. This remains an experimental local-evidence bridge for selected subgraphs, not a full MLIR rewrite.

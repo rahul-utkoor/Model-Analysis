@@ -7,8 +7,17 @@ from pathlib import Path
 from typing import Any
 
 from experimental.mlir_axis_bridge.access_extractor import MlirAccessSummary, extract_mlir_access_summary
-from experimental.mlir_axis_bridge.axis_summary_builder import MlirAxisBuildResult, build_axis_transfer_from_mlir
+from experimental.mlir_axis_bridge.axis_summary_builder import (
+    MlirAxisBuildResult,
+    build_axis_transfer_from_mlir,
+    build_axis_transfer_from_native_dependence,
+)
 from experimental.mlir_axis_bridge.mlir_artifacts import MlirArtifact, discover_mlir_artifacts
+from experimental.mlir_axis_bridge.native_dependence import (
+    NativeDependenceReport,
+    load_native_dependence_report,
+    write_native_dependence_report,
+)
 from experimental.mlir_axis_bridge.onnx_mlir_runner import MlirLoweringResult, lower_onnx_subgraph_to_mlir
 from experimental.mlir_axis_bridge.toolchain import ToolchainStatus, check_toolchain
 from experimental.onnx_axis_bridge.bridge_runner import REQUESTED_HINTS, _seed_policy
@@ -39,6 +48,8 @@ class MlirAxisBridgeResult:
     region_results: list[MlirRegionResult]
     summary: dict[str, Any]
     warnings: list[str] = field(default_factory=list)
+    native_dependence_report: NativeDependenceReport | None = None
+    emitted_python_dependence_json: str | None = None
 
 
 def _selected_hints(hints: list[OnnxPatternHint], requested_hint: str) -> list[OnnxPatternHint]:
@@ -57,6 +68,7 @@ def _empty_summary() -> MlirAccessSummary:
 
 def _source_score(source: str) -> int:
     return {
+        "native_mlir_dependence_evidence": 4,
         "actual_loop_access_evidence": 3,
         "high_level_mlir_dialect_evidence": 2,
         "onnx_hint_fallback": 1,
@@ -69,12 +81,30 @@ def _best_axis_build(summaries: list[MlirAccessSummary], hint: OnnxPatternHint) 
     return max(candidates, key=lambda candidate: _source_score(candidate[1].evidence_source))
 
 
+def _native_summary(report: NativeDependenceReport) -> MlirAccessSummary:
+    return MlirAccessSummary(report.mlir_file, "native_dependence", report.dialects_seen, {}, (), [], (), list(report.warnings), report)
+
+
+def _emit_python_dependence(summaries: list[MlirAccessSummary], path: str | Path | None, warnings: list[str]) -> str | None:
+    if path is None:
+        return None
+    candidates = [summary for summary in summaries if summary.dependence_report is not None]
+    if not candidates:
+        warnings.append("python dependence JSON was requested but no MLIR access summary was available")
+        return None
+    selected = max(candidates, key=lambda summary: (len(summary.access_records), len(summary.dependence_report.relations)))
+    return str(write_native_dependence_report(selected.dependence_report, path))
+
+
 def analyze_onnx_with_mlir_bridge(
     onnx_path: str | Path,
     output_root: str | Path,
     onnx_mlir_path: str | None = None,
     mlir_opt_path: str | None = None,
     hint: str = "auto",
+    native_dependence_json: str | Path | None = None,
+    prefer_native_dependence: bool = False,
+    emit_python_dependence_json: str | Path | None = None,
 ) -> MlirAxisBridgeResult:
     """Use ONNX-MLIR as a read-only local evidence generator for one subgraph."""
     source = Path(onnx_path)
@@ -93,9 +123,19 @@ def analyze_onnx_with_mlir_bridge(
     warnings.extend(lowering.warnings)
     artifacts = discover_mlir_artifacts(lowering)
     access_summaries = [extract_mlir_access_summary(artifact) for artifact in artifacts]
+    native_report = load_native_dependence_report(native_dependence_json) if native_dependence_json else None
+    emitted_python_json = _emit_python_dependence(access_summaries, emit_python_dependence_json, warnings)
+    if prefer_native_dependence and native_report is None:
+        warnings.append("--prefer-native-dependence was requested without --native-dependence-json; using Python extraction")
     region_results: list[MlirRegionResult] = []
     for selected_hint in selected:
         mlir_summary, axis_build = _best_axis_build(access_summaries, selected_hint)
+        if native_report is not None:
+            native_build = build_axis_transfer_from_native_dependence(native_report, selected_hint)
+            if _source_score(native_build.evidence_source) >= _source_score(axis_build.evidence_source):
+                mlir_summary, axis_build = _native_summary(native_report), native_build
+            else:
+                warnings.extend(native_build.warnings)
         warnings.extend(axis_build.warnings)
         bridge_result = None
         region_warning = None
@@ -137,4 +177,6 @@ def analyze_onnx_with_mlir_bridge(
             "warnings": len(warnings),
         },
         warnings,
+        native_report,
+        emitted_python_json,
     )

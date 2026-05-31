@@ -1,0 +1,46 @@
+{
+  "mlir_file": "selected_attention_context.mlir",
+  "analysis_tool": "native_mlir_pass",
+  "dialects_seen": [
+    "affine.for",
+    "affine.load",
+    "affine.store"
+  ],
+  "relations": [
+    {
+      "relation_id": "context_value_preserved",
+      "source_tensor": "V",
+      "source_indices": ["b", "head", "k", "d"],
+      "target_tensor": "Context",
+      "target_indices": ["b", "head", "q", "d"],
+      "loop_ivs": ["b", "head", "q", "k", "d"],
+      "relation_kind": "preserved",
+      "dependence_kind": "access_equivalence",
+      "affine_evidence": [
+        "affine.load %V[%b, %head, %k, %d]",
+        "affine.store %value, %Context[%b, %head, %q, %d]"
+      ],
+      "proof": "value IV d remains free from V into Context while key-position IV k is reduced",
+      "confidence": "high"
+    },
+    {
+      "relation_id": "context_key_reduced",
+      "source_tensor": "V",
+      "source_indices": ["b", "head", "k", "d"],
+      "target_tensor": "Context",
+      "target_indices": ["b", "head", "q", "d"],
+      "loop_ivs": ["b", "head", "q", "k", "d"],
+      "relation_kind": "reduced",
+      "dependence_kind": "reduction",
+      "affine_evidence": [
+        "k is absent from the Context write access"
+      ],
+      "proof": "key-position IV k is reduced by the attention-context contraction",
+      "confidence": "high"
+    }
+  ],
+  "reductions": ["k"],
+  "preserved_axes": ["d"],
+  "blocked_axes": [],
+  "warnings": []
+}

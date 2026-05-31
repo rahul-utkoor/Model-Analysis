@@ -755,3 +755,9 @@ This is deliberately not full ONNX-to-MLIR lowering. It is a controlled local br
 `experimental/mlir_axis_bridge/` uses the locally installed ONNX-MLIR compiler as a read-only evidence generator for selected ONNX subgraphs. It records ONNX dialect and lowered MLIR artifacts, scans for ONNX, Krnl, Linalg, SCF, Affine, and memref clues, and extracts affine/memref indexed loads and stores when available.
 
 The evidence boundary is explicit. `actual_loop_access_evidence` means indexed accesses proved a supported local relation. `high_level_mlir_dialect_evidence` means emitted MLIR operations plus conservative ONNX shape hints justified template lowering. `onnx_hint_fallback` means loop reconstruction was unavailable and the earlier ONNX-only local hint was used. The bridge reuses the existing axis-transfer and DFA prototypes without turning MLIR into the production pruning framework.
+
+## Experimental Native MLIR Dependence Evidence
+
+`experimental/mlir_axis_bridge/native_dependence.py` adds a shared dependence-style JSON contract for Python-extracted and externally generated MLIR facts. The Python extractor records enclosing loop IVs and conservative preserved, reduced, and mixed access relations from affine/memref loads and stores. When an imported native report proves a supported motif, the bridge labels the result `native_mlir_dependence_evidence`; otherwise it retains the existing actual-access and fallback paths.
+
+`experimental/mlir_axis_bridge/native/` contains an optional out-of-tree C++ pass scaffold. It documents the future `pruning-axis-dependence` pass boundary without making native compilation a repository test prerequisite. MLIR remains a local evidence generator for selected subgraphs, not a replacement pruning framework.

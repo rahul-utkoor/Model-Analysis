@@ -14,6 +14,7 @@ from experimental.axis_transfer_analysis.examples import (
 from experimental.axis_transfer_analysis.loop_ir import RegionSpec
 from experimental.axis_transfer_analysis.pattern_recognition import PatternMatch, recognize_patterns
 from experimental.mlir_axis_bridge.access_extractor import MlirAccessSummary
+from experimental.mlir_axis_bridge.native_dependence import NativeDependenceReport
 from experimental.onnx_axis_bridge.pattern_hints import OnnxPatternHint, OnnxPatternHintKind
 
 
@@ -36,7 +37,14 @@ TEMPLATES = {
 }
 
 
-def _decorate(region: RegionSpec, source: str, summary: MlirAccessSummary, hint: OnnxPatternHint | None) -> RegionSpec:
+def _decorate(
+    region: RegionSpec,
+    source: str,
+    summary: MlirAccessSummary,
+    hint: OnnxPatternHint | None,
+    *,
+    analysis_tool: str | None = None,
+) -> RegionSpec:
     region = deepcopy(region)
     region.attrs.update(
         {
@@ -45,6 +53,7 @@ def _decorate(region: RegionSpec, source: str, summary: MlirAccessSummary, hint:
             "mlir_artifact": summary.artifact_path,
             "dialect_hints": list(summary.dialect_hints),
             "onnx_hint": hint.kind.value if hint else None,
+            "analysis_tool": analysis_tool,
         }
     )
     return region
@@ -72,8 +81,16 @@ def _actual_template(summary: MlirAccessSummary, hint: OnnxPatternHint | None) -
     return None
 
 
-def _result(region: RegionSpec, source: str, summary: MlirAccessSummary, hint: OnnxPatternHint | None, warnings: list[str]) -> MlirAxisBuildResult:
-    decorated = _decorate(region, source, summary, hint)
+def _result(
+    region: RegionSpec,
+    source: str,
+    summary: MlirAccessSummary,
+    hint: OnnxPatternHint | None,
+    warnings: list[str],
+    *,
+    analysis_tool: str | None = None,
+) -> MlirAxisBuildResult:
+    decorated = _decorate(region, source, summary, hint, analysis_tool=analysis_tool)
     axis_summary = analyze_region(decorated)
     patterns = recognize_patterns(decorated, axis_summary)
     return MlirAxisBuildResult(decorated, axis_summary, patterns, source, warnings)
@@ -91,3 +108,51 @@ def build_axis_transfer_from_mlir(mlir_summary: MlirAccessSummary, onnx_hint: On
         return _result(TEMPLATES[onnx_hint.kind]().region, source, mlir_summary, onnx_hint, warnings)
     warnings.append("no supported axis-transfer region could be constructed conservatively")
     return MlirAxisBuildResult(None, None, [], "unavailable", warnings)
+
+
+def _native_template(native_report: NativeDependenceReport, hint: OnnxPatternHint | None) -> RegionSpec | None:
+    kinds = {relation.relation_kind for relation in native_report.relations}
+    proofs = " ".join(relation.proof for relation in native_report.relations)
+    if hint and hint.kind == OnnxPatternHintKind.QK_SCORE_LIKE and ({"reduced", "mixed", "blocked"} & kinds):
+        return qk_score_example().region
+    if hint and hint.kind == OnnxPatternHintKind.ATTENTION_CONTEXT_LIKE and "preserved" in kinds:
+        return attention_context_example().region
+    if hint and hint.kind == OnnxPatternHintKind.ATTENTION_VALUE_PATH_LIKE and "preserved" in kinds:
+        return attention_value_path_example().region
+    if hint and hint.kind == OnnxPatternHintKind.FFN_LIKE and ({"preserved", "reduced"} <= kinds):
+        return ffn_example().region
+    if hint and hint.kind == OnnxPatternHintKind.RESIDUAL_LIKE and ("protected" in kinds or "residual" in proofs.lower()):
+        return residual_example().region
+    if hint and hint.kind == OnnxPatternHintKind.LAYERNORM_LIKE and ("protected" in kinds or "normalization" in proofs.lower()):
+        return layernorm_example().region
+    return None
+
+
+def build_axis_transfer_from_native_dependence(
+    native_report: NativeDependenceReport,
+    onnx_hint: OnnxPatternHint | None = None,
+) -> MlirAxisBuildResult:
+    """Lower externally supplied native-style dependence facts conservatively."""
+    summary = MlirAccessSummary(
+        native_report.mlir_file,
+        "native_dependence",
+        native_report.dialects_seen,
+        {},
+        (),
+        [],
+        (),
+        list(native_report.warnings),
+        native_report,
+    )
+    template = _native_template(native_report, onnx_hint)
+    if template is None:
+        warnings = [*native_report.warnings, "native dependence relations did not prove a supported local pruning pattern"]
+        return MlirAxisBuildResult(None, None, [], "unavailable", warnings)
+    return _result(
+        template,
+        "native_mlir_dependence_evidence",
+        summary,
+        onnx_hint,
+        list(native_report.warnings),
+        analysis_tool=native_report.analysis_tool,
+    )

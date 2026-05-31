@@ -45,6 +45,7 @@ def _region(item: MlirRegionResult, ordinal: int) -> list[str]:
         f"- MLIR artifact: `{item.mlir_summary.artifact_path}`",
         f"- evidence source: `{build.evidence_source}`",
         f"- extracted accesses: `{len(item.mlir_summary.access_records)}`",
+        f"- dependence relations: `{len(item.mlir_summary.dependence_report.relations) if item.mlir_summary.dependence_report else 0}`",
         "",
     ]
     if build.region_spec and build.axis_summary:
@@ -118,9 +119,23 @@ def render_markdown(result: MlirAxisBridgeResult) -> str:
                 f"- operations: `{summary.operation_counts}`",
                 f"- loop kinds: `{list(summary.loop_kinds)}`",
                 f"- accesses: `{len(summary.access_records)}`",
+                f"- dependence relations: `{len(summary.dependence_report.relations) if summary.dependence_report else 0}`",
                 "",
             ]
         )
+    if result.native_dependence_report:
+        lines.extend(
+            [
+                "## Imported Native Dependence Evidence",
+                "",
+                f"- analysis tool: `{result.native_dependence_report.analysis_tool}`",
+                f"- MLIR file: `{result.native_dependence_report.mlir_file}`",
+                f"- relations: `{len(result.native_dependence_report.relations)}`",
+                "",
+            ]
+        )
+    if result.emitted_python_dependence_json:
+        lines.extend(["## Python Dependence JSON", "", f"- emitted: `{result.emitted_python_dependence_json}`", ""])
     lines.extend(["## Axis Evidence and DFA Results", ""])
     for ordinal, item in enumerate(result.region_results, start=1):
         lines.extend(_region(item, ordinal))
@@ -135,7 +150,7 @@ def render_markdown(result: MlirAxisBridgeResult) -> str:
             "",
             "This prototype does not rewrite the pruning pipeline in MLIR. It uses ONNX-MLIR as a local evidence generator for selected ONNX subgraphs.",
             "",
-            "Each lowered region reports whether evidence came from `actual_loop_access_evidence`, `high_level_mlir_dialect_evidence`, or `onnx_hint_fallback`.",
+            "Each lowered region reports whether evidence came from `native_mlir_dependence_evidence`, `actual_loop_access_evidence`, `high_level_mlir_dialect_evidence`, or `onnx_hint_fallback`.",
             "",
         ]
     )
@@ -149,7 +164,7 @@ def render_text(result: MlirAxisBridgeResult, *, show_toolchain: bool, show_arti
     if show_artifacts:
         lines.extend(["", "Artifacts:", *[f"  - {artifact.stage}: {artifact.path} ({', '.join(artifact.dialect_hints)})" for artifact in result.artifacts]])
     if show_accesses:
-        lines.extend(["", "Access summaries:", *[f"  - {summary.artifact_path}: {len(summary.access_records)} accesses" for summary in result.mlir_access_summaries]])
+        lines.extend(["", "Access summaries:", *[f"  - {summary.artifact_path}: {len(summary.access_records)} accesses, {len(summary.dependence_report.relations) if summary.dependence_report else 0} dependence relations" for summary in result.mlir_access_summaries]])
     for item in result.region_results:
         lines.extend(["", f"{item.hint.kind.value}: {item.axis_build.evidence_source}"])
         if show_axis and item.axis_build.axis_summary:
@@ -167,6 +182,8 @@ def render_json(result: MlirAxisBridgeResult) -> str:
         "artifacts": [asdict(artifact) for artifact in result.artifacts],
         "mlir_access_summaries": [asdict(summary) for summary in result.mlir_access_summaries],
         "evidence_source": result.evidence_source,
+        "native_dependence_report": asdict(result.native_dependence_report) if result.native_dependence_report else None,
+        "emitted_python_dependence_json": result.emitted_python_dependence_json,
         "regions": [
             {
                 "hint": asdict(item.hint),

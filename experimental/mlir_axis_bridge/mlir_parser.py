@@ -17,6 +17,7 @@ RECOGNIZED_OPS = (
 )
 ACCESS_RE = re.compile(r"(?P<kind>affine|memref)\.(?P<action>load|store)\s+(?:[^,]+,\s+)?(?P<tensor>%[-\w.$]+)\[(?P<indices>[^]]*)\]")
 RESULT_RE = re.compile(r"^\s*(?P<results>%[-\w.$]+(?:\s*,\s*%[-\w.$]+)*)\s*=")
+LOOP_RE = re.compile(r"(?P<kind>affine|scf)\.for\s+(?P<iv>%[-\w.$]+)")
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,8 @@ class MlirAccessRecord:
     access_kind: str
     line_no: int
     raw_line: str
+    loop_ivs: tuple[str, ...] = ()
+    loop_kinds: tuple[str, ...] = ()
 
 
 @dataclass
@@ -51,7 +54,17 @@ def _strip_ssa(value: str) -> str:
 
 def parse_mlir_text(text: str) -> MlirParseResult:
     result = MlirParseResult()
+    brace_depth = 0
+    loop_stack: list[tuple[str, str, int]] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
+        leading_closes = len(line) - len(line.lstrip("}"))
+        if leading_closes:
+            brace_depth = max(0, brace_depth - leading_closes)
+            while loop_stack and loop_stack[-1][2] > brace_depth:
+                loop_stack.pop()
+        loop = LOOP_RE.search(line)
+        if loop:
+            loop_stack.append((_strip_ssa(loop.group("iv")), f"{loop.group('kind')}.for", brace_depth + 1))
         access = ACCESS_RE.search(line)
         if access:
             result.accesses.append(
@@ -61,6 +74,8 @@ def parse_mlir_text(text: str) -> MlirParseResult:
                     "read" if access.group("action") == "load" else "write",
                     line_no,
                     line.strip(),
+                    tuple(item[0] for item in loop_stack),
+                    tuple(item[1] for item in loop_stack),
                 )
             )
         matched_ops = [op for op in RECOGNIZED_OPS if op in line]
@@ -69,6 +84,9 @@ def parse_mlir_text(text: str) -> MlirParseResult:
             results = tuple(_strip_ssa(item) for item in result_match.group("results").split(",")) if result_match else ()
             operands = tuple(_strip_ssa(item) for item in re.findall(r"%[-\w.$]+", line))
             result.operations.append(MlirOperationRecord(op_name, results, operands, line.strip(), line_no, op_name.split(".", 1)[0], ""))
+        brace_depth += line.count("{") - line.count("}") + leading_closes
+        while loop_stack and loop_stack[-1][2] > brace_depth:
+            loop_stack.pop()
     return result
 
 

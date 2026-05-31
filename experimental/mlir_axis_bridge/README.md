@@ -41,11 +41,57 @@ The parser is intentionally lightweight. It extracts recognized operations plus 
 
 Evidence sources are reported explicitly:
 
+- `native_mlir_dependence_evidence`: imported native-pass JSON proves a supported relation.
 - `actual_loop_access_evidence`: indexed accesses prove a supported relation.
 - `high_level_mlir_dialect_evidence`: emitted MLIR operations plus ONNX shape hints support conservative template lowering.
 - `onnx_hint_fallback`: only the existing ONNX local hint is sufficient.
 
 The bridge never presents fallback evidence as a loop-level proof.
+
+## Native MLIR Dependence Evidence
+
+The current bridge includes strengthened Python-side affine access extraction and an optional native pass scaffold under `native/`. The Python extractor records enclosing loop IVs, affine/memref accesses, preserved IVs, reduced IVs, and conservative mixed relations. It can emit the same JSON contract expected from a future native MLIR pass:
+
+```json
+{
+  "mlir_file": "selected_subgraph.mlir",
+  "analysis_tool": "native_mlir_pass",
+  "dialects_seen": ["affine.for", "affine.load", "affine.store"],
+  "relations": [
+    {
+      "relation_id": "context_value_preserved",
+      "source_tensor": "V",
+      "source_indices": ["b", "head", "k", "d"],
+      "target_tensor": "Context",
+      "target_indices": ["b", "head", "q", "d"],
+      "loop_ivs": ["b", "head", "q", "k", "d"],
+      "relation_kind": "preserved",
+      "dependence_kind": "access_equivalence",
+      "affine_evidence": ["affine.load ...", "affine.store ..."],
+      "proof": "value IV d remains free from V into Context",
+      "confidence": "high"
+    }
+  ],
+  "reductions": ["k"],
+  "preserved_axes": ["d"],
+  "blocked_axes": [],
+  "warnings": []
+}
+```
+
+Import or emit dependence JSON with:
+
+```bash
+python -m experimental.mlir_axis_bridge.cli \
+  --onnx <subgraph.onnx> \
+  --output-dir reports/mlir_axis_bridge/example \
+  --native-dependence-json experimental/mlir_axis_bridge/native/sample_expected_output.json \
+  --prefer-native-dependence \
+  --emit-python-dependence-json reports/mlir_axis_bridge/example/python_dependence.json \
+  --format markdown
+```
+
+The native C++ pass is scaffold-only. It is not compiled by the Python test suite and does not replace the Python bridge.
 
 ## Relationship to Other Prototypes
 

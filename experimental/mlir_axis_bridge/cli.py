@@ -15,6 +15,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True, help="Directory for generated local MLIR evidence and report output.")
     parser.add_argument("--onnx-mlir")
     parser.add_argument("--mlir-opt")
+    parser.add_argument("--native-dependence-json", help="Optional externally generated native MLIR dependence JSON report.")
+    parser.add_argument("--prefer-native-dependence", action="store_true", help="Prefer imported native dependence relations when they prove a supported pattern.")
+    parser.add_argument("--emit-python-dependence-json", help="Write the strongest Python affine-extractor dependence report for inspection.")
     parser.add_argument("--hint", choices=["auto", "ffn", "qk-score", "attention-context", "attention-value-path", "residual", "layernorm"], default="auto")
     parser.add_argument("--format", choices=["markdown", "json", "text"], default="text")
     parser.add_argument("--show-toolchain", action="store_true")
@@ -31,7 +34,16 @@ def main() -> int:
     args = parse_args()
     output_dir = Path(args.output_dir)
     try:
-        result = analyze_onnx_with_mlir_bridge(args.onnx, output_dir / "mlir_artifacts", args.onnx_mlir, args.mlir_opt, args.hint)
+        result = analyze_onnx_with_mlir_bridge(
+            args.onnx,
+            output_dir / "mlir_artifacts",
+            args.onnx_mlir,
+            args.mlir_opt,
+            args.hint,
+            args.native_dependence_json,
+            args.prefer_native_dependence,
+            args.emit_python_dependence_json,
+        )
     except (FileNotFoundError, RuntimeError, ValueError) as exc:
         print(f"error: {exc}")
         return 2
