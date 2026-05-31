@@ -1073,3 +1073,18 @@ Added `experimental/pruning_proof_report/`:
 - Missing-artifact tolerance and a standalone CLI
 
 This is a reporting and evaluation layer over selected local subgraphs. It does not execute pruning, mutate models, lower full models, or replace production analysis.
+
+## Milestone 47: MLIR Evidence Coverage Study
+
+Status: complete.
+
+Added `experimental/mlir_evidence_coverage/`:
+
+- Flexible discovery for local model-analysis ONNX subgraphs with sanitized model-directory and older-layout support
+- A model-by-pattern coverage matrix across BERT, DistilBERT, OPT, GPT-2, and ViT
+- Evidence tiers for native MLIR dependence facts, Python affine/access facts, high-level MLIR dialect evidence, ONNX fallback, and unavailable evidence
+- Verdicts for native/access/fallback proofs, expected blockers, partial mappings, missing artifacts, unknown evidence, and failures
+- Aggregate per-model and per-pattern summaries
+- Markdown/JSON reports, per-case details, CLI, README, and deterministic tests
+
+This is a reporting and evaluation layer over selected subgraphs. It does not execute pruning, mutate models, lower full models, or replace production analysis.

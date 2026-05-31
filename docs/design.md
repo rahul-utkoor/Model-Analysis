@@ -773,3 +773,9 @@ The native tool is deliberately minimal: preserved, reduced, and conservative mi
 `experimental/pruning_proof_report/` consolidates selected real ONNX subgraphs into one teaching and evaluation report. Each proof case records ONNX topology hints, ONNX-MLIR dialects, optional native dependence evidence, axis-transfer relations, recognized pruning patterns, DFA fixed-point results, and any fallback or limitation.
 
 The report preserves the evidence hierarchy: native MLIR dependence facts are preferred, Python affine facts remain valid local evidence, and high-level or ONNX-only proofs are labeled as fallbacks. It is a reporting layer over selected subgraphs, not a production pruning stage.
+
+## Experimental MLIR Evidence Coverage Study
+
+`experimental/mlir_evidence_coverage/` expands the curated proof report into a systematic selected-subgraph matrix across BERT, DistilBERT, OPT, GPT-2, and ViT. It measures FFN/MLP propagation, QK score blockers, context value-axis mappings, full attention value paths, residual protection, and LayerNorm protection.
+
+Coverage is reported by evidence tier: native MLIR dependence facts, Python affine/access facts, high-level MLIR dialect evidence, ONNX-local fallback, or unavailable. Missing local atlas artifacts remain visible as coverage gaps. This is an evaluation layer over local evidence artifacts, not a production pruning stage.

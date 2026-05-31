@@ -245,6 +245,9 @@ reports/mlir_axis_bridge/*
 !reports/mlir_axis_bridge/.gitkeep
 reports/pruning_proof_report/*
 !reports/pruning_proof_report/.gitkeep
+reports/mlir_evidence_coverage/*
+!reports/mlir_evidence_coverage/.gitkeep
+reports/mlir_evidence_coverage_all_layers/
 experimental/mlir_axis_bridge/native/build/
 viewer_data/
 
