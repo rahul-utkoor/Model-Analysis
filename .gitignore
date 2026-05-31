@@ -237,6 +237,8 @@ reports/dfa_pruning_propagation/*
 !reports/dfa_pruning_propagation/.gitkeep
 reports/axis_transfer_analysis/*
 !reports/axis_transfer_analysis/.gitkeep
+reports/pruning_analysis_bridge/*
+!reports/pruning_analysis_bridge/.gitkeep
 viewer_data/
 
 ui/pruning-analysis-explorer/node_modules/

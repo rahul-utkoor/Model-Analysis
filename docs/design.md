@@ -737,3 +737,9 @@ The prototype does not replace the production analysis pipeline. It exists to ma
 `experimental/axis_transfer_analysis/` is a separate loop/access-analysis teaching prototype. It uses MLIR-inspired indexed tensor accesses to infer whether axes are preserved, reduced, permuted, broadcast, protected, or blocked, then recognizes FFN chains, attention value paths, Q/K score blockers, and protected residual/LayerNorm paths.
 
 This prototype explores evidence below graph-level semantic annotations. It does not replace production analysis or the DFA worklist prototype; it is a bridge toward future affine/linalg/scf-derived axis summaries.
+
+## Experimental Axis-to-DFA Bridge
+
+`experimental/pruning_analysis_bridge/` composes the two teaching prototypes. It runs loop/access analysis, recognizes pruning patterns, lowers evidence-backed patterns into generic-label semantic DFA graphs, seeds symbolic pruning facts, and invokes the worklist solver.
+
+The bridge makes the semantic proof boundary explicit: graph names are syntax, loop/access relations provide evidence, pattern recognition derives semantic roles, and DFA computes propagation. It remains independent from production analysis.

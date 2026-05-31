@@ -954,3 +954,26 @@ python -m experimental.axis_transfer_analysis.cli --example attention-value-path
 ```
 
 This is a separate experimental loop/access-analysis prototype. It does not replace production analysis, execute pruning, mutate models, download models, or evaluate accuracy.
+
+## Milestone 41: Connect Axis Transfer Summaries to DFA Propagation
+
+Status: complete.
+
+Implemented under `experimental/pruning_analysis_bridge/`:
+
+- End-to-end bridge from loop/access evidence to DFA fixed-point propagation
+- Access-analysis and pattern-recognition trace records
+- Generic-label DFA graph lowering for FFN chains, attention value paths, Q/K score blockers, residual merges, and LayerNorm protection
+- Symbolic seed policies for consumer-input deadness and blocked hidden/head-axis attempts
+- Combined Markdown/text/JSON reports showing upstream axis evidence and downstream DFA facts
+- Standalone CLI, teaching README, and deterministic tests
+
+Primary commands:
+
+```bash
+python -m experimental.pruning_analysis_bridge.cli --example ffn-from-access --format markdown --show-all
+python -m experimental.pruning_analysis_bridge.cli --example attention-value-from-access --format markdown --show-all
+python -m experimental.pruning_analysis_bridge.cli --example qk-blocked-from-access --format markdown --show-all
+```
+
+This is a separate experimental bridge prototype. It does not replace production analysis, execute pruning, mutate models, download models, or evaluate accuracy.
