@@ -78,3 +78,61 @@ def test_bridge_prefers_native_when_requested(monkeypatch, tmp_path) -> None:
 
     assert result.evidence_source == ["native_mlir_dependence_evidence"]
     assert "native_mlir_dependence_evidence" in render_markdown(result)
+
+
+def test_bridge_falls_back_when_native_pass_missing(monkeypatch, tmp_path) -> None:
+    source = tmp_path / "local.onnx"
+    source.write_bytes(b"local-test-placeholder")
+    mlir = tmp_path / "lowered.mlir"
+    mlir.write_text(
+        """
+        affine.for %j = 0 to 8 {
+          %0 = affine.load %X[%b, %s, %j] : memref<1x2x8xf32>
+          affine.store %0, %Y[%b, %s, %j] : memref<1x2x8xf32>
+        }
+        """,
+        encoding="utf-8",
+    )
+    hint = OnnxPatternHint(OnnxPatternHintKind.FFN_LIKE, "medium", ("node_000",), ("synthetic topology",), "synthetic")
+    monkeypatch.setattr(
+        "experimental.mlir_axis_bridge.bridge_runner.check_toolchain",
+        lambda *_: ToolchainStatus("/tool/onnx-mlir", "/tool/mlir-opt", True, True),
+    )
+    monkeypatch.setattr(
+        "experimental.mlir_axis_bridge.bridge_runner.load_onnx_subgraph",
+        lambda *_: OnnxSubgraph(str(source), "local", (), {}, (), (), ()),
+    )
+    monkeypatch.setattr("experimental.mlir_axis_bridge.bridge_runner.infer_pattern_hints", lambda *_: [hint])
+    monkeypatch.setattr(
+        "experimental.mlir_axis_bridge.bridge_runner.lower_onnx_subgraph_to_mlir",
+        lambda *_: MlirLoweringResult(str(source), str(tmp_path), generated_files=[str(mlir)]),
+    )
+
+    result = analyze_onnx_with_mlir_bridge(source, tmp_path / "out", run_native_pass=True, native_pass_tool="/definitely/missing/tool")
+
+    assert result.evidence_source == ["actual_loop_access_evidence"]
+    assert any("native pass unavailable" in warning for warning in result.warnings)
+
+
+def test_report_evidence_hierarchy_table(monkeypatch, tmp_path) -> None:
+    source = tmp_path / "local.onnx"
+    source.write_bytes(b"local-test-placeholder")
+    hint = OnnxPatternHint(OnnxPatternHintKind.FFN_LIKE, "medium", ("node_000",), ("synthetic topology",), "synthetic")
+    monkeypatch.setattr(
+        "experimental.mlir_axis_bridge.bridge_runner.check_toolchain",
+        lambda *_: ToolchainStatus("/tool/onnx-mlir", "/tool/mlir-opt", True, True),
+    )
+    monkeypatch.setattr(
+        "experimental.mlir_axis_bridge.bridge_runner.load_onnx_subgraph",
+        lambda *_: OnnxSubgraph(str(source), "local", (), {}, (), (), ()),
+    )
+    monkeypatch.setattr("experimental.mlir_axis_bridge.bridge_runner.infer_pattern_hints", lambda *_: [hint])
+    monkeypatch.setattr(
+        "experimental.mlir_axis_bridge.bridge_runner.lower_onnx_subgraph_to_mlir",
+        lambda *_: MlirLoweringResult(str(source), str(tmp_path)),
+    )
+
+    markdown = render_markdown(analyze_onnx_with_mlir_bridge(source, tmp_path / "out"))
+
+    assert "## Evidence Hierarchy" in markdown
+    assert "| Evidence tier | Available | Used | Notes |" in markdown

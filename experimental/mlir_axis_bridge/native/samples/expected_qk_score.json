@@ -1,0 +1,24 @@
+{
+  "mlir_file": "qk_score_affine.mlir",
+  "analysis_tool": "native_mlir_pass",
+  "dialects_seen": ["affine", "arith", "func"],
+  "relations": [
+    {
+      "relation_id": "rel_qk",
+      "source_tensor": "%query",
+      "source_indices": ["%d"],
+      "target_tensor": "%score",
+      "target_indices": [],
+      "loop_ivs": ["%b", "%head", "%q", "%k", "%d"],
+      "relation_kind": "mixed",
+      "dependence_kind": "reduction",
+      "affine_evidence": ["query/key contraction"],
+      "proof": "qk_score_contraction_mixes_channels",
+      "confidence": "medium"
+    }
+  ],
+  "reductions": ["%d"],
+  "preserved_axes": ["%b", "%head", "%q", "%k"],
+  "blocked_axes": ["%d"],
+  "warnings": []
+}

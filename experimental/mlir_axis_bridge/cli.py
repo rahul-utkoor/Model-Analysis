@@ -18,6 +18,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--native-dependence-json", help="Optional externally generated native MLIR dependence JSON report.")
     parser.add_argument("--prefer-native-dependence", action="store_true", help="Prefer imported native dependence relations when they prove a supported pattern.")
     parser.add_argument("--emit-python-dependence-json", help="Write the strongest Python affine-extractor dependence report for inspection.")
+    parser.add_argument("--native-pass-tool", help="Path to the optional standalone pruning-axis dependence tool.")
+    parser.add_argument("--run-native-pass", action="store_true", help="Run the optional native dependence tool on the richest lowered MLIR artifact.")
+    parser.add_argument("--native-output-dir", help="Directory for JSON emitted by the optional native dependence tool.")
     parser.add_argument("--hint", choices=["auto", "ffn", "qk-score", "attention-context", "attention-value-path", "residual", "layernorm"], default="auto")
     parser.add_argument("--format", choices=["markdown", "json", "text"], default="text")
     parser.add_argument("--show-toolchain", action="store_true")
@@ -43,6 +46,9 @@ def main() -> int:
             args.native_dependence_json,
             args.prefer_native_dependence,
             args.emit_python_dependence_json,
+            args.run_native_pass,
+            args.native_pass_tool,
+            args.native_output_dir,
         )
     except (FileNotFoundError, RuntimeError, ValueError) as exc:
         print(f"error: {exc}")

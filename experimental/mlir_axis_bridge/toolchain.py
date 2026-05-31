@@ -86,6 +86,19 @@ def find_mlir_opt(explicit_path: str | None = None) -> Path:
     )
 
 
+def find_native_pass_tool(explicit_path: str | None = None) -> Path:
+    """Find the optional standalone pruning-axis dependence analyzer."""
+    return _find(
+        _candidate_paths(
+            explicit_path,
+            "PRUNING_AXIS_DEPENDENCE_TOOL",
+            [Path(__file__).parent / "native/build/pruning-axis-dependence"],
+            "pruning-axis-dependence",
+        ),
+        "pruning-axis-dependence",
+    )
+
+
 def _help_excerpt(path: Path) -> str:
     try:
         completed = subprocess.run([str(path), "--help"], capture_output=True, text=True, timeout=10, check=False)

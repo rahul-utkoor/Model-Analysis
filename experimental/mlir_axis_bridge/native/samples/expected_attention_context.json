@@ -1,0 +1,24 @@
+{
+  "mlir_file": "attention_context_affine.mlir",
+  "analysis_tool": "native_mlir_pass",
+  "dialects_seen": ["affine", "arith", "func"],
+  "relations": [
+    {
+      "relation_id": "rel_context_value",
+      "source_tensor": "%value",
+      "source_indices": ["%b", "%head", "%d"],
+      "target_tensor": "%context",
+      "target_indices": ["%b", "%head", "%d"],
+      "loop_ivs": ["%b", "%head", "%q", "%d", "%k"],
+      "relation_kind": "preserved",
+      "dependence_kind": "access_equivalence",
+      "affine_evidence": ["value/context access equivalence"],
+      "proof": "same IV %d appears in source and target access",
+      "confidence": "medium"
+    }
+  ],
+  "reductions": ["%k"],
+  "preserved_axes": ["%b", "%head", "%d"],
+  "blocked_axes": [],
+  "warnings": []
+}

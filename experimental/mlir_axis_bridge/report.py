@@ -37,6 +37,26 @@ def _artifacts(result: MlirAxisBridgeResult) -> list[str]:
     return lines
 
 
+def _evidence_hierarchy(result: MlirAxisBridgeResult) -> list[str]:
+    used = set(result.evidence_source)
+    available = {
+        "native_mlir_dependence_evidence": result.native_dependence_report is not None,
+        "actual_loop_access_evidence": any(summary.access_records for summary in result.mlir_access_summaries),
+        "high_level_mlir_dialect_evidence": any(summary.recognized_high_level_ops for summary in result.mlir_access_summaries),
+        "onnx_hint_fallback": bool(result.region_results),
+    }
+    notes = {
+        "native_mlir_dependence_evidence": "Imported or executable native-tool JSON dependence report.",
+        "actual_loop_access_evidence": "Python extraction from concrete affine/memref accesses.",
+        "high_level_mlir_dialect_evidence": "Conservative high-level MLIR operation evidence.",
+        "onnx_hint_fallback": "Local ONNX topology/shape hint fallback.",
+    }
+    lines = ["| Evidence tier | Available | Used | Notes |", "| --- | --- | --- | --- |"]
+    for tier in available:
+        lines.append(f"| `{tier}` | {'yes' if available[tier] else 'no'} | {'yes' if tier in used else 'no'} | {notes[tier]} |")
+    return lines
+
+
 def _region(item: MlirRegionResult, ordinal: int) -> list[str]:
     build = item.axis_build
     lines = [
@@ -104,6 +124,10 @@ def render_markdown(result: MlirAxisBridgeResult) -> str:
         "",
         *_commands(result),
         "",
+        "## Evidence Hierarchy",
+        "",
+        *_evidence_hierarchy(result),
+        "",
         "## Generated MLIR Artifacts",
         "",
         *_artifacts(result),
@@ -131,6 +155,21 @@ def render_markdown(result: MlirAxisBridgeResult) -> str:
                 f"- analysis tool: `{result.native_dependence_report.analysis_tool}`",
                 f"- MLIR file: `{result.native_dependence_report.mlir_file}`",
                 f"- relations: `{len(result.native_dependence_report.relations)}`",
+                f"- preserved axes: `{len(result.native_dependence_report.preserved_axes)}`",
+                f"- reduced axes: `{len(result.native_dependence_report.reductions)}`",
+                f"- blocked axes: `{len(result.native_dependence_report.blocked_axes)}`",
+                "",
+            ]
+        )
+    if result.native_pass_result:
+        lines.extend(
+            [
+                "## Native Pass Execution",
+                "",
+                f"- command: `{' '.join(result.native_pass_result.command)}`",
+                f"- return code: `{result.native_pass_result.returncode}`",
+                f"- JSON output: `{result.native_pass_result.json_path}`",
+                f"- warning: `{result.native_pass_result.warning}`",
                 "",
             ]
         )
@@ -183,6 +222,7 @@ def render_json(result: MlirAxisBridgeResult) -> str:
         "mlir_access_summaries": [asdict(summary) for summary in result.mlir_access_summaries],
         "evidence_source": result.evidence_source,
         "native_dependence_report": asdict(result.native_dependence_report) if result.native_dependence_report else None,
+        "native_pass_result": asdict(result.native_pass_result) if result.native_pass_result else None,
         "emitted_python_dependence_json": result.emitted_python_dependence_json,
         "regions": [
             {

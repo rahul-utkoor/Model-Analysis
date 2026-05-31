@@ -9,4 +9,6 @@ def test_cli_help() -> None:
 
     assert completed.returncode == 0
     assert "--onnx-mlir" in completed.stdout
+    assert "--native-pass-tool" in completed.stdout
+    assert "--run-native-pass" in completed.stdout
     assert "--show-all" in completed.stdout

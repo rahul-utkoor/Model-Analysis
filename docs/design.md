@@ -760,4 +760,10 @@ The evidence boundary is explicit. `actual_loop_access_evidence` means indexed a
 
 `experimental/mlir_axis_bridge/native_dependence.py` adds a shared dependence-style JSON contract for Python-extracted and externally generated MLIR facts. The Python extractor records enclosing loop IVs and conservative preserved, reduced, and mixed access relations from affine/memref loads and stores. When an imported native report proves a supported motif, the bridge labels the result `native_mlir_dependence_evidence`; otherwise it retains the existing actual-access and fallback paths.
 
-`experimental/mlir_axis_bridge/native/` contains an optional out-of-tree C++ pass scaffold. It documents the future `pruning-axis-dependence` pass boundary without making native compilation a repository test prerequisite. MLIR remains a local evidence generator for selected subgraphs, not a replacement pruning framework.
+`experimental/mlir_axis_bridge/native/` contains an optional out-of-tree C++ analysis tool. Native compilation is not a repository test prerequisite. MLIR remains a local evidence generator for selected subgraphs, not a replacement pruning framework.
+
+## Experimental Executable MLIR Dependence Tool
+
+`experimental/mlir_axis_bridge/native/` now builds an optional standalone MLIR-linked `pruning-axis-dependence` executable. It parses selected MLIR artifacts, walks affine/scf loop regions, records affine/memref loads and stores, and emits the shared dependence JSON contract. The Python orchestrator can run the tool on the richest lowered artifact and fall back to Python affine extraction if native execution fails.
+
+The native tool is deliberately minimal: preserved, reduced, and conservative mixed IV facts are local evidence, not a full replacement for MLIR's broader dependence-analysis infrastructure or the production pruning framework.

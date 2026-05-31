@@ -1,17 +1,23 @@
-# Native MLIR Pruning Axis Dependence Pass Scaffold
+# Native MLIR Pruning Axis Dependence Tool
 
-This directory scaffolds a future out-of-tree MLIR pass named `pruning-axis-dependence`.
+This directory contains an out-of-tree standalone MLIR-linked tool named `pruning-axis-dependence`.
 
-The Python bridge remains the orchestrator. The native pass is optional: it should inspect selected ONNX-MLIR artifacts, walk `func.func`, collect affine/scf loops and affine/memref loads and stores, and emit the JSON contract documented in `../README.md`.
+The Python bridge remains the orchestrator. The native tool is optional: it inspects selected ONNX-MLIR artifacts, collects affine/scf loops and affine/memref loads and stores, and emits the JSON contract documented in `../README.md`.
 
-## Intended Build
+## Build
 
 ```bash
-cmake -S experimental/mlir_axis_bridge/native -B /tmp/pruning-axis-native \
-  -DMLIR_DIR="$LLVM_BUILD/lib/cmake/mlir"
-cmake --build /tmp/pruning-axis-native
+bash experimental/mlir_axis_bridge/native/build_native_pass.sh
 ```
 
-## Current Status
+## Run
 
-The C++ file is a near-compilable pass skeleton. It walks supported operations and documents where affine-map and dependence facts should be emitted. JSON emission and pass-plugin registration remain TODOs. It is not part of automated tests.
+```bash
+experimental/mlir_axis_bridge/native/build/pruning-axis-dependence \
+  experimental/mlir_axis_bridge/native/samples/attention_context_affine.mlir \
+  --output reports/mlir_axis_bridge/native_attention_context_sample.json
+```
+
+## Current Scope
+
+The executable walks real MLIR operations and emits preserved, reduced, and conservative mixed relations. It is intentionally local and minimal. It does not perform transformations, invoke full dependence solvers, or replace the Python bridge.

@@ -1042,3 +1042,20 @@ Extended `experimental/mlir_axis_bridge/` with:
 - An optional out-of-tree C++ `pruning-axis-dependence` pass scaffold under `experimental/mlir_axis_bridge/native/`
 
 The native C++ pass is scaffold-only and is not required by automated tests. This remains an experimental local-evidence bridge for selected subgraphs, not a full MLIR rewrite.
+
+## Milestone 45: Functional Native MLIR Axis Dependence Pass
+
+Status: complete.
+
+Extended `experimental/mlir_axis_bridge/native/` with:
+
+- A standalone MLIR-linked `pruning-axis-dependence` executable
+- Local parsing for selected MLIR artifacts with unregistered ONNX-MLIR dialect tolerance
+- Affine/scf loop-IV tracking and affine/memref load-store extraction
+- Conservative native JSON facts for preserved, reduced, and mixed access relations
+- A local CMake build helper and parseable MLIR sample fixtures
+- Expected JSON samples compatible with `native_dependence.py`
+- Optional Python orchestration through `--run-native-pass`, `--native-pass-tool`, and `--native-output-dir`
+- Evidence hierarchy reporting with clean fallback to Python affine extraction
+
+The native analyzer remains a selected-subgraph local evidence generator. It does not transform MLIR, lower full models, execute pruning, mutate model weights, or replace production analysis.

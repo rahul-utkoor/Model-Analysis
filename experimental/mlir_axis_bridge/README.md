@@ -50,7 +50,7 @@ The bridge never presents fallback evidence as a loop-level proof.
 
 ## Native MLIR Dependence Evidence
 
-The current bridge includes strengthened Python-side affine access extraction and an optional native pass scaffold under `native/`. The Python extractor records enclosing loop IVs, affine/memref accesses, preserved IVs, reduced IVs, and conservative mixed relations. It can emit the same JSON contract expected from a future native MLIR pass:
+The current bridge includes strengthened Python-side affine access extraction and an optional native dependence tool under `native/`. The Python extractor records enclosing loop IVs, affine/memref accesses, preserved IVs, reduced IVs, and conservative mixed relations. It can emit the same JSON contract as the native MLIR tool:
 
 ```json
 {
@@ -91,7 +91,29 @@ python -m experimental.mlir_axis_bridge.cli \
   --format markdown
 ```
 
-The native C++ pass is scaffold-only. It is not compiled by the Python test suite and does not replace the Python bridge.
+The native C++ analyzer is an optional standalone MLIR-linked tool. It is not compiled by the normal Python test suite and does not replace the Python bridge.
+
+## Build and Run the Native Tool
+
+```bash
+bash experimental/mlir_axis_bridge/native/build_native_pass.sh
+
+experimental/mlir_axis_bridge/native/build/pruning-axis-dependence \
+  experimental/mlir_axis_bridge/native/samples/attention_context_affine.mlir \
+  --output reports/mlir_axis_bridge/native_attention_context_sample.json
+```
+
+Run it automatically on the richest emitted MLIR artifact:
+
+```bash
+python -m experimental.mlir_axis_bridge.cli \
+  --onnx <subgraph.onnx> \
+  --output-dir reports/mlir_axis_bridge/example \
+  --run-native-pass \
+  --native-pass-tool experimental/mlir_axis_bridge/native/build/pruning-axis-dependence \
+  --native-output-dir reports/mlir_axis_bridge/example/native \
+  --format markdown
+```
 
 ## Relationship to Other Prototypes
 
@@ -112,4 +134,4 @@ python -m experimental.mlir_axis_bridge.cli \
 
 ## Limitations
 
-This is not full ONNX-to-MLIR semantic lowering. The text parser is conservative, affine reconstruction is intentionally narrow, and unsupported layouts remain warnings. MLIR is used as a local semantic evidence source, not as the pruning framework itself.
+This is not full ONNX-to-MLIR semantic lowering. The native analyzer intentionally implements a minimal access-relation layer rather than a complete MLIR dependence solver. Unsupported layouts remain warnings. MLIR is used as a local semantic evidence source, not as the pruning framework itself.

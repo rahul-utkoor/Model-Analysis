@@ -58,6 +58,13 @@ def test_native_dependence_json_loader(tmp_path) -> None:
     assert report.relations[0].source_indices[-1] == "d"
 
 
+def test_native_pass_sample_json_compatible() -> None:
+    report = load_native_dependence_report("experimental/mlir_axis_bridge/native/samples/expected_attention_context.json")
+
+    assert report.analysis_tool == "native_mlir_pass"
+    assert report.relations[0].relation_kind == "preserved"
+
+
 def test_native_qk_dependence_to_axis_summary(tmp_path) -> None:
     report = load_native_dependence_report(
         _write_report(

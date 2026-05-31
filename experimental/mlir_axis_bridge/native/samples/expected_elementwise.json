@@ -1,0 +1,24 @@
+{
+  "mlir_file": "elementwise_affine.mlir",
+  "analysis_tool": "native_mlir_pass",
+  "dialects_seen": ["affine", "func"],
+  "relations": [
+    {
+      "relation_id": "rel_0",
+      "source_tensor": "%input",
+      "source_indices": ["%b", "%s", "%j"],
+      "target_tensor": "%output",
+      "target_indices": ["%b", "%s", "%j"],
+      "loop_ivs": ["%b", "%s", "%j"],
+      "relation_kind": "preserved",
+      "dependence_kind": "access_equivalence",
+      "affine_evidence": ["affine.load", "affine.store"],
+      "proof": "same IVs appear in source and target accesses",
+      "confidence": "medium"
+    }
+  ],
+  "reductions": [],
+  "preserved_axes": ["%b", "%s", "%j"],
+  "blocked_axes": [],
+  "warnings": []
+}

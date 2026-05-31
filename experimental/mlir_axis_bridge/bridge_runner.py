@@ -18,8 +18,9 @@ from experimental.mlir_axis_bridge.native_dependence import (
     load_native_dependence_report,
     write_native_dependence_report,
 )
+from experimental.mlir_axis_bridge.native_pass_runner import NativePassRunResult, run_native_dependence_tool
 from experimental.mlir_axis_bridge.onnx_mlir_runner import MlirLoweringResult, lower_onnx_subgraph_to_mlir
-from experimental.mlir_axis_bridge.toolchain import ToolchainStatus, check_toolchain
+from experimental.mlir_axis_bridge.toolchain import ToolchainStatus, check_toolchain, find_native_pass_tool
 from experimental.onnx_axis_bridge.bridge_runner import REQUESTED_HINTS, _seed_policy
 from experimental.onnx_axis_bridge.onnx_graph_summary import summarize_subgraph
 from experimental.onnx_axis_bridge.onnx_loader import load_onnx_subgraph
@@ -50,6 +51,7 @@ class MlirAxisBridgeResult:
     warnings: list[str] = field(default_factory=list)
     native_dependence_report: NativeDependenceReport | None = None
     emitted_python_dependence_json: str | None = None
+    native_pass_result: NativePassRunResult | None = None
 
 
 def _selected_hints(hints: list[OnnxPatternHint], requested_hint: str) -> list[OnnxPatternHint]:
@@ -96,6 +98,31 @@ def _emit_python_dependence(summaries: list[MlirAccessSummary], path: str | Path
     return str(write_native_dependence_report(selected.dependence_report, path))
 
 
+def _run_native_pass(
+    summaries: list[MlirAccessSummary],
+    tool_path: str | Path | None,
+    output_dir: str | Path | None,
+    warnings: list[str],
+) -> tuple[NativePassRunResult | None, NativeDependenceReport | None]:
+    candidates = [summary for summary in summaries if summary.access_records]
+    if not candidates:
+        warnings.append("native pass requested but no lowered MLIR artifact with indexed accesses was available")
+        return None, None
+    selected = max(candidates, key=lambda summary: len(summary.access_records))
+    try:
+        resolved_tool = find_native_pass_tool(str(tool_path) if tool_path else None)
+    except FileNotFoundError as exc:
+        warnings.append(f"native pass unavailable; falling back to Python extraction: {exc}")
+        return NativePassRunResult((str(tool_path or "<auto>"), selected.artifact_path), 127, "", "", None, str(exc)), None
+    native_root = Path(output_dir) if output_dir else Path(selected.artifact_path).parent / "native_dependence"
+    output_json = native_root / f"{Path(selected.artifact_path).stem}.native_dependence.json"
+    result = run_native_dependence_tool(selected.artifact_path, resolved_tool, output_json)
+    if result.warning:
+        warnings.append(f"{result.warning}; falling back to Python extraction")
+        return result, None
+    return result, load_native_dependence_report(output_json)
+
+
 def analyze_onnx_with_mlir_bridge(
     onnx_path: str | Path,
     output_root: str | Path,
@@ -105,6 +132,9 @@ def analyze_onnx_with_mlir_bridge(
     native_dependence_json: str | Path | None = None,
     prefer_native_dependence: bool = False,
     emit_python_dependence_json: str | Path | None = None,
+    run_native_pass: bool = False,
+    native_pass_tool: str | Path | None = None,
+    native_output_dir: str | Path | None = None,
 ) -> MlirAxisBridgeResult:
     """Use ONNX-MLIR as a read-only local evidence generator for one subgraph."""
     source = Path(onnx_path)
@@ -125,6 +155,9 @@ def analyze_onnx_with_mlir_bridge(
     access_summaries = [extract_mlir_access_summary(artifact) for artifact in artifacts]
     native_report = load_native_dependence_report(native_dependence_json) if native_dependence_json else None
     emitted_python_json = _emit_python_dependence(access_summaries, emit_python_dependence_json, warnings)
+    native_pass_result = None
+    if run_native_pass and native_report is None:
+        native_pass_result, native_report = _run_native_pass(access_summaries, native_pass_tool, native_output_dir, warnings)
     if prefer_native_dependence and native_report is None:
         warnings.append("--prefer-native-dependence was requested without --native-dependence-json; using Python extraction")
     region_results: list[MlirRegionResult] = []
@@ -179,4 +212,5 @@ def analyze_onnx_with_mlir_bridge(
         warnings,
         native_report,
         emitted_python_json,
+        native_pass_result,
     )

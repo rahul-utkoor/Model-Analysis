@@ -243,6 +243,7 @@ reports/onnx_axis_bridge/*
 !reports/onnx_axis_bridge/.gitkeep
 reports/mlir_axis_bridge/*
 !reports/mlir_axis_bridge/.gitkeep
+experimental/mlir_axis_bridge/native/build/
 viewer_data/
 
 ui/pruning-analysis-explorer/node_modules/
