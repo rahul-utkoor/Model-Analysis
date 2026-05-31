@@ -1059,3 +1059,17 @@ Extended `experimental/mlir_axis_bridge/native/` with:
 - Evidence hierarchy reporting with clean fallback to Python affine extraction
 
 The native analyzer remains a selected-subgraph local evidence generator. It does not transform MLIR, lower full models, execute pruning, mutate model weights, or replace production analysis.
+
+## Milestone 46: Cross-Evidence Pruning Proof Report
+
+Status: complete.
+
+Added `experimental/pruning_proof_report/`:
+
+- Selected layer-0 proof cases across transformer MLP, attention score/context, residual, and LayerNorm subgraphs
+- One report schema for ONNX hints, MLIR dialects, native/Python/fallback evidence sources, axis relations, recognized patterns, DFA facts, verdicts, and limitations
+- Evidence-source precedence from native MLIR dependence evidence through explicit ONNX-only fallback
+- Aggregate Markdown and JSON reports plus per-case details
+- Missing-artifact tolerance and a standalone CLI
+
+This is a reporting and evaluation layer over selected local subgraphs. It does not execute pruning, mutate models, lower full models, or replace production analysis.

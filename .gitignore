@@ -243,6 +243,8 @@ reports/onnx_axis_bridge/*
 !reports/onnx_axis_bridge/.gitkeep
 reports/mlir_axis_bridge/*
 !reports/mlir_axis_bridge/.gitkeep
+reports/pruning_proof_report/*
+!reports/pruning_proof_report/.gitkeep
 experimental/mlir_axis_bridge/native/build/
 viewer_data/
 

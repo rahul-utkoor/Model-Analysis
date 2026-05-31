@@ -767,3 +767,9 @@ The evidence boundary is explicit. `actual_loop_access_evidence` means indexed a
 `experimental/mlir_axis_bridge/native/` now builds an optional standalone MLIR-linked `pruning-axis-dependence` executable. It parses selected MLIR artifacts, walks affine/scf loop regions, records affine/memref loads and stores, and emits the shared dependence JSON contract. The Python orchestrator can run the tool on the richest lowered artifact and fall back to Python affine extraction if native execution fails.
 
 The native tool is deliberately minimal: preserved, reduced, and conservative mixed IV facts are local evidence, not a full replacement for MLIR's broader dependence-analysis infrastructure or the production pruning framework.
+
+## Experimental Cross-Evidence Pruning Proof Report
+
+`experimental/pruning_proof_report/` consolidates selected real ONNX subgraphs into one teaching and evaluation report. Each proof case records ONNX topology hints, ONNX-MLIR dialects, optional native dependence evidence, axis-transfer relations, recognized pruning patterns, DFA fixed-point results, and any fallback or limitation.
+
+The report preserves the evidence hierarchy: native MLIR dependence facts are preferred, Python affine facts remain valid local evidence, and high-level or ONNX-only proofs are labeled as fallbacks. It is a reporting layer over selected subgraphs, not a production pruning stage.
