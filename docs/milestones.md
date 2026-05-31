@@ -977,3 +977,26 @@ python -m experimental.pruning_analysis_bridge.cli --example qk-blocked-from-acc
 ```
 
 This is a separate experimental bridge prototype. It does not replace production analysis, execute pruning, mutate models, download models, or evaluate accuracy.
+
+## Milestone 42: ONNX Subgraph to Axis-Transfer Bridge
+
+Status: complete.
+
+Implemented under `experimental/onnx_axis_bridge/`:
+
+- Read-only local ONNX subgraph loader with tensor-shape extraction
+- Topology, producer/consumer, operator-class, initializer, and shape summaries
+- Conservative hints for FFN-like chains, Q/K score contractions, attention context, attention value paths, residual adds, and explicit LayerNorm
+- Template lowering into the existing loop/access `RegionSpec`
+- Reuse of axis-transfer summaries, pattern recognition, semantic DFA graph construction, and fixed-point propagation
+- Markdown/text/JSON reports, standalone CLI, synthetic ONNX tests, and best-effort real artifact smoke support
+
+Primary commands:
+
+```bash
+python -m experimental.onnx_axis_bridge.cli --help
+python -m experimental.onnx_axis_bridge.cli --onnx artifacts/model_analysis_subgraphs/gpt2/layers/layer_0/03_gpt_2_block_0_mlp_block/subgraph.onnx --format markdown --show-all
+python -m experimental.onnx_axis_bridge.cli --onnx artifacts/model_analysis_subgraphs/bert-base-uncased/layers/layer_0/05_layer_0_attention_score_matmul/subgraph.onnx --format markdown --show-all
+```
+
+This is a separate experimental ONNX-subgraph bridge, not full MLIR lowering. It does not replace production analysis, execute pruning, mutate models, download models, or evaluate accuracy.

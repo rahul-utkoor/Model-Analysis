@@ -55,6 +55,7 @@ class RegionSpec:
     tensors: dict[str, Tensor]
     ops: list[OperationSpec]
     edges: list[RegionEdge] = field(default_factory=list)
+    attrs: dict[str, Any] = field(default_factory=dict)
 
     def tensor(self, name: str) -> Tensor:
         return self.tensors[name]

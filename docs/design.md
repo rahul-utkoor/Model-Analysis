@@ -743,3 +743,9 @@ This prototype explores evidence below graph-level semantic annotations. It does
 `experimental/pruning_analysis_bridge/` composes the two teaching prototypes. It runs loop/access analysis, recognizes pruning patterns, lowers evidence-backed patterns into generic-label semantic DFA graphs, seeds symbolic pruning facts, and invokes the worklist solver.
 
 The bridge makes the semantic proof boundary explicit: graph names are syntax, loop/access relations provide evidence, pattern recognition derives semantic roles, and DFA computes propagation. It remains independent from production analysis.
+
+## Experimental ONNX Subgraph Axis Bridge
+
+`experimental/onnx_axis_bridge/` reads selected local ONNX subgraph artifacts, summarizes topology and available shapes, emits conservative pattern hints, template-lowers supported motifs into loop/access `RegionSpec` records, and reuses the axis-transfer and DFA bridge prototypes.
+
+This is deliberately not full ONNX-to-MLIR lowering. It is a controlled local bridge that prepares the interface a future affine/linalg/scf extractor can replace without changing production analysis.
