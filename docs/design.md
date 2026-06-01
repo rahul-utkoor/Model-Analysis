@@ -827,3 +827,13 @@ The diagnosis layer exports a read-only local FFN-core evidence artifact contain
 `ui/pruning-analysis-explorer/` presents the complete static pruning propagation story as a read-only compiler pipeline visualization. The dashboard, stage view, transformation traces, case studies, report previews, and existing model explorer share one local stdlib API server.
 
 The pipeline flow uses graph mini-views, affine equations, axis-relation summaries, and progressive DFA fact reveals. It explains sparse-weight versus structural pruning, selected ONNX subgraphs, native MLIR dependence facts, pruning-pattern recognition, the all-model `108/108` result, QK blockers, and explicit limitations. The UI does not execute pruning, mutate model weights, or evaluate accuracy.
+
+## Interactive Evidence Trace
+
+The `Evidence Trace` workspace adds a concrete pattern laboratory beneath the compiler pipeline overview. Three report-aligned examples expose raw graph nodes, matched patterns, affine access equations, axis-state tables, and DFA timeline steps:
+
+- FFN intermediate-axis deadness propagation
+- Attention value-path deadness propagation
+- QK score-contraction blocking
+
+Each timeline step updates graph node and edge state without executing a model. The visualization is an explanatory projection of static analysis facts, not a pruning runtime.

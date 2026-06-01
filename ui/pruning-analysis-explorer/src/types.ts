@@ -172,6 +172,64 @@ export interface PipelineFlowResponse {
   warnings: string[];
 }
 
+export interface TraceGraphNode {
+  id: string;
+  label: string;
+  op: string;
+  axis_role: string;
+  shape?: string;
+}
+
+export interface TraceGraphEdge {
+  source: string;
+  target: string;
+  axis: string;
+  relation: string;
+}
+
+export interface MlirTraceSnippet {
+  title: string;
+  code: string;
+  relation: string;
+}
+
+export interface TraceStep {
+  fact: string;
+  kind: 'seed' | 'propagate' | 'fixed_point' | 'blocker' | 'blocked';
+  active_nodes: string[];
+  active_edges: string[][];
+}
+
+export interface EvidenceTraceExample {
+  id: string;
+  title: string;
+  pattern: string;
+  verdict: string;
+  graph: {
+    nodes: TraceGraphNode[];
+    edges: TraceGraphEdge[];
+  };
+  mlir: MlirTraceSnippet[];
+  pattern_match: {
+    before: string[];
+    after: string;
+    why: string[];
+  };
+  dfa_trace: TraceStep[];
+  not_claimed: string[];
+}
+
+export interface EvidenceTracesResponse {
+  summary: {
+    title: string;
+    description: string;
+    plans_proven: number;
+    native_mlir_evidence: number;
+  };
+  examples: EvidenceTraceExample[];
+  warnings: string[];
+}
+
 export interface CaseStudy {
   id: string;
   title: string;

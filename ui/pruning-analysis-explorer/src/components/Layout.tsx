@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { BarChart3, BookOpen, FileText, FlaskConical, LayoutDashboard } from 'lucide-react';
+import { BarChart3, BookOpen, FileText, FlaskConical, LayoutDashboard, ScanSearch } from 'lucide-react';
 import { SearchPanel } from './SearchPanel';
 import type { ModelSummary, SearchMatch } from '../types';
 
-export type AppView = 'dashboard' | 'pipeline-flow' | 'models' | 'case-studies' | 'reports';
+export type AppView = 'dashboard' | 'pipeline-flow' | 'evidence-trace' | 'models' | 'case-studies' | 'reports';
 
 interface Props {
   models: ModelSummary[];
@@ -18,6 +18,7 @@ interface Props {
 const navigation: Array<{ id: AppView; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'pipeline-flow', label: 'Pipeline Flow', icon: BookOpen },
+  { id: 'evidence-trace', label: 'Evidence Trace', icon: ScanSearch },
   { id: 'models', label: 'Models', icon: BarChart3 },
   { id: 'case-studies', label: 'Case Studies', icon: FlaskConical },
   { id: 'reports', label: 'Reports', icon: FileText },

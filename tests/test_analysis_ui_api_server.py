@@ -227,6 +227,23 @@ def test_overview_survives_missing_final_report(tmp_path: Path) -> None:
     assert data["warnings"]
 
 
+def test_evidence_traces_returns_graph_mlir_pattern_and_dfa_examples(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, data = module.route_api(config, "/api/evidence-traces", {})
+
+    assert status == module.HTTPStatus.OK
+    assert len(data["examples"]) == 3
+    ffn = next(example for example in data["examples"] if example["id"] == "ffn_intermediate")
+    qk = next(example for example in data["examples"] if example["id"] == "qk_score_blocker")
+    assert ffn["graph"]["nodes"]
+    assert ffn["mlir"]
+    assert ffn["pattern_match"]["after"] == "FFN_INTERMEDIATE_CHAIN"
+    assert ffn["dfa_trace"][0]["kind"] == "seed"
+    assert qk["verdict"] == "blocked_as_expected"
+
+
 def test_report_text_reads_safe_markdown_and_rejects_traversal(tmp_path: Path) -> None:
     module = load_server_module()
     config = make_tree(tmp_path)

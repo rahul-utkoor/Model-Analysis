@@ -319,6 +319,117 @@ def pipeline_flow(config: ServerConfig) -> dict[str, Any]:
     }
 
 
+def evidence_traces(config: ServerConfig) -> dict[str, Any]:
+    summary, warnings = final_summary(config)
+    return {
+        "summary": {
+            "title": "Evidence Trace",
+            "description": "Step through graph, MLIR, axis-transfer, pattern, and DFA evidence.",
+            "plans_proven": summary["proven_plans"],
+            "native_mlir_evidence": summary["native_mlir_evidence"],
+        },
+        "examples": [
+            {
+                "id": "ffn_intermediate",
+                "title": "FFN / MLP intermediate propagation",
+                "pattern": "FFN_INTERMEDIATE_CHAIN",
+                "verdict": "proven",
+                "graph": {
+                    "nodes": [
+                        {"id": "expansion", "label": "Expansion Projection", "op": "MatMul / Gemm", "axis_role": "produces intermediate j", "shape": "hidden -> intermediate"},
+                        {"id": "activation", "label": "Activation", "op": "GELU / ReLU", "axis_role": "preserves intermediate j", "shape": "intermediate -> intermediate"},
+                        {"id": "contraction", "label": "Contraction Projection", "op": "MatMul / Gemm", "axis_role": "consumes intermediate j", "shape": "intermediate -> hidden"},
+                    ],
+                    "edges": [
+                        {"source": "expansion", "target": "activation", "axis": "j", "relation": "PRESERVED"},
+                        {"source": "activation", "target": "contraction", "axis": "j", "relation": "CONSUMED"},
+                    ],
+                },
+                "mlir": [
+                    {"title": "Activation", "code": "Y[b, s, j] = gelu(X[b, s, j])", "relation": "X.j -> Y.j = PRESERVED"},
+                    {"title": "Contraction", "code": "O[b, s, h] += A[b, s, j] * W[j, h]", "relation": "A.j is consumed by contraction"},
+                ],
+                "pattern_match": {
+                    "before": ["MatMul / Gemm", "Elementwise", "MatMul / Gemm"],
+                    "after": "FFN_INTERMEDIATE_CHAIN",
+                    "why": ["first projection produces intermediate axis j", "activation preserves j", "second projection consumes j"],
+                },
+                "dfa_trace": [
+                    {"fact": "contraction.input[j] = DEAD", "kind": "seed", "active_nodes": ["contraction"], "active_edges": []},
+                    {"fact": "activation.output[j] = DEAD", "kind": "propagate", "active_nodes": ["activation", "contraction"], "active_edges": [["activation", "contraction"]]},
+                    {"fact": "activation.input[j] = DEAD", "kind": "propagate", "active_nodes": ["activation"], "active_edges": []},
+                    {"fact": "expansion.output[j] = DEAD", "kind": "fixed_point", "active_nodes": ["expansion", "activation"], "active_edges": [["expansion", "activation"]]},
+                ],
+                "not_claimed": ["Does not prune hidden output axis.", "Does not choose channel index j.", "Does not mutate weights."],
+            },
+            {
+                "id": "attention_value_path",
+                "title": "Attention value-path propagation",
+                "pattern": "ATTENTION_VALUE_PATH",
+                "verdict": "proven",
+                "graph": {
+                    "nodes": [
+                        {"id": "value_projection", "label": "Value Projection", "op": "MatMul / Gemm or recovered V slice", "axis_role": "produces value axis d"},
+                        {"id": "context", "label": "Attention Context", "op": "MatMul", "axis_role": "preserves value axis d"},
+                        {"id": "output_projection", "label": "Output Projection", "op": "MatMul / Gemm", "axis_role": "consumes context value axis d"},
+                    ],
+                    "edges": [
+                        {"source": "value_projection", "target": "context", "axis": "d", "relation": "PRESERVED"},
+                        {"source": "context", "target": "output_projection", "axis": "d", "relation": "CONSUMED"},
+                    ],
+                },
+                "mlir": [
+                    {"title": "Attention context", "code": "C[b, h, q, d] += P[b, h, q, k] * V[b, h, k, d]", "relation": "V.d -> C.d = PRESERVED; k is REDUCED"},
+                    {"title": "Output projection", "code": "O[b, q, h] += C[b, q, d] * W[d, h]", "relation": "C.d is consumed by output projection"},
+                ],
+                "pattern_match": {
+                    "before": ["Value Projection", "Context MatMul", "Output Projection"],
+                    "after": "ATTENTION_VALUE_PATH",
+                    "why": ["value projection produces d", "context preserves d", "output projection consumes d"],
+                },
+                "dfa_trace": [
+                    {"fact": "output_projection.input[d] = DEAD", "kind": "seed", "active_nodes": ["output_projection"], "active_edges": []},
+                    {"fact": "context.value_axis[d] = DEAD", "kind": "propagate", "active_nodes": ["context", "output_projection"], "active_edges": [["context", "output_projection"]]},
+                    {"fact": "value_projection.output[d] = DEAD", "kind": "fixed_point", "active_nodes": ["value_projection", "context"], "active_edges": [["value_projection", "context"]]},
+                ],
+                "not_claimed": ["Does not prune Q/K score path.", "Does not choose value channel d.", "Does not evaluate accuracy."],
+            },
+            {
+                "id": "qk_score_blocker",
+                "title": "QK score blocker",
+                "pattern": "QK_SCORE_BLOCKER",
+                "verdict": "blocked_as_expected",
+                "graph": {
+                    "nodes": [
+                        {"id": "q_projection", "label": "Q Projection", "op": "MatMul / Gemm", "axis_role": "produces head_dim d"},
+                        {"id": "score_matmul", "label": "Score MatMul", "op": "MatMul", "axis_role": "reduces / mixes d"},
+                        {"id": "k_projection", "label": "K Projection", "op": "MatMul / Gemm", "axis_role": "produces head_dim d"},
+                    ],
+                    "edges": [
+                        {"source": "q_projection", "target": "score_matmul", "axis": "d", "relation": "REDUCED / MIXED"},
+                        {"source": "k_projection", "target": "score_matmul", "axis": "d", "relation": "REDUCED / MIXED"},
+                    ],
+                },
+                "mlir": [
+                    {"title": "QK score contraction", "code": "S[b, h, q, k] += Q[b, h, q, d] * K[b, h, k, d]", "relation": "d is REDUCED / MIXED and disappears from output"},
+                ],
+                "pattern_match": {
+                    "before": ["Q Projection", "Score MatMul", "K Projection"],
+                    "after": "QK_SCORE_BLOCKER",
+                    "why": ["feature axis d is contracted", "there is no one-to-one output axis for d", "simple propagation is blocked"],
+                },
+                "dfa_trace": [
+                    {"fact": "attempt Q/K feature-axis propagation", "kind": "seed", "active_nodes": ["q_projection", "k_projection"], "active_edges": []},
+                    {"fact": "score_matmul reduces / mixes d", "kind": "blocker", "active_nodes": ["score_matmul"], "active_edges": [["q_projection", "score_matmul"], ["k_projection", "score_matmul"]]},
+                    {"fact": "BLOCKED: qk_score_contraction_mixes_channels", "kind": "blocked", "active_nodes": ["score_matmul"], "active_edges": []},
+                ],
+                "not_claimed": ["QK is not counted as a pruning plan.", "This proves non-propagatability for simple axis pruning."],
+            },
+        ],
+        "warnings": warnings,
+    }
+
+
 def teaching_flow(config: ServerConfig) -> dict[str, Any]:
     summary, warnings = final_summary(config)
     return {
@@ -595,6 +706,8 @@ def route_api(config: ServerConfig, path: str, query: dict[str, list[str]]) -> t
         return HTTPStatus.OK, teaching_flow(config)
     if path == "/api/pipeline-flow":
         return HTTPStatus.OK, pipeline_flow(config)
+    if path == "/api/evidence-traces":
+        return HTTPStatus.OK, evidence_traces(config)
     if path == "/api/case-studies":
         return HTTPStatus.OK, case_studies(config)
     if path == "/api/report-text":

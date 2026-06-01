@@ -47,14 +47,15 @@ Main research path:
 26. [Milestone 54: OPT FFN Native MLIR Evidence Diagnosis](milestone_54_opt_ffn_native_diagnosis.md)
 27. [Milestone 55: Pipeline Walkthrough UI](milestone_55_teaching_flow_ui.md)
 28. [Milestone 56: Compiler Pipeline Visualization UI](milestone_56_compiler_pipeline_ui.md)
-29. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
-30. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
-31. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
-32. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
-33. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
-34. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
-35. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
-36. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
+29. [Milestone 57: Interactive Evidence Trace UI](milestone_57_interactive_evidence_trace_ui.md)
+30. [Milestone 3: Dependency Graph](milestone_03_dependency_graph.md)
+31. [Milestone 5: Correspondence and Shape Evidence](milestone_05_correspondence_shape_evidence.md)
+32. [Milestone 13: k-Node and Join-Aware Subgraph Analysis](milestone_13_subgraph_analysis.md)
+33. [Milestone 14: DAG Motif and Multi-Join Region Analysis](milestone_14_dag_region_analysis.md)
+34. [Milestone 15: Netron ONNX Subgraph Export](milestone_15_netron_subgraph_export.md)
+35. [Milestone 9: Pruning Opportunity Map](milestone_09_pruning_opportunity_map.md)
+36. [Milestone 10: Dimension IR](milestone_10_dimension_ir.md)
+37. [Milestone 11: Legality Analysis](milestone_11_legality_analysis.md)
 
 Optional backend path:
 

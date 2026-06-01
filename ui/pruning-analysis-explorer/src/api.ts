@@ -1,6 +1,7 @@
 import type {
   CaseStudiesResponse,
   CoverageResponse,
+  EvidenceTracesResponse,
   LayerSummary,
   ModelDetail,
   ModelSummary,
@@ -27,6 +28,7 @@ export const api = {
   overview: () => getJson<OverviewResponse>('/api/overview'),
   proofSummary: () => getJson<ProofSummaryResponse>('/api/proof-summary'),
   pipelineFlow: () => getJson<PipelineFlowResponse>('/api/pipeline-flow'),
+  evidenceTraces: () => getJson<EvidenceTracesResponse>('/api/evidence-traces'),
   caseStudies: () => getJson<CaseStudiesResponse>('/api/case-studies'),
   reportText: (path: string) => getJson<ReportTextResponse>(`/api/report-text?path=${encodeURIComponent(path)}`),
   model: (modelId: string) => getJson<ModelDetail>(`/api/models/${encodeURIComponent(modelId)}`),

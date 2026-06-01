@@ -49,6 +49,7 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 ## What Can Be Inspected
 
 - Pipeline flow from dead axes to DFA fixed-point proofs
+- Evidence Trace laboratory with graph transitions, affine equations, axis states, and DFA timeline controls
 - All-model `108 / 108` proof summary
 - BERT, fused-QKV, OPT diagnosis, attention value-path, and QK blocker case studies
 - Read-only final, formalization, methodology, and claims reports
@@ -68,11 +69,11 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 ## Typical Walkthrough
 
 1. Open `Pipeline Flow` and establish why sparsity is not the same as deadness.
-2. Review the MLP/FFN and attention value-path propagation examples.
-3. Review the QK blocker and the MLIR evidence hierarchy.
+2. Open `Evidence Trace` and step through FFN, attention value-path, and QK blocker examples.
+3. Switch the trace panels between pattern matching, MLIR evidence, axis state, and verdict.
 4. Use `Case Studies` for the BERT `24 / 24`, all-model `108 / 108`, fused-QKV, and OPT diagnosis stories.
 5. Open `Models`, choose `bert-base-uncased`, select `Layer 0`, and inspect the existing detailed subgraph evidence.
-6. Use `Reports` to preview the final report, claims, and teaching outlines.
+6. Use `Reports` to preview the final report, claims, and formalization outlines.
 
 ## Read-only Teaching API
 
@@ -82,6 +83,7 @@ The server exposes:
 - `/api/proof-summary`
 - `/api/teaching-flow`
 - `/api/pipeline-flow`
+- `/api/evidence-traces`
 - `/api/case-studies`
 - `/api/report-text?path=<relative-report-path>`
 

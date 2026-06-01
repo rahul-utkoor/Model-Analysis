@@ -1225,3 +1225,19 @@ Refined the read-only React interface with:
 - A visualization-first `/api/pipeline-flow` endpoint with backward-compatible `/api/teaching-flow`
 
 This is visualization and reporting only. It does not execute pruning, mutate model weights, or evaluate accuracy.
+
+## Milestone 57: Interactive Evidence Trace and Pattern Laboratory UI
+
+Status: complete.
+
+Added a deeper read-only Evidence Trace workspace:
+
+- Static `/api/evidence-traces` data for FFN, attention value-path, and QK blocker examples
+- Selectable graph traces with axis-labeled edges
+- Timeline-driven node and edge highlighting
+- Raw-graph to matched-pattern visualization
+- MLIR affine/access snippets with preserved and reduced axis highlighting
+- Axis-state tables and explicit scope boundaries
+- Deep links from Pipeline Flow transformation cards
+
+This is visualization and reporting only. It does not execute pruning, mutate model weights, or evaluate accuracy.

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
 import { CaseStudies } from './components/CaseStudies';
 import { CoverageDashboard } from './components/CoverageDashboard';
+import { EvidenceTracePage } from './components/EvidenceTracePage';
 import { LayerNavigator } from './components/LayerNavigator';
 import { Layout, type AppView } from './components/Layout';
 import { ModelOverview } from './components/ModelOverview';
@@ -20,6 +21,7 @@ import {
 import type {
   CaseStudiesResponse,
   CoverageResponse,
+  EvidenceTracesResponse,
   LayerSummary,
   ModelDetail,
   ModelSummary,
@@ -53,6 +55,8 @@ export default function App() {
   const [overview, setOverview] = useState<OverviewResponse>();
   const [proofSummary, setProofSummary] = useState<ProofSummaryResponse>();
   const [pipelineFlow, setPipelineFlow] = useState<PipelineFlowResponse>();
+  const [evidenceTraces, setEvidenceTraces] = useState<EvidenceTracesResponse>();
+  const [selectedEvidenceTrace, setSelectedEvidenceTrace] = useState(() => new URLSearchParams(window.location.search).get('example') ?? 'ffn_intermediate');
   const [caseStudies, setCaseStudies] = useState<CaseStudiesResponse>();
   const [selectedModel, setSelectedModel] = useState<string>();
   const [modelDetail, setModelDetail] = useState<ModelDetail>();
@@ -72,13 +76,14 @@ export default function App() {
   const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined);
 
   useEffect(() => {
-    Promise.all([api.models(), api.coverage(), api.overview(), api.proofSummary(), api.pipelineFlow(), api.caseStudies()])
-      .then(([modelRows, coverageData, overviewData, proofData, flowData, caseStudyData]) => {
+    Promise.all([api.models(), api.coverage(), api.overview(), api.proofSummary(), api.pipelineFlow(), api.evidenceTraces(), api.caseStudies()])
+      .then(([modelRows, coverageData, overviewData, proofData, flowData, traceData, caseStudyData]) => {
         setModels(modelRows);
         setCoverage(coverageData);
         setOverview(overviewData);
         setProofSummary(proofData);
         setPipelineFlow(flowData);
+        setEvidenceTraces(traceData);
         setCaseStudies(caseStudyData);
         if (modelRows.length) setSelectedModel(modelRows[0].id);
       })
@@ -233,6 +238,14 @@ export default function App() {
     }
   }
 
+  function handleSelectEvidenceTrace(exampleId: string) {
+    setSelectedEvidenceTrace(exampleId);
+    setActiveView('evidence-trace');
+    const url = new URL(window.location.href);
+    url.searchParams.set('example', exampleId);
+    window.history.replaceState({}, '', url);
+  }
+
   return (
     <Layout
       models={models}
@@ -248,7 +261,8 @@ export default function App() {
           <OverviewDashboard overview={overview} flow={pipelineFlow} proof={proofSummary} onSelectView={setActiveView} />
         </>
       ) : null}
-      {activeView === 'pipeline-flow' ? <PipelineFlow flow={pipelineFlow} proof={proofSummary} /> : null}
+      {activeView === 'pipeline-flow' ? <PipelineFlow flow={pipelineFlow} proof={proofSummary} onOpenEvidenceTrace={handleSelectEvidenceTrace} /> : null}
+      {activeView === 'evidence-trace' ? <EvidenceTracePage data={evidenceTraces} selectedExample={selectedEvidenceTrace} onSelectExample={handleSelectEvidenceTrace} /> : null}
       {activeView === 'case-studies' ? <CaseStudies studies={caseStudies} /> : null}
       {activeView === 'reports' ? <ReportsPage /> : null}
       {activeView === 'models' ? (

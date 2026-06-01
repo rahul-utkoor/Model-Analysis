@@ -1,9 +1,9 @@
-# Milestone 56: Compiler Pipeline Visualization UI
+# Milestone 57: Interactive Evidence Trace UI
 
 Build the React interface:
 
 ```bash
-bash demo_scripts/run_demo_56_compiler_pipeline_ui.sh
+bash demo_scripts/run_demo_57_interactive_evidence_trace_ui.sh
 ```
 
 Then start the local read-only server:
@@ -19,13 +19,12 @@ Open `http://127.0.0.1:8777/`.
 
 Recommended walkthrough:
 
-1. Dashboard
-2. Pipeline Flow
-3. Evidence Trace
-4. FFN propagation
-5. Attention value path
-6. QK blocker
-7. All-model proof
-8. Reports
+1. Pipeline Flow
+2. Evidence Trace
+3. FFN intermediate propagation
+4. Attention value-path propagation
+5. QK score blocker
+6. Models
+7. Reports
 
 This demo visualizes generated static evidence only. It does not execute pruning, mutate model weights, or evaluate accuracy.
