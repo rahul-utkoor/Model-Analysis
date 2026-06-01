@@ -1195,13 +1195,13 @@ Added `experimental/opt_ffn_native_diagnosis/`:
 
 The native proof criterion remains unchanged: the local MLIR-linked tool must emit preserved and reduced dependence facts sufficient for `FFN_INTERMEDIATE_CHAIN`. This is static evidence diagnosis only. It does not execute pruning, mutate model weights, or evaluate accuracy.
 
-## Milestone 55: Teaching Flow UI for Static Pruning Propagation
+## Milestone 55: Pipeline Walkthrough UI for Static Pruning Propagation
 
 Status: complete.
 
 Extended the existing React pruning-analysis explorer with:
 
-- Dashboard, Teaching Flow, Models, Case Studies, and Reports navigation
+- Dashboard, Pipeline Flow, Models, Case Studies, and Reports navigation
 - A meeting-ready static pruning propagation walkthrough
 - Sparse-weight versus structural pruning, FFN, attention value-path, QK blocker, evidence-hierarchy, DFA, and limitation views
 - All-model `108/108` proof summary and professor walkthrough
@@ -1209,3 +1209,19 @@ Extended the existing React pruning-analysis explorer with:
 - Backend overview, proof-summary, teaching-flow, case-study, and path-safe report-text endpoints
 
 The existing model/layer/subgraph explorer remains available under Models. This is visualization and reporting only; it does not execute pruning, mutate model weights, or evaluate accuracy.
+
+## Milestone 56: Compiler-Style Pipeline Visualization UI
+
+Status: complete.
+
+Refined the read-only React interface with:
+
+- A seven-stage compiler pipeline stepper from ONNX subgraph to proof verdict
+- Compact graph mini-views and affine access equations
+- Axis-transfer relation pills and evidence-backed pattern tokens
+- Progressive DFA worklist reveals for FFN, attention value-path, and QK blocker traces
+- A reduced-density dashboard with the all-model proof matrix
+- Concise case-study cards and grouped collapsible report previews
+- A visualization-first `/api/pipeline-flow` endpoint with backward-compatible `/api/teaching-flow`
+
+This is visualization and reporting only. It does not execute pruning, mutate model weights, or evaluate accuracy.

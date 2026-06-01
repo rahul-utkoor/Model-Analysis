@@ -5,12 +5,12 @@ import type {
   ModelDetail,
   ModelSummary,
   OverviewResponse,
+  PipelineFlowResponse,
   ProofSummaryResponse,
   ReportTextResponse,
   SearchMatch,
   SubgraphDetailResponse,
   SubgraphSummary,
-  TeachingFlowResponse,
 } from './types';
 
 async function getJson<T>(path: string): Promise<T> {
@@ -26,7 +26,7 @@ export const api = {
   coverage: () => getJson<CoverageResponse>('/api/coverage'),
   overview: () => getJson<OverviewResponse>('/api/overview'),
   proofSummary: () => getJson<ProofSummaryResponse>('/api/proof-summary'),
-  teachingFlow: () => getJson<TeachingFlowResponse>('/api/teaching-flow'),
+  pipelineFlow: () => getJson<PipelineFlowResponse>('/api/pipeline-flow'),
   caseStudies: () => getJson<CaseStudiesResponse>('/api/case-studies'),
   reportText: (path: string) => getJson<ReportTextResponse>(`/api/report-text?path=${encodeURIComponent(path)}`),
   model: (modelId: string) => getJson<ModelDetail>(`/api/models/${encodeURIComponent(modelId)}`),

@@ -3,7 +3,7 @@ import { BarChart3, BookOpen, FileText, FlaskConical, LayoutDashboard } from 'lu
 import { SearchPanel } from './SearchPanel';
 import type { ModelSummary, SearchMatch } from '../types';
 
-export type AppView = 'dashboard' | 'teaching-flow' | 'models' | 'case-studies' | 'reports';
+export type AppView = 'dashboard' | 'pipeline-flow' | 'models' | 'case-studies' | 'reports';
 
 interface Props {
   models: ModelSummary[];
@@ -17,7 +17,7 @@ interface Props {
 
 const navigation: Array<{ id: AppView; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'teaching-flow', label: 'Teaching Flow', icon: BookOpen },
+  { id: 'pipeline-flow', label: 'Pipeline Flow', icon: BookOpen },
   { id: 'models', label: 'Models', icon: BarChart3 },
   { id: 'case-studies', label: 'Case Studies', icon: FlaskConical },
   { id: 'reports', label: 'Reports', icon: FileText },

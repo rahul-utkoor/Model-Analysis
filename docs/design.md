@@ -822,8 +822,8 @@ The final report separates evidence-backed claims from scope boundaries. It reco
 
 The diagnosis layer exports a read-only local FFN-core evidence artifact containing only `fc1 -> activation -> fc2`. This keeps the pruning-relevant intermediate-axis chain and removes unrelated boundary noise. Coverage prefers that artifact, allowing the unchanged native dependence criterion to prove preserved and reduced relations. This remains static evidence diagnosis, not pruning execution.
 
-## Teaching Flow UI
+## Compiler-Style Pipeline Visualization UI
 
-`ui/pruning-analysis-explorer/` now presents the complete static pruning propagation story as a read-only teaching flow. The dashboard, guided pipeline, case studies, report previews, and existing model explorer share one local stdlib API server.
+`ui/pruning-analysis-explorer/` presents the complete static pruning propagation story as a read-only compiler pipeline visualization. The dashboard, stage view, transformation traces, case studies, report previews, and existing model explorer share one local stdlib API server.
 
-The teaching views read generated proof and formalization reports. They explain sparse-weight versus structural pruning, axis-transfer evidence, selected ONNX subgraphs, native MLIR dependence facts, pruning-pattern recognition, DFA fixed-point propagation, the all-model `108/108` result, QK blockers, and explicit limitations. The UI does not execute pruning, mutate model weights, or evaluate accuracy.
+The pipeline flow uses graph mini-views, affine equations, axis-relation summaries, and progressive DFA fact reveals. It explains sparse-weight versus structural pruning, selected ONNX subgraphs, native MLIR dependence facts, pruning-pattern recognition, the all-model `108/108` result, QK blockers, and explicit limitations. The UI does not execute pruning, mutate model weights, or evaluate accuracy.

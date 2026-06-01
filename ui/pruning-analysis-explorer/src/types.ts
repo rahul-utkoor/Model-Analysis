@@ -121,17 +121,54 @@ export interface ProofSummaryResponse {
   warnings: string[];
 }
 
-export interface TeachingSection {
-  id: string;
-  title: string;
-  summary: string;
-  points: string[];
+export interface AxisRelation {
+  source: string;
+  target: string;
+  relation: string;
 }
 
-export interface TeachingFlowResponse {
+export interface GraphVisual {
+  type: 'graph';
+  nodes: string[];
+  edges: string[][];
+}
+
+export interface PipelineStage {
+  id: string;
   title: string;
-  summary: FinalSummary;
-  sections: TeachingSection[];
+  kind: string;
+  short: string;
+  example?: string;
+  visual?: GraphVisual;
+  equations?: string[];
+  relations?: AxisRelation[];
+  pattern?: string;
+  facts?: string[];
+  proven: string;
+  not_claimed?: string;
+}
+
+export interface PipelineExample {
+  title: string;
+  pattern: string;
+  nodes: string[];
+  dimensions: string[];
+  edges: string[][];
+  equations: string[];
+  relations: AxisRelation[];
+  facts: string[];
+}
+
+export interface PipelineFlowResponse {
+  title: string;
+  summary: string;
+  aggregate: Pick<FinalSummary, 'expected_plans' | 'proven_plans' | 'native_mlir_evidence' | 'fallback'>;
+  stages: PipelineStage[];
+  examples: {
+    ffn: PipelineExample;
+    attention_value: PipelineExample;
+    qk_blocker: PipelineExample;
+  };
   warnings: string[];
 }
 

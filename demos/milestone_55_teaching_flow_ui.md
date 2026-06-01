@@ -1,6 +1,6 @@
-# Milestone 55: Teaching Flow UI
+# Milestone 55: Pipeline Walkthrough UI
 
-Build the final report bundle and React teaching interface:
+Build the final report bundle and React pipeline interface:
 
 ```bash
 bash demo_scripts/run_demo_55_teaching_flow_ui.sh
@@ -17,6 +17,6 @@ Then start the local read-only server:
 
 Open `http://127.0.0.1:8777/`.
 
-Use `Teaching Flow` for the professor walkthrough, `Case Studies` for focused proofs, `Reports` for read-only Markdown previews, and `Models` for the existing layer/subgraph explorer.
+Use `Pipeline Flow` for the compiler-stage walkthrough, `Case Studies` for focused proofs, `Reports` for read-only Markdown previews, and `Models` for the existing layer/subgraph explorer.
 
 This demo visualizes generated static evidence only. It does not execute pruning, mutate model weights, or evaluate accuracy.

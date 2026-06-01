@@ -94,7 +94,7 @@ def pipeline_steps() -> list[dict[str, Any]]:
             "id": "axis-facts",
             "title": "Axis facts",
             "summary": "Facts track what is known about each tensor axis.",
-            "details": ["UNKNOWN, LIVE, DEAD, PRUNED, PROTECTED, and BLOCKED form the teaching vocabulary."],
+            "details": ["UNKNOWN, LIVE, DEAD, PRUNED, PROTECTED, and BLOCKED form the analysis vocabulary."],
         },
         {
             "id": "axis-transfer",
@@ -186,10 +186,143 @@ def overview(config: ServerConfig) -> dict[str, Any]:
     }
 
 
+def pipeline_flow(config: ServerConfig) -> dict[str, Any]:
+    summary, warnings = final_summary(config)
+    examples = {
+        "ffn": {
+            "title": "FFN / MLP intermediate propagation",
+            "pattern": "FFN_INTERMEDIATE_CHAIN",
+            "nodes": ["Expansion Projection", "Activation", "Contraction Projection"],
+            "dimensions": ["hidden", "intermediate", "intermediate", "hidden"],
+            "edges": [["Expansion Projection", "Activation"], ["Activation", "Contraction Projection"]],
+            "equations": [
+                "Y[b, s, j] = gelu(X[b, s, j])",
+                "O[b, s, h] += A[b, s, j] * W[j, h]",
+            ],
+            "relations": [
+                {"source": "X.j", "target": "Y.j", "relation": "PRESERVED"},
+                {"source": "A.j", "target": "O.h", "relation": "REDUCED / CONSUMED"},
+            ],
+            "facts": [
+                "seed: contraction.input[j] = DEAD",
+                "activation.output[j] = DEAD",
+                "activation.input[j] = DEAD",
+                "expansion.output[j] = DEAD",
+                "fixed point reached",
+            ],
+        },
+        "attention_value": {
+            "title": "Attention value path",
+            "pattern": "ATTENTION_VALUE_PATH",
+            "nodes": ["Value Projection", "Attention Context", "Output Projection"],
+            "dimensions": ["value_dim", "context_value_dim", "hidden"],
+            "edges": [["Value Projection", "Attention Context"], ["Attention Context", "Output Projection"]],
+            "equations": ["C[b, h, q, d] += P[b, h, q, k] * V[b, h, k, d]"],
+            "relations": [{"source": "V.d", "target": "C.d", "relation": "PRESERVED"}],
+            "facts": [
+                "seed: output_projection.input[d] = DEAD",
+                "context.value_axis[d] = DEAD",
+                "value_projection.output[d] = DEAD",
+                "fixed point reached",
+            ],
+        },
+        "qk_blocker": {
+            "title": "QK score blocker",
+            "pattern": "QK_SCORE_BLOCKER",
+            "nodes": ["Q Projection", "Score MatMul", "K Projection"],
+            "dimensions": ["head_dim", "score", "head_dim"],
+            "edges": [["Q Projection", "Score MatMul"], ["K Projection", "Score MatMul"]],
+            "equations": ["S[b, h, q, k] += Q[b, h, q, d] * K[b, h, k, d]"],
+            "relations": [{"source": "Q/K.d", "target": "Score", "relation": "REDUCED / MIXED"}],
+            "facts": [
+                "attempt: Q/K feature axis d",
+                "MLIR relation: d is reduced / mixed",
+                "BLOCKED: qk_score_contraction_mixes_channels",
+            ],
+        },
+    }
+    return {
+        "title": "Static Pruning Propagation Pipeline",
+        "summary": "A compiler-style evidence pipeline for proving pruning propagation.",
+        "aggregate": {
+            "expected_plans": summary["expected_plans"],
+            "proven_plans": summary["proven_plans"],
+            "native_mlir_evidence": summary["native_mlir_evidence"],
+            "fallback": summary["fallback"],
+        },
+        "stages": [
+            {
+                "id": "onnx_subgraph",
+                "title": "ONNX Subgraph",
+                "kind": "input",
+                "short": "Select a local evidence unit.",
+                "example": "BERT layer 0 FFN",
+                "visual": {"type": "graph", "nodes": examples["ffn"]["nodes"], "edges": examples["ffn"]["edges"]},
+                "proven": "The evidence unit contains the complete local path.",
+                "not_claimed": "No model execution or whole-model lowering.",
+            },
+            {
+                "id": "onnx_mlir",
+                "title": "ONNX-MLIR Lowering",
+                "kind": "lowering",
+                "short": "Lower the selected region to inspectable MLIR.",
+                "equations": ["onnx.MatMul -> affine.for / affine.load / affine.store"],
+                "proven": "The local subgraph reaches an inspectable compiler IR.",
+                "not_claimed": "MLIR does not infer pruning rules by itself.",
+            },
+            {
+                "id": "mlir_access",
+                "title": "Native MLIR Dependence Evidence",
+                "kind": "evidence",
+                "short": "Extract loop-IV and indexed access flow.",
+                "equations": examples["ffn"]["equations"],
+                "proven": "Native access relations identify preserved and consumed axes.",
+                "not_claimed": "The pass does not choose channel indices.",
+            },
+            {
+                "id": "axis_transfer",
+                "title": "Axis-Transfer Summary",
+                "kind": "analysis",
+                "short": "Summarize local axis behavior.",
+                "relations": examples["ffn"]["relations"],
+                "proven": "The intermediate axis is preserved through activation and consumed by contraction.",
+            },
+            {
+                "id": "pattern",
+                "title": "Pattern Recognition",
+                "kind": "pattern",
+                "short": "Select an evidence-backed pruning pattern.",
+                "pattern": "FFN_INTERMEDIATE_CHAIN",
+                "proven": "The path matches a pruning-amenable FFN intermediate chain.",
+            },
+            {
+                "id": "dfa",
+                "title": "DFA Worklist Propagation",
+                "kind": "fixed_point",
+                "short": "Propagate deadness to a fixed point.",
+                "facts": examples["ffn"]["facts"],
+                "proven": "Consumer-input deadness reaches expansion-output deadness.",
+                "not_claimed": "The DFA does not mutate model weights.",
+            },
+            {
+                "id": "verdict",
+                "title": "Proof Verdict",
+                "kind": "verdict",
+                "short": "Record the supported propagation result.",
+                "facts": ["108 / 108 expected propagation plans proven", "108 native MLIR evidence proofs", "0 fallback proofs"],
+                "proven": "The supported-model proof matrix is complete.",
+                "not_claimed": "No accuracy or speedup result is claimed.",
+            },
+        ],
+        "examples": examples,
+        "warnings": warnings,
+    }
+
+
 def teaching_flow(config: ServerConfig) -> dict[str, Any]:
     summary, warnings = final_summary(config)
     return {
-        "title": "Professor Walkthrough",
+        "title": "Pipeline Walkthrough",
         "summary": summary,
         "sections": [
             {"id": "why", "title": "Why pruning propagation?", "summary": "Structural pruning must account for every affected axis.", "points": ["Begin from a local dead or pruned axis.", "Follow legal axis mappings.", "Stop at explicit protection or blocker boundaries."]},
@@ -212,7 +345,6 @@ def case_studies(config: ServerConfig) -> dict[str, Any]:
         ("all-model", "All-model proof", "Five supported models reach complete propagation-plan proofs.", "all_model_plan_proof/index.md", {"proven": "108 / 108"}),
         ("fused-qkv", "Fused-QKV recovery", "GPT-2 and ViT recover their value branches from fused QKV projections.", "formalization/static_pruning_propagation_notes.md", {"models": "GPT-2, ViT"}),
         ("opt-ffn-native", "OPT FFN native diagnosis", "Narrow fc1 -> activation -> fc2 evidence units upgrade OPT FFN plans to native evidence.", "opt_ffn_native_diagnosis/index.md", {"native": "12 / 12"}),
-        ("attention-value", "Attention value-path proof", "Output-projection deadness propagates through the context value axis to value projection output.", "attention_value_path_subgraphs/facebook__opt-125m/summary.md", {"opt_paths": "12 / 12"}),
         ("qk-blocker", "QK blocker", "Q/K feature dimensions are reduced and mixed by score contraction, so they block simple propagation.", "formalization/static_pruning_propagation_notes.md", {"status": "BLOCKED"}),
     ]
     return {
@@ -461,6 +593,8 @@ def route_api(config: ServerConfig, path: str, query: dict[str, list[str]]) -> t
         return HTTPStatus.OK, proof_summary(config)
     if path == "/api/teaching-flow":
         return HTTPStatus.OK, teaching_flow(config)
+    if path == "/api/pipeline-flow":
+        return HTTPStatus.OK, pipeline_flow(config)
     if path == "/api/case-studies":
         return HTTPStatus.OK, case_studies(config)
     if path == "/api/report-text":

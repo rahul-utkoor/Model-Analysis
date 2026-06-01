@@ -6,11 +6,11 @@ import { LayerNavigator } from './components/LayerNavigator';
 import { Layout, type AppView } from './components/Layout';
 import { ModelOverview } from './components/ModelOverview';
 import { OverviewDashboard } from './components/OverviewDashboard';
+import { PipelineFlow } from './components/PipelineFlow';
 import { PipelineOverview } from './components/PipelineOverview';
 import { ReportsPage } from './components/ReportsPage';
 import { SubgraphDetail } from './components/SubgraphDetail';
 import { SubgraphTable } from './components/SubgraphTable';
-import { TeachingFlow } from './components/TeachingFlow';
 import {
   chooseDefaultSubgraph,
   makePreviousSubgraphIntent,
@@ -24,11 +24,11 @@ import type {
   ModelDetail,
   ModelSummary,
   OverviewResponse,
+  PipelineFlowResponse,
   ProofSummaryResponse,
   SearchMatch,
   SubgraphDetailResponse,
   SubgraphSummary,
-  TeachingFlowResponse,
 } from './types';
 
 type LoadedSubgraphContext = {
@@ -52,7 +52,7 @@ export default function App() {
   const [coverage, setCoverage] = useState<CoverageResponse>();
   const [overview, setOverview] = useState<OverviewResponse>();
   const [proofSummary, setProofSummary] = useState<ProofSummaryResponse>();
-  const [teachingFlow, setTeachingFlow] = useState<TeachingFlowResponse>();
+  const [pipelineFlow, setPipelineFlow] = useState<PipelineFlowResponse>();
   const [caseStudies, setCaseStudies] = useState<CaseStudiesResponse>();
   const [selectedModel, setSelectedModel] = useState<string>();
   const [modelDetail, setModelDetail] = useState<ModelDetail>();
@@ -72,13 +72,13 @@ export default function App() {
   const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined);
 
   useEffect(() => {
-    Promise.all([api.models(), api.coverage(), api.overview(), api.proofSummary(), api.teachingFlow(), api.caseStudies()])
+    Promise.all([api.models(), api.coverage(), api.overview(), api.proofSummary(), api.pipelineFlow(), api.caseStudies()])
       .then(([modelRows, coverageData, overviewData, proofData, flowData, caseStudyData]) => {
         setModels(modelRows);
         setCoverage(coverageData);
         setOverview(overviewData);
         setProofSummary(proofData);
-        setTeachingFlow(flowData);
+        setPipelineFlow(flowData);
         setCaseStudies(caseStudyData);
         if (modelRows.length) setSelectedModel(modelRows[0].id);
       })
@@ -245,11 +245,10 @@ export default function App() {
       {error ? <div className="error-banner">{error}</div> : null}
       {activeView === 'dashboard' ? (
         <>
-          <OverviewDashboard overview={overview} proof={proofSummary} onSelectView={setActiveView} />
-          <CoverageDashboard coverage={coverage} />
+          <OverviewDashboard overview={overview} flow={pipelineFlow} proof={proofSummary} onSelectView={setActiveView} />
         </>
       ) : null}
-      {activeView === 'teaching-flow' ? <TeachingFlow overview={overview} flow={teachingFlow} proof={proofSummary} /> : null}
+      {activeView === 'pipeline-flow' ? <PipelineFlow flow={pipelineFlow} proof={proofSummary} /> : null}
       {activeView === 'case-studies' ? <CaseStudies studies={caseStudies} /> : null}
       {activeView === 'reports' ? <ReportsPage /> : null}
       {activeView === 'models' ? (

@@ -200,6 +200,33 @@ def test_teaching_flow_and_case_studies_endpoints(tmp_path: Path) -> None:
     assert bert["key_numbers"]["proven"] == "24 / 24"
 
 
+def test_pipeline_flow_returns_visual_stages_and_examples(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, flow = module.route_api(config, "/api/pipeline-flow", {})
+
+    assert status == module.HTTPStatus.OK
+    assert flow["title"] == "Static Pruning Propagation Pipeline"
+    assert len(flow["stages"]) == 7
+    assert flow["aggregate"]["proven_plans"] == 108
+    assert flow["stages"][0]["visual"]["type"] == "graph"
+    assert flow["examples"]["attention_value"]["relations"][0]["relation"] == "PRESERVED"
+    assert "qk_score_contraction_mixes_channels" in flow["examples"]["qk_blocker"]["facts"][-1]
+
+
+def test_overview_survives_missing_final_report(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+    (config.root / "reports/final/static_pruning_propagation_final_summary.json").unlink()
+
+    status, data = module.route_api(config, "/api/overview", {})
+
+    assert status == module.HTTPStatus.OK
+    assert data["final_summary"]["proven_plans"] == 0
+    assert data["warnings"]
+
+
 def test_report_text_reads_safe_markdown_and_rejects_traversal(tmp_path: Path) -> None:
     module = load_server_module()
     config = make_tree(tmp_path)
