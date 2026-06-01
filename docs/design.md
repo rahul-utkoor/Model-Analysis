@@ -791,3 +791,9 @@ The resulting ONNX fragments are evidence artifacts for the existing ONNX, MLIR,
 `experimental/bert_24_plan_proof/` joins BERT's 12 validated FFN symbolic plans with 12 complete attention value-path artifacts. Each BERT attention fragment captures `attention.self.value -> context -> attention.output.dense`, allowing output-projection input deadness to seed DFA propagation back to the value-projection output.
 
 The report counts QK score contractions as blockers rather than pruning plans. MLIR remains a selected-subgraph local evidence generator; the symbolic-plan reports and DFA worklist remain the pruning-analysis layers.
+
+## Static Pruning Propagation Formalization
+
+`experimental/formalization/` generates teaching and paper-preparation material from the existing static evidence reports. It documents the axis-fact lattice, axis-transfer relations, selected ONNX evidence units, MLIR dependence hierarchy, pattern recognition, DFA fixed-point analysis, BERT 24-plan case study, QK blockers, and remaining limitations.
+
+The formalization layer is documentation-only. It does not modify production analysis, execute pruning, mutate model weights, or evaluate accuracy.

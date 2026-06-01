@@ -1118,3 +1118,19 @@ Extended attention value-path evidence and reporting for BERT:
 - Per-layer evidence tiers, verdicts, aggregate counts, and explicit QK blocker interpretation
 
 This is static evidence and proof reporting only. It does not execute pruning, choose channel indices, or mutate model weights.
+
+## Milestone 50: Formalize Static Pruning Propagation Analysis
+
+Status: complete.
+
+Added `experimental/formalization/`:
+
+- Compiler-style static pruning propagation notes
+- Sparse-weight versus structural-pruning distinction
+- Axis-fact lattice, axis-transfer relations, semantic pattern recognition, and DFA worklist methodology
+- BERT 24-plan case study generated from existing proof artifacts
+- Teaching slide outline and paper methodology outline
+- Graceful partial documentation when evidence inputs are absent
+- Markdown/JSON index, CLI, deterministic tests, and demo
+
+This is documentation and formalization only. It does not execute pruning, mutate models, or evaluate accuracy.

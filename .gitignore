@@ -257,6 +257,8 @@ reports/pruning_proof_report_opt_value_path/
 reports/mlir_evidence_coverage_bert_24_plan/
 reports/bert_24_plan_proof/*
 !reports/bert_24_plan_proof/.gitkeep
+reports/formalization/*
+!reports/formalization/.gitkeep
 artifacts/attention_value_path_subgraphs/
 experimental/mlir_axis_bridge/native/build/
 viewer_data/
