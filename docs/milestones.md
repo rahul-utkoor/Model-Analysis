@@ -1134,3 +1134,19 @@ Added `experimental/formalization/`:
 - Markdown/JSON index, CLI, deterministic tests, and demo
 
 This is documentation and formalization only. It does not execute pruning, mutate models, or evaluate accuracy.
+
+## Milestone 51: All-Model Propagation Plan Proof
+
+Status: complete.
+
+Added `experimental/all_model_plan_proof/`:
+
+- A common plan-proof schema for BERT, DistilBERT, OPT, GPT-2, and ViT
+- Per-layer FFN and attention value-path evidence cells backed by the existing MLIR coverage evaluator
+- Separate QK blocker tables that remain outside pruning-plan totals
+- Optional generation of missing separable attention value-path artifacts
+- Explicit fused-QKV value-slice recovery gaps for GPT-2 and ViT
+- Aggregate Markdown/JSON reports, per-model details, CLI, README, and deterministic tests
+- An optional all-model snapshot in the static formalization bundle
+
+This is static artifact, evidence, and proof reporting only. It does not execute pruning, choose channel indices, mutate model weights, or evaluate accuracy.

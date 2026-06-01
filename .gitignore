@@ -259,6 +259,9 @@ reports/bert_24_plan_proof/*
 !reports/bert_24_plan_proof/.gitkeep
 reports/formalization/*
 !reports/formalization/.gitkeep
+reports/all_model_plan_proof/*
+!reports/all_model_plan_proof/.gitkeep
+reports/all_model_plan_proof_layer0/
 artifacts/attention_value_path_subgraphs/
 experimental/mlir_axis_bridge/native/build/
 viewer_data/

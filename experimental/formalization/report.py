@@ -14,6 +14,7 @@ class FormalizationInputs:
     bert_coverage: dict[str, Any] = field(default_factory=dict)
     bert_value_paths: dict[str, Any] = field(default_factory=dict)
     bert_validation: dict[str, Any] = field(default_factory=dict)
+    all_model_proof: dict[str, Any] = field(default_factory=dict)
     warnings: tuple[str, ...] = ()
 
 
@@ -38,6 +39,7 @@ def render_static_notes(inputs: FormalizationInputs) -> str:
     bert = _summary(inputs.bert_proof)
     value_paths = _summary_or_self(inputs.bert_value_paths)
     coverage = _summary(inputs.bert_coverage)
+    all_models = inputs.all_model_proof.get("aggregate", {})
     return f"""# Static Pruning Propagation Analysis
 
 ## 1. Motivation
@@ -207,6 +209,8 @@ Native MLIR evidence is the strongest tier. Fallback tiers remain useful for rep
 - BERT total: `{_number(bert, "total_proven")}/24` proven.
 - BERT value-path artifacts: `{_number(value_paths, "seedable")}/12` seedable.
 - BERT native MLIR coverage cells: `{_number(coverage, "native_proven")}/24`.
+- All-model propagation plans: `{_number(all_models, "total_proven")}/{_number(all_models, "total_expected")}` proven when the generalized proof report is available.
+- Model-specific fused-QKV value-slice gaps remain explicit rather than being removed from expected-plan counts.
 - QK score contractions remain blockers and are intentionally excluded from pruning-plan counts.
 
 ## 10. Limitations
@@ -333,6 +337,7 @@ def render_teaching_slides(inputs: FormalizationInputs) -> str:
 
 def render_paper_methodology(inputs: FormalizationInputs) -> str:
     bert = _summary(inputs.bert_proof)
+    all_models = inputs.all_model_proof.get("aggregate", {})
     return f"""# Paper Methodology Outline: Static Pruning Propagation Analysis
 
 ## 1. Problem Definition
@@ -429,6 +434,10 @@ BERT has 12 encoder layers. Each layer contributes one FFN intermediate plan and
 
 QK score contractions remain blockers and are excluded from plan counts.
 
+### All-model propagation proof
+
+The generalized proof report evaluates BERT, DistilBERT, OPT, GPT-2, and ViT with the same evidence hierarchy. It currently records `{_number(all_models, "total_proven")}/{_number(all_models, "total_expected")}` complete propagation plans when the report is available. Unsupported fused-QKV value paths remain explicit required gaps.
+
 ## 11. Limitations
 
 - Native MLIR evidence does not yet cover every model family and pattern.
@@ -455,6 +464,7 @@ This is a soundness-style design objective supported by the implemented transfer
 
 def render_index(inputs: FormalizationInputs, files: list[str]) -> str:
     bert = _summary(inputs.bert_proof)
+    all_models = inputs.all_model_proof.get("aggregate", {})
     links = "\n".join(f"- [{Path(name).stem.replace('_', ' ').title()}]({name})" for name in files)
     return f"""# Static Pruning Propagation Formalization
 
@@ -469,6 +479,12 @@ This bundle formalizes the compiler-style pruning-propagation research story for
 - Expected plans: `{_number(bert, "expected_plans")}`
 - Proven plans: `{_number(bert, "total_proven")}`
 - Final verdict: `{bert.get("final_verdict", "partial")}`
+
+## All-Model Proof Snapshot
+
+- Expected plans: `{_number(all_models, "total_expected")}`
+- Proven plans: `{_number(all_models, "total_proven")}`
+- Unsupported value-path gaps: `{_number(all_models, "unsupported_count")}`
 
 ## Warnings
 

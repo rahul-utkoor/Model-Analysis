@@ -797,3 +797,9 @@ The report counts QK score contractions as blockers rather than pruning plans. M
 `experimental/formalization/` generates teaching and paper-preparation material from the existing static evidence reports. It documents the axis-fact lattice, axis-transfer relations, selected ONNX evidence units, MLIR dependence hierarchy, pattern recognition, DFA fixed-point analysis, BERT 24-plan case study, QK blockers, and remaining limitations.
 
 The formalization layer is documentation-only. It does not modify production analysis, execute pruning, mutate model weights, or evaluate accuracy.
+
+## All-Model Propagation Plan Proof
+
+`experimental/all_model_plan_proof/` generalizes the BERT 24-plan case study across all five supported transformer families. It evaluates one FFN intermediate plan and one attention value-path plan per layer, reusing the MLIR evidence coverage evaluator so native, access-derived, fallback, partial, missing, and unsupported results retain the same meaning.
+
+QK score contractions remain separate blocker evidence. GPT-2 and ViT retain explicit fused-QKV value-slice recovery gaps rather than silently reducing expected-plan totals. The proof layer is read-only reporting over local subgraph evidence.

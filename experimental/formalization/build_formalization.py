@@ -21,6 +21,7 @@ DEFAULT_INPUT_PATHS = {
     "bert_coverage": "reports/mlir_evidence_coverage_bert_24_plan/index.json",
     "bert_value_paths": "reports/attention_value_path_subgraphs/bert-base-uncased/summary.json",
     "bert_validation": "reports/pruning_plan_validation/bert-base-uncased.json",
+    "all_model_proof": "reports/all_model_plan_proof/index.json",
 }
 
 
@@ -40,11 +41,12 @@ def load_inputs(paths: dict[str, str | Path] | None = None) -> FormalizationInpu
     selected = {**DEFAULT_INPUT_PATHS, **(paths or {})}
     warnings: list[str] = []
     return FormalizationInputs(
-        _read_optional(selected["bert_proof"], "BERT 24-plan proof", warnings),
-        _read_optional(selected["bert_coverage"], "BERT MLIR coverage", warnings),
-        _read_optional(selected["bert_value_paths"], "BERT value-path summary", warnings),
-        _read_optional(selected["bert_validation"], "BERT plan validation", warnings),
-        tuple(warnings),
+        bert_proof=_read_optional(selected["bert_proof"], "BERT 24-plan proof", warnings),
+        bert_coverage=_read_optional(selected["bert_coverage"], "BERT MLIR coverage", warnings),
+        bert_value_paths=_read_optional(selected["bert_value_paths"], "BERT value-path summary", warnings),
+        bert_validation=_read_optional(selected["bert_validation"], "BERT plan validation", warnings),
+        all_model_proof=_read_optional(selected["all_model_proof"], "all-model plan proof", warnings),
+        warnings=tuple(warnings),
     )
 
 
@@ -72,6 +74,7 @@ def build_formalization(output_dir: str | Path = "reports/formalization", paths:
             {
                 "documents": list(documents),
                 "bert_24_plan_summary": inputs.bert_proof.get("summary", {}),
+                "all_model_plan_summary": inputs.all_model_proof.get("aggregate", {}),
                 "input_paths": {key: str(value) for key, value in {**DEFAULT_INPUT_PATHS, **(paths or {})}.items()},
                 "warnings": list(inputs.warnings),
             },
