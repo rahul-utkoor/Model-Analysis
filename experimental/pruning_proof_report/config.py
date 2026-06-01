@@ -55,6 +55,16 @@ def default_proof_cases() -> list[ProofCase]:
             "value producer output deadness",
             "Complete value projection -> context -> output projection chain when generated.",
         ),
+        ProofCase(
+            "bert_layer0_attention_value_path",
+            "bert-base-uncased",
+            0,
+            "attention_value_path",
+            _value_path("bert-base-uncased", 0, "bert_layer_0_attention_value_path"),
+            "ATTENTION_VALUE_PATH",
+            "value producer output deadness",
+            "Complete BERT self.value -> context -> attention.output.dense chain when generated.",
+        ),
         _case("bert_layer0_attention_score", "bert-base-uncased", 0, "05_layer_0_attention_score_matmul", "QK_SCORE_BLOCKER", "blocked"),
         ProofCase(
             "bert_layer0_attention_context",

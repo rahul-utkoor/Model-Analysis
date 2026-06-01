@@ -785,3 +785,9 @@ Coverage is reported by evidence tier: native MLIR dependence facts, Python affi
 Attention value-path extraction creates a connected, seedable local evidence artifact for the structural propagation rule `out_proj` input deadness -> context value-axis deadness -> `v_proj` output deadness. The extractor starts from deadbranch semantic anchors, follows source-ONNX connectivity, and retains required reshape/transpose and metadata dependencies while leaving unrelated attention-score computation at the fragment boundary.
 
 The resulting ONNX fragments are evidence artifacts for the existing ONNX, MLIR, axis-transfer, and DFA bridges. They do not execute pruning, select indices, or mutate source models.
+
+## BERT 24-Plan Propagation Proof
+
+`experimental/bert_24_plan_proof/` joins BERT's 12 validated FFN symbolic plans with 12 complete attention value-path artifacts. Each BERT attention fragment captures `attention.self.value -> context -> attention.output.dense`, allowing output-projection input deadness to seed DFA propagation back to the value-projection output.
+
+The report counts QK score contractions as blockers rather than pruning plans. MLIR remains a selected-subgraph local evidence generator; the symbolic-plan reports and DFA worklist remain the pruning-analysis layers.

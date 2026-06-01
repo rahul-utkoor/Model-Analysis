@@ -1104,3 +1104,17 @@ Added complete local attention value-path extraction:
 - A curated OPT layer-0 attention value-path proof case
 
 These artifacts expose a seedable local chain to the existing experimental evidence stack. They do not execute pruning, choose channel indices, or mutate model weights.
+
+## Milestone 49: BERT 24-Plan MLIR-Backed Propagation Proof
+
+Status: complete.
+
+Extended attention value-path evidence and reporting for BERT:
+
+- Complete `attention.self.value -> context -> attention.output.dense` ONNX fragments
+- Value-axis-preserving layout recovery and seedability status per encoder layer
+- MLIR coverage discovery for BERT attention value paths
+- A BERT-specific proof report joining 12 validated FFN plans with 12 attention value-path proofs
+- Per-layer evidence tiers, verdicts, aggregate counts, and explicit QK blocker interpretation
+
+This is static evidence and proof reporting only. It does not execute pruning, choose channel indices, or mutate model weights.

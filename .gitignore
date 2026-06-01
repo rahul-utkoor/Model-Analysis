@@ -254,6 +254,9 @@ reports/attention_value_path_subgraph_compare/*
 !reports/attention_value_path_subgraph_compare/.gitkeep
 reports/mlir_evidence_coverage_opt_value_path/
 reports/pruning_proof_report_opt_value_path/
+reports/mlir_evidence_coverage_bert_24_plan/
+reports/bert_24_plan_proof/*
+!reports/bert_24_plan_proof/.gitkeep
 artifacts/attention_value_path_subgraphs/
 experimental/mlir_axis_bridge/native/build/
 viewer_data/

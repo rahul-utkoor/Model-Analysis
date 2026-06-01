@@ -50,6 +50,47 @@ def _model():
     return helper.make_model(helper.make_graph(nodes, "value_path", inputs, outputs, initializer=initializers))
 
 
+def _bert_pair() -> dict:
+    producer = "/model/bert/encoder/layer.0/attention/self/value/MatMul"
+    context = "/model/bert/encoder/layer.0/attention/self/MatMul_1"
+    consumer = "/model/bert/encoder/layer.0/attention/output/dense/MatMul"
+    return {
+        **_pair(consumer, producer),
+        "pair_id": "deadbranch::bert::000::attention_value",
+        "model_name": "bert-base-uncased",
+        "family": "bert",
+        "evidence_ops": [
+            {"source_name": producer, "op_type": "MatMul"},
+            {"source_name": context, "op_type": "MatMul"},
+            {"source_name": consumer, "op_type": "MatMul"},
+        ],
+    }
+
+
+def _bert_model():
+    nodes = [
+        helper.make_node("MatMul", ["X", "Wv"], ["v_raw"], name="/model/bert/encoder/layer.0/attention/self/value/MatMul"),
+        helper.make_node("Reshape", ["v_raw", "shape_v"], ["v_reshape"], name="/model/bert/encoder/layer.0/attention/self/Reshape_2"),
+        helper.make_node("Transpose", ["v_reshape"], ["v_layout"], name="/model/bert/encoder/layer.0/attention/self/Transpose_1"),
+        helper.make_node("MatMul", ["Prob", "v_layout"], ["context"], name="/model/bert/encoder/layer.0/attention/self/MatMul_1"),
+        helper.make_node("Transpose", ["context"], ["context_layout"], name="/model/bert/encoder/layer.0/attention/self/Transpose_3"),
+        helper.make_node("Reshape", ["context_layout", "shape_context"], ["out_input"], name="/model/bert/encoder/layer.0/attention/self/Reshape_3"),
+        helper.make_node("MatMul", ["out_input", "Wo"], ["Y"], name="/model/bert/encoder/layer.0/attention/output/dense/MatMul"),
+    ]
+    inputs = [
+        helper.make_tensor_value_info("X", TensorProto.FLOAT, [1, 2, 4]),
+        helper.make_tensor_value_info("Prob", TensorProto.FLOAT, [1, 2, 2]),
+    ]
+    outputs = [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [1, 2, 4])]
+    initializers = [
+        helper.make_tensor("Wv", TensorProto.FLOAT, [4, 4], [0.0] * 16),
+        helper.make_tensor("shape_v", TensorProto.INT64, [3], [1, 2, 4]),
+        helper.make_tensor("shape_context", TensorProto.INT64, [3], [1, 2, 4]),
+        helper.make_tensor("Wo", TensorProto.FLOAT, [4, 4], [0.0] * 16),
+    ]
+    return helper.make_model(helper.make_graph(nodes, "bert_value_path", inputs, outputs, initializer=initializers))
+
+
 def test_synthetic_opt_value_path_is_seedable() -> None:
     path = detect_attention_value_paths("facebook/opt-125m", {"pairs": [_pair()]})[0]
     bind_path_to_onnx(path, _model())
@@ -59,6 +100,17 @@ def test_synthetic_opt_value_path_is_seedable() -> None:
     assert "/block/self_attn/v_proj/MatMul" in names
     assert "/block/self_attn/context/MatMul" in names
     assert "/block/self_attn/out_proj/MatMul" in names
+
+
+def test_synthetic_bert_value_path_is_seedable() -> None:
+    path = detect_attention_value_paths("bert-base-uncased", {"pairs": [_bert_pair()]})[0]
+    bind_path_to_onnx(path, _bert_model())
+    names = {op["source_name"] for op in path.source_ops}
+    assert path.analysis_status == "seedable"
+    assert path.axis_mapping["mapping_status"] == "proven"
+    assert "/model/bert/encoder/layer.0/attention/self/value/MatMul" in names
+    assert "/model/bert/encoder/layer.0/attention/self/MatMul_1" in names
+    assert "/model/bert/encoder/layer.0/attention/output/dense/MatMul" in names
 
 
 def test_missing_output_projection_is_partial() -> None:

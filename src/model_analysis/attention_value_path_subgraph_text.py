@@ -36,7 +36,7 @@ def attention_value_path_report_to_markdown(value: dict[str, Any]) -> str:
             "",
             "## Propagation Rule",
             "",
-            "The value projection feeds attention context and then the output projection. When the layout mapping is proven, `out_proj` input deadness propagates backward through `V.value_dim -> Context.value_context_dim` to the value-projection output.",
+            "The value projection feeds attention context and then the output projection. When the layout mapping is proven, output-projection input deadness propagates backward through `V.value_dim -> Context.value_context_dim` to the value-projection output. For BERT this is `attention.self.value -> context -> attention.output.dense`; for OPT this is `v_proj -> context -> out_proj`.",
             "",
             "This is static artifact/evidence generation only. It does not execute pruning or modify model weights.",
             "",
