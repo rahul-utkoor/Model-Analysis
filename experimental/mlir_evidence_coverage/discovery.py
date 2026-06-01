@@ -17,8 +17,14 @@ def discover_model_subgraphs(
     artifact_root: str | Path = "artifacts/model_analysis_subgraphs",
     fallback_root: str | Path = "artifacts/layer_subgraphs",
     value_path_root: str | Path = "artifacts/attention_value_path_subgraphs",
+    ffn_core_root: str | Path = "artifacts/opt_ffn_native_subgraphs",
 ) -> list[Path]:
-    roots = (Path(value_path_root) / model_name / "layers", Path(artifact_root) / model_name / "layers", Path(fallback_root) / model_name)
+    roots = (
+        Path(value_path_root) / model_name / "layers",
+        Path(ffn_core_root) / model_name / "layers",
+        Path(artifact_root) / model_name / "layers",
+        Path(fallback_root) / model_name,
+    )
     return list(dict.fromkeys(path for root in roots if root.is_dir() for path in sorted(root.glob("layer_*/*/subgraph.onnx"))))
 
 
@@ -50,13 +56,14 @@ def match_cases_for_model(
     artifact_root: str | Path = "artifacts/model_analysis_subgraphs",
     fallback_root: str | Path = "artifacts/layer_subgraphs",
     value_path_root: str | Path = "artifacts/attention_value_path_subgraphs",
+    ffn_core_root: str | Path = "artifacts/opt_ffn_native_subgraphs",
 ) -> list[CoverageCase]:
     if isinstance(model, str):
         matches = [spec for spec in model_specs("all") if model in {spec.model_name, spec.artifact_name, spec.short_name}]
         if not matches:
             raise ValueError(f"unknown model: {model}")
         model = matches[0]
-    paths = discover_model_subgraphs(model.artifact_name, artifact_root, fallback_root, value_path_root)
+    paths = discover_model_subgraphs(model.artifact_name, artifact_root, fallback_root, value_path_root, ffn_core_root)
     discovered_layers = sorted({_layer_index(path) for path in paths})
     layer_indices = discovered_layers if layers == "all" and discovered_layers else [0]
     cases: list[CoverageCase] = []
@@ -90,6 +97,7 @@ def build_default_coverage_cases(
     artifact_root: str | Path = "artifacts/model_analysis_subgraphs",
     fallback_root: str | Path = "artifacts/layer_subgraphs",
     value_path_root: str | Path = "artifacts/attention_value_path_subgraphs",
+    ffn_core_root: str | Path = "artifacts/opt_ffn_native_subgraphs",
 ) -> list[CoverageCase]:
     if layers not in {"layer0", "all"}:
         raise ValueError(f"unknown layer selector: {layers}")
@@ -97,5 +105,13 @@ def build_default_coverage_cases(
     return [
         case
         for model in model_specs(models)
-        for case in match_cases_for_model(model, selected_patterns, layers=layers, artifact_root=artifact_root, fallback_root=fallback_root, value_path_root=value_path_root)
+        for case in match_cases_for_model(
+            model,
+            selected_patterns,
+            layers=layers,
+            artifact_root=artifact_root,
+            fallback_root=fallback_root,
+            value_path_root=value_path_root,
+            ffn_core_root=ffn_core_root,
+        )
     ]

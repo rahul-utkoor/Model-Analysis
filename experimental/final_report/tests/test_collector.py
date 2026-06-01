@@ -8,7 +8,7 @@ def test_collector_handles_synthetic_all_model_proof(tmp_path) -> None:
 
     assert data.aggregate_summary.expected_plans == 108
     assert data.aggregate_summary.proven_plans == 108
-    assert data.aggregate_summary.native_mlir_evidence == 96
+    assert data.aggregate_summary.native_mlir_evidence == 108
     assert len(data.per_model_summary) == 5
 
 

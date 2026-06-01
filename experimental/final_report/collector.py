@@ -61,7 +61,7 @@ class FinalReportData:
 FALLBACK_MODELS = (
     ("bert-base-uncased", 12, 24, 24, 12, 12, 12, 12, 24, 0),
     ("distilbert-base-uncased", 6, 12, 12, 6, 6, 6, 6, 12, 0),
-    ("facebook/opt-125m", 12, 24, 24, 12, 12, 12, 12, 12, 12),
+    ("facebook/opt-125m", 12, 24, 24, 12, 12, 12, 12, 24, 0),
     ("gpt2", 12, 24, 24, 12, 12, 12, 12, 24, 0),
     ("google/vit-base-patch16-224", 12, 24, 24, 12, 12, 12, 12, 24, 0),
 )
@@ -173,7 +173,7 @@ def collect_final_report_data(root: str | Path = ".", *, strict: bool = False) -
     if all_model.get("models"):
         models = [_model_summary(model) for model in all_model["models"]]
     else:
-        warnings.append("Using the documented Milestone 52 fallback snapshot because the generated all-model proof is unavailable.")
+        warnings.append("Using the documented Milestone 54 fallback snapshot because the generated all-model proof is unavailable.")
         models = _fallback_models()
     aggregate = _aggregate(all_model, models)
     bert = _read_json(reports / "bert_24_plan_proof/index.json", "BERT 24-plan proof", warnings)

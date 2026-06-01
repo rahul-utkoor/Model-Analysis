@@ -815,3 +815,9 @@ The recovered local path is exported as static evidence: fused QKV projection, v
 `experimental/final_report/` collects the generated all-model proof, BERT case study, formalization bundle, MLIR coverage summaries, OPT deadbranch alignment, attention value-path summaries, symbolic plans, and validations into one reproducible reporting bundle.
 
 The final report separates evidence-backed claims from scope boundaries. It records the `108/108` all-model proof while explicitly stating that the repository does not yet choose pruning indices, rewrite models, measure runtime speedup, or evaluate accuracy.
+
+## OPT FFN Native MLIR Evidence Diagnosis
+
+`experimental/opt_ffn_native_diagnosis/` isolates the remaining OPT FFN fallback. The broad OPT MLP-block artifact includes LayerNorm and residual boundary operations; ONNX-MLIR aborts before affine lowering because its exported LayerNorm input is `f32` while scale and bias parameters are `f16`.
+
+The diagnosis layer exports a read-only local FFN-core evidence artifact containing only `fc1 -> activation -> fc2`. This keeps the pruning-relevant intermediate-axis chain and removes unrelated boundary noise. Coverage prefers that artifact, allowing the unchanged native dependence criterion to prove preserved and reduced relations. This remains static evidence diagnosis, not pruning execution.

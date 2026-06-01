@@ -41,7 +41,7 @@ PATTERN_SPECS = (
     PatternSpec(
         CoveragePatternKind.FFN_MLP_INTERMEDIATE,
         "mlp",
-        ("mlp_block", "feed_forward", "ffn"),
+        ("mlp_native_core", "mlp_block", "feed_forward", "ffn"),
         "FFN_INTERMEDIATE_CHAIN",
         "producer-output deadness",
         ("*",),

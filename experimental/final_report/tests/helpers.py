@@ -9,7 +9,7 @@ from pathlib import Path
 MODELS = (
     ("bert-base-uncased", 12, 24, 24, 12, 12, 12, 12, 24, 0),
     ("distilbert-base-uncased", 6, 12, 12, 6, 6, 6, 6, 12, 0),
-    ("facebook/opt-125m", 12, 24, 24, 12, 12, 12, 12, 12, 12),
+    ("facebook/opt-125m", 12, 24, 24, 12, 12, 12, 12, 24, 0),
     ("gpt2", 12, 24, 24, 12, 12, 12, 12, 24, 0),
     ("google/vit-base-patch16-224", 12, 24, 24, 12, 12, 12, 12, 24, 0),
 )
@@ -49,9 +49,9 @@ def write_all_model_proof(root: Path) -> Path:
                 "aggregate": {
                     "total_expected": 108,
                     "total_proven": 108,
-                    "native_evidence_count": 96,
+                    "native_evidence_count": 108,
                     "access_evidence_count": 0,
-                    "fallback_count": 12,
+                    "fallback_count": 0,
                     "unsupported_count": 0,
                     "partial_count": 0,
                     "missing_count": 0,

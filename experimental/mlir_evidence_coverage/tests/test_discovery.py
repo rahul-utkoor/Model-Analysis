@@ -50,3 +50,22 @@ def test_discovery_sees_attention_value_path_artifact_root(tmp_path: Path) -> No
         value_path_root=value_root,
     )
     assert cases[0].onnx_path == str(onnx)
+
+
+def test_discovery_prefers_opt_ffn_native_core_artifact_root(tmp_path: Path) -> None:
+    core_root = tmp_path / "ffn-cores"
+    primary = tmp_path / "current"
+    core = core_root / "synthetic-model/layers/layer_0/06_layer_0_mlp_native_core/subgraph.onnx"
+    original = primary / "synthetic-model/layers/layer_0/06_layer_0_mlp_block/subgraph.onnx"
+    core.parent.mkdir(parents=True)
+    original.parent.mkdir(parents=True)
+    core.touch()
+    original.touch()
+    model = ModelSpec("synthetic/model", "synthetic-model", "synthetic", 1)
+    cases = match_cases_for_model(
+        model,
+        pattern_specs("FFN_MLP_INTERMEDIATE"),
+        artifact_root=primary,
+        ffn_core_root=core_root,
+    )
+    assert cases[0].onnx_path == str(core)

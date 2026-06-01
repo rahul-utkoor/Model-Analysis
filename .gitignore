@@ -265,7 +265,11 @@ reports/all_model_plan_proof_layer0/
 reports/all_model_plan_proof_gpt2_layer0/
 reports/final/*
 !reports/final/.gitkeep
+reports/opt_ffn_native_diagnosis/*
+!reports/opt_ffn_native_diagnosis/.gitkeep
+reports/mlir_evidence_coverage_opt_ffn_native_diagnosis/
 artifacts/attention_value_path_subgraphs/
+artifacts/opt_ffn_native_subgraphs/
 experimental/mlir_axis_bridge/native/build/
 viewer_data/
 

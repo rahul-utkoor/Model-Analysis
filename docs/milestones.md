@@ -1180,3 +1180,17 @@ Added `experimental/final_report/`:
 - CLI wrapper, README, deterministic tests, demo, and ignored generated output root
 
 This is final documentation and reporting only. It does not execute pruning, mutate model weights, or evaluate accuracy.
+
+## Milestone 54: Upgrade OPT FFN Native MLIR Evidence
+
+Status: complete.
+
+Added `experimental/opt_ffn_native_diagnosis/`:
+
+- Per-layer diagnosis of the OPT FFN high-level MLIR fallback
+- Explicit reporting of the original ONNX-MLIR LayerNorm dtype blocker
+- Read-only extraction of topology-proven `fc1 -> activation -> fc2` FFN-core ONNX artifacts
+- MLIR coverage discovery preference for `mlp_native_core` evidence artifacts
+- Native dependence reruns, per-layer Markdown/JSON diagnosis, tests, and demo
+
+The native proof criterion remains unchanged: the local MLIR-linked tool must emit preserved and reduced dependence facts sufficient for `FFN_INTERMEDIATE_CHAIN`. This is static evidence diagnosis only. It does not execute pruning, mutate model weights, or evaluate accuracy.
