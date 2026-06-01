@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The pruning analysis web UI is a browser interface for navigating generated static pruning-analysis reports. It presents models, layers/blocks, abstract subgraphs, ONNX/SVG evidence artifacts, op semantics, rankings, symbolic plans, and validation checks without requiring users to open dozens of files manually.
+The pruning analysis web UI is a browser interface for navigating generated static pruning-analysis reports. It presents a meeting-ready teaching flow alongside models, layers/blocks, abstract subgraphs, ONNX/SVG evidence artifacts, op semantics, rankings, symbolic plans, and validation checks.
 
 This is read-only visualization. It does not execute pruning, choose pruning indices, modify model weights, rewrite ONNX, download models, or evaluate accuracy.
 
@@ -48,6 +48,10 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 
 ## What Can Be Inspected
 
+- Teaching flow from dead axes to DFA fixed-point proofs
+- All-model `108 / 108` proof summary
+- BERT, fused-QKV, OPT diagnosis, attention value-path, and QK blocker case studies
+- Read-only final, formalization, methodology, and claims reports
 - Cross-model static coverage
 - Model summaries and pipeline counts
 - Layer/block atlases
@@ -63,9 +67,21 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 
 ## Typical Walkthrough
 
-1. Open the dashboard and choose `bert-base-uncased`.
-2. Select `Layer 0`.
-3. Click `Feed Forward`.
-4. Inspect `Plan`, `Validation`, and `Artifacts`.
-5. Switch to `facebook/opt-125m`, select `Layer 0`, and inspect the MLP block.
-6. Return to the dashboard to compare valid plan counts across models.
+1. Open `Teaching Flow` and establish why sparsity is not the same as deadness.
+2. Review the MLP/FFN and attention value-path propagation examples.
+3. Review the QK blocker and the MLIR evidence hierarchy.
+4. Use `Case Studies` for the BERT `24 / 24`, all-model `108 / 108`, fused-QKV, and OPT diagnosis stories.
+5. Open `Models`, choose `bert-base-uncased`, select `Layer 0`, and inspect the existing detailed subgraph evidence.
+6. Use `Reports` to preview the final report, claims, and teaching outlines.
+
+## Read-only Teaching API
+
+The server exposes:
+
+- `/api/overview`
+- `/api/proof-summary`
+- `/api/teaching-flow`
+- `/api/case-studies`
+- `/api/report-text?path=<relative-report-path>`
+
+`/api/report-text` accepts only `.md`, `.json`, and `.csv` files beneath `reports/`.

@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REPORT_TEXT_SUFFIXES = {".md", ".json", ".csv"}
 
 
 @dataclass
@@ -47,6 +48,201 @@ def read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8")
     except Exception:
         return ""
+
+
+def load_optional_json(path: Path, warnings: list[str]) -> dict[str, Any]:
+    if not path.exists():
+        warnings.append(f"missing optional report: {path.relative_to(path.parents[2])}")
+        return {}
+    data = load_json(path)
+    if not data:
+        warnings.append(f"could not read optional report: {path}")
+    return data
+
+
+def final_summary(config: ServerConfig) -> tuple[dict[str, Any], list[str]]:
+    warnings: list[str] = []
+    data = load_optional_json(config.root / "reports" / "final" / "static_pruning_propagation_final_summary.json", warnings)
+    aggregate = data.get("aggregate", {})
+    return {
+        "expected_plans": aggregate.get("expected_plans", 0),
+        "proven_plans": aggregate.get("proven_plans", 0),
+        "native_mlir_evidence": aggregate.get("native_mlir_evidence", 0),
+        "fallback": aggregate.get("high_level_mlir_fallback", aggregate.get("fallback_evidence", 0)),
+        "unsupported": aggregate.get("unsupported", 0),
+        "partial": aggregate.get("partial", 0),
+        "missing": aggregate.get("missing", 0),
+        "failed": aggregate.get("failed", 0),
+    }, warnings
+
+
+def pipeline_steps() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "problem",
+            "title": "Problem",
+            "summary": "Structural pruning is a graph-transformation legality question.",
+            "details": ["If an axis becomes dead or pruned, determine what else must change.", "No model weights are mutated by this analysis."],
+        },
+        {
+            "id": "sparse-vs-structural",
+            "title": "Sparse-weight vs structural pruning",
+            "summary": "Zeros and dead axes are different compiler facts.",
+            "details": ["Sparse-weight pruning preserves tensor shapes.", "Structural pruning removes or makes whole channels dead.", "Sparsity is not the same as deadness."],
+        },
+        {
+            "id": "axis-facts",
+            "title": "Axis facts",
+            "summary": "Facts track what is known about each tensor axis.",
+            "details": ["UNKNOWN, LIVE, DEAD, PRUNED, PROTECTED, and BLOCKED form the teaching vocabulary."],
+        },
+        {
+            "id": "axis-transfer",
+            "title": "Axis-transfer evidence",
+            "summary": "Loop and access relations show how axes move through operators.",
+            "details": ["PRESERVED, REDUCED, MIXED, PROTECTED, BLOCKED, BROADCAST, and PERMUTED summarize local behavior."],
+        },
+        {
+            "id": "onnx-subgraphs",
+            "title": "ONNX subgraphs",
+            "summary": "Selected local subgraphs are evidence units.",
+            "details": ["The analysis lowers focused regions instead of whole models.", "Names are optional labels; graph and shape structure carry the evidence."],
+        },
+        {
+            "id": "mlir-evidence",
+            "title": "MLIR/native dependence evidence",
+            "summary": "ONNX-MLIR exposes local loop and access facts.",
+            "details": ["Native MLIR dependence evidence is preferred.", "MLIR is a local evidence generator, not the pruning framework itself."],
+        },
+        {
+            "id": "patterns",
+            "title": "Pattern recognition",
+            "summary": "Axis relations induce pruning-amenable patterns.",
+            "details": ["FFN_INTERMEDIATE_CHAIN", "ATTENTION_VALUE_PATH", "QK_SCORE_BLOCKER", "RESIDUAL_HIDDEN_PROTECTED", "LAYERNORM_HIDDEN_PROTECTED"],
+        },
+        {
+            "id": "dfa",
+            "title": "DFA/worklist propagation",
+            "summary": "Transfer rules propagate facts until a fixed point.",
+            "details": ["Seed a DEAD or PRUNED fact.", "Apply semantic transfer rules.", "Report DEAD, PROTECTED, or BLOCKED conclusions."],
+        },
+        {
+            "id": "proof",
+            "title": "Model proof summaries",
+            "summary": "Five supported models reach complete propagation-plan proofs.",
+            "details": ["BERT, DistilBERT, OPT, GPT-2, and ViT contribute 108 proven plans in total."],
+        },
+        {
+            "id": "limitations",
+            "title": "Limitations",
+            "summary": "This is static evidence and proof reporting only.",
+            "details": ["The analysis does not choose pruning indices, execute pruning, or evaluate accuracy or speedup."],
+        },
+    ]
+
+
+def proof_summary(config: ServerConfig) -> dict[str, Any]:
+    final, warnings = final_summary(config)
+    final_data = load_optional_json(config.root / "reports" / "final" / "static_pruning_propagation_final_summary.json", warnings)
+    models = [
+        {
+            "model_name": item.get("model_name", ""),
+            "layers": item.get("layers", 0),
+            "expected_plans": item.get("expected_plans", 0),
+            "proven_plans": item.get("proven_plans", 0),
+            "ffn_proven": item.get("ffn_proven", 0),
+            "attention_value_proven": item.get("attention_value_proven", 0),
+            "native_mlir_evidence": item.get("native_evidence", 0),
+            "fallback": item.get("fallback_evidence", 0),
+            "verdict": item.get("final_verdict", "unknown"),
+        }
+        for item in final_data.get("models", [])
+    ]
+    return {"models": models, "aggregate": final, "warnings": sorted(set(warnings))}
+
+
+def overview(config: ServerConfig) -> dict[str, Any]:
+    final, warnings = final_summary(config)
+    for path in [
+        config.root / "reports" / "final" / "static_pruning_propagation_final_report.md",
+        config.root / "reports" / "formalization" / "index.json",
+        config.root / "reports" / "all_model_plan_proof" / "index.json",
+    ]:
+        if not path.exists():
+            warnings.append(f"missing optional report: {path}")
+    return {
+        "title": "Static Pruning Propagation Analysis",
+        "subtitle": "From dead axes to compiler-style propagation proofs.",
+        "final_summary": final,
+        "pipeline_steps": pipeline_steps(),
+        "teaching_takeaways": [
+            "Names are syntax; evidence comes from graph, shape, loop, and access relations.",
+            "FFN propagation follows the produced, preserved, and consumed intermediate axis.",
+            "Attention value-path propagation follows the preserved context value axis.",
+            "QK score contractions are blockers, not pruning plans.",
+            "MLIR supplies local evidence while DFA computes the propagation fixed point.",
+        ],
+        "warnings": sorted(set(warnings)),
+    }
+
+
+def teaching_flow(config: ServerConfig) -> dict[str, Any]:
+    summary, warnings = final_summary(config)
+    return {
+        "title": "Professor Walkthrough",
+        "summary": summary,
+        "sections": [
+            {"id": "why", "title": "Why pruning propagation?", "summary": "Structural pruning must account for every affected axis.", "points": ["Begin from a local dead or pruned axis.", "Follow legal axis mappings.", "Stop at explicit protection or blocker boundaries."]},
+            {"id": "split", "title": "Sparse-weight vs structural pruning", "summary": "Sparsity is not the same as deadness.", "points": ["Fine-grained zeros preserve shapes.", "Dead channels are compiler-visible structural facts."]},
+            {"id": "ffn", "title": "MLP/FFN example", "summary": "Consumer-input deadness propagates back to the expansion output.", "points": ["hidden -> intermediate -> intermediate -> hidden", "op3 input[j] DEAD -> op2 output/input[j] DEAD -> op1 output[j] DEAD"]},
+            {"id": "attention", "title": "Attention value-path example", "summary": "The preserved context value axis connects output projection input to value projection output.", "points": ["value projection -> attention context -> output projection", "out projection input[d] DEAD -> context value axis[d] DEAD -> value projection output[d] DEAD"]},
+            {"id": "qk", "title": "QK blocker example", "summary": "Score[q,k] += Q[q,d] * K[k,d] reduces and mixes d.", "points": ["Simple one-to-one Q/K propagation is BLOCKED.", "QK score contractions are intentionally excluded from pruning-plan counts."]},
+            {"id": "evidence", "title": "MLIR evidence hierarchy", "summary": "Use the strongest available local evidence and state fallbacks explicitly.", "points": ["native_mlir_dependence_evidence", "actual_loop_access_evidence", "high_level_mlir_dialect_evidence", "onnx_hint_fallback"]},
+            {"id": "dfa", "title": "DFA worklist", "summary": "Seed, transfer, join, and iterate to a fixed point.", "points": ["The DFA consumes semantic roles derived from evidence.", "It reports DEAD, PROTECTED, and BLOCKED facts."]},
+            {"id": "proof", "title": "All-model proof", "summary": "The current supported-model set reaches 108 / 108 plans proven.", "points": ["BERT 24/24, DistilBERT 12/12, OPT 24/24, GPT-2 24/24, ViT 24/24."]},
+            {"id": "limits", "title": "Limitations", "summary": "The UI visualizes static analysis only.", "points": ["No pruning execution.", "No weight mutation.", "No accuracy or speedup evaluation.", "Ambiguous fused-QKV remains blocked unless branch evidence is recoverable."]},
+        ],
+        "warnings": warnings,
+    }
+
+
+def case_studies(config: ServerConfig) -> dict[str, Any]:
+    studies = [
+        ("bert-24-plan", "BERT 24-plan proof", "12 FFN + 12 attention value-path plans are proven.", "bert_24_plan_proof/index.md", {"proven": "24 / 24"}),
+        ("all-model", "All-model proof", "Five supported models reach complete propagation-plan proofs.", "all_model_plan_proof/index.md", {"proven": "108 / 108"}),
+        ("fused-qkv", "Fused-QKV recovery", "GPT-2 and ViT recover their value branches from fused QKV projections.", "formalization/static_pruning_propagation_notes.md", {"models": "GPT-2, ViT"}),
+        ("opt-ffn-native", "OPT FFN native diagnosis", "Narrow fc1 -> activation -> fc2 evidence units upgrade OPT FFN plans to native evidence.", "opt_ffn_native_diagnosis/index.md", {"native": "12 / 12"}),
+        ("attention-value", "Attention value-path proof", "Output-projection deadness propagates through the context value axis to value projection output.", "attention_value_path_subgraphs/facebook__opt-125m/summary.md", {"opt_paths": "12 / 12"}),
+        ("qk-blocker", "QK blocker", "Q/K feature dimensions are reduced and mixed by score contraction, so they block simple propagation.", "formalization/static_pruning_propagation_notes.md", {"status": "BLOCKED"}),
+    ]
+    return {
+        "case_studies": [
+            {
+                "id": study_id,
+                "title": title,
+                "summary": summary,
+                "report_path": report_path,
+                "report_url": f"/api/report-text?path={quote(report_path)}",
+                "key_numbers": numbers,
+                "available": (config.root / "reports" / report_path).exists(),
+            }
+            for study_id, title, summary, report_path, numbers in studies
+        ]
+    }
+
+
+def resolve_report_text_path(config: ServerConfig, value: str) -> Path | None:
+    decoded = unquote(value).strip()
+    relative = Path(decoded)
+    if decoded.startswith("reports/"):
+        relative = Path(decoded.removeprefix("reports/"))
+    if not decoded or relative.is_absolute() or ".." in relative.parts or relative.suffix not in REPORT_TEXT_SUFFIXES:
+        return None
+    report_root = (config.root / "reports").resolve()
+    target = (report_root / relative).resolve()
+    if report_root not in target.parents or not target.is_file():
+        return None
+    return target
 
 
 def discover_models(config: ServerConfig) -> list[dict[str, Any]]:
@@ -259,6 +455,23 @@ def route_api(config: ServerConfig, path: str, query: dict[str, list[str]]) -> t
             for item in coverage.get("models", [])
         ]
         return HTTPStatus.OK, {"coverage": coverage, "table": table}
+    if path == "/api/overview":
+        return HTTPStatus.OK, overview(config)
+    if path == "/api/proof-summary":
+        return HTTPStatus.OK, proof_summary(config)
+    if path == "/api/teaching-flow":
+        return HTTPStatus.OK, teaching_flow(config)
+    if path == "/api/case-studies":
+        return HTTPStatus.OK, case_studies(config)
+    if path == "/api/report-text":
+        report_path = resolve_report_text_path(config, query.get("path", [""])[0])
+        if not report_path:
+            return HTTPStatus.BAD_REQUEST, {"error": "invalid report path"}
+        return HTTPStatus.OK, {
+            "path": str(report_path.relative_to(config.root)),
+            "format": report_path.suffix.removeprefix("."),
+            "text": read_text(report_path),
+        }
     if path == "/api/search":
         text = query.get("q", [""])[0]
         model = query.get("model", [None])[0]

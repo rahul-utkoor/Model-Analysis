@@ -61,6 +61,39 @@ def make_tree(tmp_path: Path) -> object:
     onnx.write_bytes(b"onnx")
     write_json(root / "reports/static_coverage_study/index.json", {"models": [{"model_name": "bert-base-uncased", "final_status": "complete", "artifacts": {"ranking": {"safe": 1}, "plans": {"plans": 1}, "validation": {"valid_plans": 1}, "full_model_report": {"layers": 1, "subgraphs": 1}}}]})
     write_json(root / "reports/deadbranch_propagation/bert-base-uncased.json", {"model_name": "bert-base-uncased", "summary": {"total_pairs": 1}})
+    write_json(
+        root / "reports/final/static_pruning_propagation_final_summary.json",
+        {
+            "aggregate": {
+                "expected_plans": 108,
+                "proven_plans": 108,
+                "native_mlir_evidence": 108,
+                "high_level_mlir_fallback": 0,
+                "unsupported": 0,
+                "partial": 0,
+                "missing": 0,
+                "failed": 0,
+            },
+            "models": [
+                {
+                    "model_name": "bert-base-uncased",
+                    "layers": 12,
+                    "expected_plans": 24,
+                    "proven_plans": 24,
+                    "ffn_proven": 12,
+                    "attention_value_proven": 12,
+                    "native_evidence": 24,
+                    "fallback_evidence": 0,
+                    "final_verdict": "complete_plan_proof",
+                }
+            ],
+        },
+    )
+    (root / "reports/final/static_pruning_propagation_final_report.md").write_text("# Final report\n", encoding="utf-8")
+    write_json(root / "reports/formalization/index.json", {"reports": []})
+    write_json(root / "reports/all_model_plan_proof/index.json", {"aggregate": {"total_expected": 108, "total_proven": 108}})
+    (root / "reports/bert_24_plan_proof").mkdir(parents=True)
+    (root / "reports/bert_24_plan_proof/index.md").write_text("# BERT proof\n", encoding="utf-8")
     return module.ServerConfig(
         root=root,
         report_root=report_root,
@@ -134,3 +167,51 @@ def test_missing_model_returns_404_not_stack_trace(tmp_path: Path) -> None:
     status, body = module.route_api(config, "/api/models/missing", {})
     assert status == module.HTTPStatus.NOT_FOUND
     assert body["error"] == "model not found"
+
+
+def test_teaching_overview_and_proof_summary_endpoints(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, overview = module.route_api(config, "/api/overview", {})
+    assert status == module.HTTPStatus.OK
+    assert overview["title"] == "Static Pruning Propagation Analysis"
+    assert overview["final_summary"]["proven_plans"] == 108
+    assert any(step["id"] == "dfa" for step in overview["pipeline_steps"])
+
+    status, proof = module.route_api(config, "/api/proof-summary", {})
+    assert status == module.HTTPStatus.OK
+    assert proof["aggregate"]["native_mlir_evidence"] == 108
+    assert proof["models"][0]["attention_value_proven"] == 12
+
+
+def test_teaching_flow_and_case_studies_endpoints(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, flow = module.route_api(config, "/api/teaching-flow", {})
+    assert status == module.HTTPStatus.OK
+    assert any(section["id"] == "qk" for section in flow["sections"])
+
+    status, studies = module.route_api(config, "/api/case-studies", {})
+    assert status == module.HTTPStatus.OK
+    bert = next(study for study in studies["case_studies"] if study["id"] == "bert-24-plan")
+    assert bert["available"]
+    assert bert["key_numbers"]["proven"] == "24 / 24"
+
+
+def test_report_text_reads_safe_markdown_and_rejects_traversal(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, report = module.route_api(
+        config,
+        "/api/report-text",
+        {"path": ["final/static_pruning_propagation_final_report.md"]},
+    )
+    assert status == module.HTTPStatus.OK
+    assert report["text"] == "# Final report\n"
+
+    status, report = module.route_api(config, "/api/report-text", {"path": ["../secret.md"]})
+    assert status == module.HTTPStatus.BAD_REQUEST
+    assert report["error"] == "invalid report path"

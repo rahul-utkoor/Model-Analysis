@@ -821,3 +821,9 @@ The final report separates evidence-backed claims from scope boundaries. It reco
 `experimental/opt_ffn_native_diagnosis/` isolates the remaining OPT FFN fallback. The broad OPT MLP-block artifact includes LayerNorm and residual boundary operations; ONNX-MLIR aborts before affine lowering because its exported LayerNorm input is `f32` while scale and bias parameters are `f16`.
 
 The diagnosis layer exports a read-only local FFN-core evidence artifact containing only `fc1 -> activation -> fc2`. This keeps the pruning-relevant intermediate-axis chain and removes unrelated boundary noise. Coverage prefers that artifact, allowing the unchanged native dependence criterion to prove preserved and reduced relations. This remains static evidence diagnosis, not pruning execution.
+
+## Teaching Flow UI
+
+`ui/pruning-analysis-explorer/` now presents the complete static pruning propagation story as a read-only teaching flow. The dashboard, guided pipeline, case studies, report previews, and existing model explorer share one local stdlib API server.
+
+The teaching views read generated proof and formalization reports. They explain sparse-weight versus structural pruning, axis-transfer evidence, selected ONNX subgraphs, native MLIR dependence facts, pruning-pattern recognition, DFA fixed-point propagation, the all-model `108/108` result, QK blockers, and explicit limitations. The UI does not execute pruning, mutate model weights, or evaluate accuracy.

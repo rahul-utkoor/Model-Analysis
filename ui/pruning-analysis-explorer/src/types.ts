@@ -75,3 +75,82 @@ export interface SearchMatch {
   pruning_class: string;
   validation_status: string;
 }
+
+export interface FinalSummary {
+  expected_plans: number;
+  proven_plans: number;
+  native_mlir_evidence: number;
+  fallback: number;
+  unsupported: number;
+  partial: number;
+  missing: number;
+  failed: number;
+}
+
+export interface PipelineStep {
+  id: string;
+  title: string;
+  summary: string;
+  details: string[];
+}
+
+export interface OverviewResponse {
+  title: string;
+  subtitle: string;
+  final_summary: FinalSummary;
+  pipeline_steps: PipelineStep[];
+  teaching_takeaways: string[];
+  warnings: string[];
+}
+
+export interface ModelProofSummary {
+  model_name: string;
+  layers: number;
+  expected_plans: number;
+  proven_plans: number;
+  ffn_proven: number;
+  attention_value_proven: number;
+  native_mlir_evidence: number;
+  fallback: number;
+  verdict: string;
+}
+
+export interface ProofSummaryResponse {
+  models: ModelProofSummary[];
+  aggregate: FinalSummary;
+  warnings: string[];
+}
+
+export interface TeachingSection {
+  id: string;
+  title: string;
+  summary: string;
+  points: string[];
+}
+
+export interface TeachingFlowResponse {
+  title: string;
+  summary: FinalSummary;
+  sections: TeachingSection[];
+  warnings: string[];
+}
+
+export interface CaseStudy {
+  id: string;
+  title: string;
+  summary: string;
+  report_path: string;
+  report_url: string;
+  key_numbers: Record<string, string>;
+  available: boolean;
+}
+
+export interface CaseStudiesResponse {
+  case_studies: CaseStudy[];
+}
+
+export interface ReportTextResponse {
+  path: string;
+  format: string;
+  text: string;
+}

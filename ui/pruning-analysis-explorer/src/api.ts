@@ -1,4 +1,17 @@
-import type { CoverageResponse, LayerSummary, ModelDetail, ModelSummary, SearchMatch, SubgraphDetailResponse, SubgraphSummary } from './types';
+import type {
+  CaseStudiesResponse,
+  CoverageResponse,
+  LayerSummary,
+  ModelDetail,
+  ModelSummary,
+  OverviewResponse,
+  ProofSummaryResponse,
+  ReportTextResponse,
+  SearchMatch,
+  SubgraphDetailResponse,
+  SubgraphSummary,
+  TeachingFlowResponse,
+} from './types';
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
@@ -11,6 +24,11 @@ async function getJson<T>(path: string): Promise<T> {
 export const api = {
   models: () => getJson<ModelSummary[]>('/api/models'),
   coverage: () => getJson<CoverageResponse>('/api/coverage'),
+  overview: () => getJson<OverviewResponse>('/api/overview'),
+  proofSummary: () => getJson<ProofSummaryResponse>('/api/proof-summary'),
+  teachingFlow: () => getJson<TeachingFlowResponse>('/api/teaching-flow'),
+  caseStudies: () => getJson<CaseStudiesResponse>('/api/case-studies'),
+  reportText: (path: string) => getJson<ReportTextResponse>(`/api/report-text?path=${encodeURIComponent(path)}`),
   model: (modelId: string) => getJson<ModelDetail>(`/api/models/${encodeURIComponent(modelId)}`),
   layers: (modelId: string) => getJson<LayerSummary[]>(`/api/models/${encodeURIComponent(modelId)}/layers`),
   subgraphs: (modelId: string, layer: number) => getJson<SubgraphSummary[]>(`/api/models/${encodeURIComponent(modelId)}/layers/${layer}/subgraphs`),

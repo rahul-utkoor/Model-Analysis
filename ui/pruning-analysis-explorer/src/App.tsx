@@ -1,19 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
+import { CaseStudies } from './components/CaseStudies';
 import { CoverageDashboard } from './components/CoverageDashboard';
 import { LayerNavigator } from './components/LayerNavigator';
-import { Layout } from './components/Layout';
+import { Layout, type AppView } from './components/Layout';
 import { ModelOverview } from './components/ModelOverview';
+import { OverviewDashboard } from './components/OverviewDashboard';
 import { PipelineOverview } from './components/PipelineOverview';
+import { ReportsPage } from './components/ReportsPage';
 import { SubgraphDetail } from './components/SubgraphDetail';
 import { SubgraphTable } from './components/SubgraphTable';
+import { TeachingFlow } from './components/TeachingFlow';
 import {
   chooseDefaultSubgraph,
   makePreviousSubgraphIntent,
   subgraphBelongsToLoadedLayer,
   type PreviousSubgraphIntent,
 } from './selection';
-import type { CoverageResponse, LayerSummary, ModelDetail, ModelSummary, SearchMatch, SubgraphDetailResponse, SubgraphSummary } from './types';
+import type {
+  CaseStudiesResponse,
+  CoverageResponse,
+  LayerSummary,
+  ModelDetail,
+  ModelSummary,
+  OverviewResponse,
+  ProofSummaryResponse,
+  SearchMatch,
+  SubgraphDetailResponse,
+  SubgraphSummary,
+  TeachingFlowResponse,
+} from './types';
 
 type LoadedSubgraphContext = {
   model: string;
@@ -31,8 +47,13 @@ function sameContext(ctx: LoadedSubgraphContext | undefined, model?: string, lay
 }
 
 export default function App() {
+  const [activeView, setActiveView] = useState<AppView>('dashboard');
   const [models, setModels] = useState<ModelSummary[]>([]);
   const [coverage, setCoverage] = useState<CoverageResponse>();
+  const [overview, setOverview] = useState<OverviewResponse>();
+  const [proofSummary, setProofSummary] = useState<ProofSummaryResponse>();
+  const [teachingFlow, setTeachingFlow] = useState<TeachingFlowResponse>();
+  const [caseStudies, setCaseStudies] = useState<CaseStudiesResponse>();
   const [selectedModel, setSelectedModel] = useState<string>();
   const [modelDetail, setModelDetail] = useState<ModelDetail>();
   const [diagnosis, setDiagnosis] = useState<Record<string, any>>();
@@ -51,10 +72,14 @@ export default function App() {
   const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined);
 
   useEffect(() => {
-    Promise.all([api.models(), api.coverage()])
-      .then(([modelRows, coverageData]) => {
+    Promise.all([api.models(), api.coverage(), api.overview(), api.proofSummary(), api.teachingFlow(), api.caseStudies()])
+      .then(([modelRows, coverageData, overviewData, proofData, flowData, caseStudyData]) => {
         setModels(modelRows);
         setCoverage(coverageData);
+        setOverview(overviewData);
+        setProofSummary(proofData);
+        setTeachingFlow(flowData);
+        setCaseStudies(caseStudyData);
         if (modelRows.length) setSelectedModel(modelRows[0].id);
       })
       .catch((err) => setError(String(err)));
@@ -172,6 +197,7 @@ export default function App() {
   const activeLayer = useMemo(() => layers.find((layer) => layer.layer_index === selectedLayer), [layers, selectedLayer]);
 
   function handleSelectModel(modelId: string) {
+    setActiveView('models');
     if (modelId === selectedModel) return;
     previousIntentRef.current = undefined;
     pendingNavigationRef.current = undefined;
@@ -192,6 +218,7 @@ export default function App() {
   }
 
   function handleSearchResult(match: SearchMatch) {
+    setActiveView('models');
     previousIntentRef.current = undefined;
     pendingNavigationRef.current = { model: match.model_id, layer: match.layer, nodeSlug: match.node_slug };
     setSelectedNode(undefined);
@@ -207,26 +234,46 @@ export default function App() {
   }
 
   return (
-    <Layout models={models} selectedModel={selectedModel} onSelectModel={handleSelectModel} onSearchResult={handleSearchResult}>
+    <Layout
+      models={models}
+      activeView={activeView}
+      selectedModel={selectedModel}
+      onSelectView={setActiveView}
+      onSelectModel={handleSelectModel}
+      onSearchResult={handleSearchResult}
+    >
       {error ? <div className="error-banner">{error}</div> : null}
-      <CoverageDashboard coverage={coverage} />
-      <ModelOverview detail={modelDetail} diagnosis={diagnosis} />
-      <PipelineOverview detail={modelDetail} />
-      <div className="workspace-grid">
-        <LayerNavigator layers={layers} selectedLayer={selectedLayer} onSelect={handleSelectLayer} />
-        <div className="analysis-column">
-          {activeLayer ? (
-            <section className="panel layer-summary-card">
-              <h2>Layer {activeLayer.layer_index}</h2>
-              <p>
-                {activeLayer.total_subgraphs} subgraphs / {activeLayer.safe} safe / {activeLayer.constrained} constrained / {activeLayer.blocked} blocked / {activeLayer.valid_plan_subgraphs} valid plan subgraphs
-              </p>
-            </section>
-          ) : null}
-          <SubgraphDetail detail={subgraphDetail} />
-          <SubgraphTable subgraphs={subgraphs} selectedNode={selectedNode} onSelect={handleSelectNode} />
-        </div>
-      </div>
+      {activeView === 'dashboard' ? (
+        <>
+          <OverviewDashboard overview={overview} proof={proofSummary} onSelectView={setActiveView} />
+          <CoverageDashboard coverage={coverage} />
+        </>
+      ) : null}
+      {activeView === 'teaching-flow' ? <TeachingFlow overview={overview} flow={teachingFlow} proof={proofSummary} /> : null}
+      {activeView === 'case-studies' ? <CaseStudies studies={caseStudies} /> : null}
+      {activeView === 'reports' ? <ReportsPage /> : null}
+      {activeView === 'models' ? (
+        <>
+          <CoverageDashboard coverage={coverage} />
+          <ModelOverview detail={modelDetail} diagnosis={diagnosis} />
+          <PipelineOverview detail={modelDetail} />
+          <div className="workspace-grid">
+            <LayerNavigator layers={layers} selectedLayer={selectedLayer} onSelect={handleSelectLayer} />
+            <div className="analysis-column">
+              {activeLayer ? (
+                <section className="panel layer-summary-card">
+                  <h2>Layer {activeLayer.layer_index}</h2>
+                  <p>
+                    {activeLayer.total_subgraphs} subgraphs / {activeLayer.safe} safe / {activeLayer.constrained} constrained / {activeLayer.blocked} blocked / {activeLayer.valid_plan_subgraphs} valid plan subgraphs
+                  </p>
+                </section>
+              ) : null}
+              <SubgraphDetail detail={subgraphDetail} />
+              <SubgraphTable subgraphs={subgraphs} selectedNode={selectedNode} onSelect={handleSelectNode} />
+            </div>
+          </div>
+        </>
+      ) : null}
     </Layout>
   );
 }

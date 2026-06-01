@@ -75,6 +75,49 @@ select {
   margin: 2px 0 0;
 }
 
+.primary-nav {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: transparent;
+  color: #45545e;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-button:hover,
+.nav-button.active {
+  border-color: #cce3dc;
+  background: #edf7f3;
+  color: #1d6c55;
+}
+
+.nav-button svg,
+.primary-action svg,
+.secondary-action svg,
+.text-action svg,
+.icon-action svg {
+  width: 17px;
+  height: 17px;
+}
+
+.sidebar-note {
+  margin-top: 24px;
+  border-top: 1px solid #e4e8eb;
+  padding-top: 16px;
+  color: #63717b;
+  font-size: 0.88rem;
+}
+
 .side-section {
   margin-top: 22px;
 }
@@ -530,6 +573,447 @@ select {
   padding: 10px 12px;
 }
 
+.overview-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  min-height: 218px;
+  border: 1px solid #cfe0db;
+  border-radius: 8px;
+  padding: 26px;
+  background: #f0f8f5;
+}
+
+.overview-hero h1,
+.page-heading h1 {
+  margin: 0;
+  color: #1c3932;
+  font-size: 2rem;
+  letter-spacing: 0;
+}
+
+.overview-hero p,
+.page-heading p {
+  max-width: 720px;
+  color: #52616b;
+}
+
+.eyebrow,
+.concept-card > small {
+  margin: 0 0 7px;
+  color: #2f7d68;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.result-badge {
+  display: grid;
+  flex: 0 0 230px;
+  gap: 2px;
+  border-left: 4px solid #2f7d68;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+.result-badge strong {
+  color: #1d6c55;
+  font-size: 2.2rem;
+}
+
+.result-badge span,
+.overview-metrics span,
+.inline-metrics span {
+  color: #63717b;
+}
+
+.hero-actions,
+.inline-metrics,
+.overview-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hero-actions {
+  margin-top: 18px;
+}
+
+.primary-action,
+.secondary-action,
+.text-action,
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 6px;
+  padding: 8px 11px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.primary-action {
+  border: 1px solid #2f7d68;
+  background: #2f7d68;
+  color: #fff;
+}
+
+.secondary-action,
+.icon-action {
+  border: 1px solid #cfdadd;
+  background: #fff;
+  color: #2f5d52;
+}
+
+.dashboard-band,
+.teaching-section {
+  border-bottom: 1px solid #dce2e6;
+  padding: 20px 0;
+}
+
+.overview-metrics > div,
+.inline-metrics > div {
+  display: grid;
+  min-width: 170px;
+  gap: 2px;
+  border-left: 3px solid #88baa9;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.overview-metrics svg {
+  width: 19px;
+  height: 19px;
+  color: #2f7d68;
+}
+
+.overview-metrics strong,
+.inline-metrics strong {
+  font-size: 1.45rem;
+}
+
+.walkthrough-list {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.walkthrough-list li {
+  border: 1px solid #dce2e6;
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+}
+
+.pipeline-diagram {
+  display: grid;
+  max-width: 680px;
+  gap: 0;
+}
+
+.pipeline-diagram-item {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.pipeline-diagram-item div {
+  width: 100%;
+  border: 1px solid #cfe0db;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #f2f9f6;
+  color: #285f51;
+  font-weight: 700;
+  text-align: center;
+}
+
+.pipeline-diagram-item svg {
+  width: 18px;
+  height: 18px;
+  color: #6a8e84;
+}
+
+.concept-grid,
+.example-grid,
+.case-study-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.concept-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.example-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.case-study-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.concept-card,
+.case-study-card {
+  border: 1px solid #dce2e6;
+  border-radius: 8px;
+  padding: 15px;
+  background: #fff;
+}
+
+.concept-card h3,
+.case-study-card h3 {
+  margin: 0 0 9px;
+  letter-spacing: 0;
+}
+
+.concept-card p,
+.case-study-card p {
+  margin-bottom: 0;
+  color: #5b6972;
+}
+
+.concept-card p svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+  color: #a43d2f;
+}
+
+.compact-list {
+  margin: 8px 0 0;
+  padding-left: 19px;
+}
+
+.compact-list li {
+  margin: 4px 0;
+}
+
+.code-flow {
+  border: 1px solid #e4e8eb;
+  border-radius: 6px;
+  padding: 9px;
+  background: #f8fafb;
+  color: #33424b;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.evidence-tier-list,
+.teaching-step-list,
+.report-list {
+  display: grid;
+  gap: 8px;
+}
+
+.evidence-tier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #dce2e6;
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+}
+
+.evidence-tier.active {
+  border-color: #88baa9;
+  background: #edf7f3;
+}
+
+.evidence-tier > span,
+.step-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2f7d68;
+  color: #fff;
+  font-weight: 700;
+}
+
+.evidence-tier small,
+.teaching-step small,
+.report-row small {
+  display: block;
+  color: #63717b;
+}
+
+.inline-metrics {
+  margin-top: 12px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.proof-table {
+  min-width: 720px;
+}
+
+.proof-table .badge {
+  gap: 5px;
+}
+
+.proof-table .badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.teaching-step {
+  border: 1px solid #dce2e6;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.teaching-step.expanded {
+  border-color: #88baa9;
+}
+
+.teaching-step-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  padding: 10px;
+  background: transparent;
+  color: #27363e;
+  text-align: left;
+  cursor: pointer;
+}
+
+.teaching-step-button > span:nth-child(2) {
+  flex: 1;
+}
+
+.teaching-step-button svg {
+  width: 18px;
+  height: 18px;
+  color: #63717b;
+}
+
+.teaching-step .compact-list {
+  border-top: 1px solid #e7ecef;
+  margin: 0;
+  padding: 9px 18px 10px 50px;
+}
+
+.limitations {
+  border-bottom: 0;
+}
+
+.page-heading {
+  margin-bottom: 18px;
+}
+
+.page-heading p {
+  margin: 6px 0;
+}
+
+.case-study-card {
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  min-height: 210px;
+}
+
+.case-study-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.case-study-numbers span {
+  display: grid;
+  gap: 1px;
+  min-width: 84px;
+  border-left: 3px solid #88baa9;
+  padding: 5px 8px;
+  color: #63717b;
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+
+.case-study-numbers strong {
+  color: #285f51;
+  font-size: 1.05rem;
+}
+
+.text-action {
+  width: fit-content;
+  border: 1px solid #cfe0db;
+  background: #edf7f3;
+  color: #1d6c55;
+}
+
+.text-action.disabled {
+  border-color: #dce2e6;
+  background: #f5f7f8;
+  color: #7b878e;
+  cursor: default;
+}
+
+.reports-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.36fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.report-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #dce2e6;
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+}
+
+.report-row > svg {
+  width: 18px;
+  height: 18px;
+  color: #2f7d68;
+}
+
+.report-row small {
+  overflow-wrap: anywhere;
+}
+
+.icon-action {
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.report-preview {
+  min-height: 620px;
+  border: 1px solid #dce2e6;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.report-preview pre {
+  max-height: 700px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #39474f;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.84rem;
+}
+
 @media (max-width: 1180px) {
   .shell {
     grid-template-columns: 1fr;
@@ -546,6 +1030,28 @@ select {
   .summary-columns,
   .metric-grid,
   .metric-grid.compact {
+    grid-template-columns: 1fr;
+  }
+  .walkthrough-list,
+  .example-grid,
+  .case-study-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .overview-hero,
+  .reports-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .result-badge {
+    width: 100%;
+  }
+  .walkthrough-list,
+  .concept-grid,
+  .example-grid,
+  .case-study-grid {
     grid-template-columns: 1fr;
   }
 }
