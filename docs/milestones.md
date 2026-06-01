@@ -1166,3 +1166,17 @@ Extended attention value-path extraction with:
 - Synthetic fused, separate, and ambiguous-branch tests plus all-layer artifact smoke coverage
 
 Ambiguous fused QKV paths remain blocked. This is static artifact and proof generation only.
+
+## Milestone 53: Final Static Pruning Propagation Research Report
+
+Status: complete.
+
+Added `experimental/final_report/`:
+
+- Robust collection of all-model, BERT, formalization, MLIR coverage, deadbranch, value-path, plan, and validation reports
+- A final research narrative covering the compiler-style model, evidence hierarchy, DFA propagation, SparseGPT alignment, claims, limitations, and next directions
+- Machine-readable JSON summary, CSV case table, claims boundary document, and index
+- Non-strict warning-based collection plus strict all-model-proof validation
+- CLI wrapper, README, deterministic tests, demo, and ignored generated output root
+
+This is final documentation and reporting only. It does not execute pruning, mutate model weights, or evaluate accuracy.

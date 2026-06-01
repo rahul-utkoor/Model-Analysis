@@ -809,3 +809,9 @@ QK score contractions remain separate blocker evidence. GPT-2 recovers an explic
 Attention value-path extraction falls back to source-ONNX graph recovery when deadbranch semantic anchors are absent. It traces the attention context value operand backward to its producer and accepts fused QKV only when an explicit `Split`, `Slice`, or `Gather` branch justifies a separate value slice. Ambiguous fused projections remain blocked.
 
 The recovered local path is exported as static evidence: fused QKV projection, value slice/layout, context MatMul, context layout, and output projection. This does not execute pruning or mutate the source model.
+
+## Final Static Pruning Propagation Research Report
+
+`experimental/final_report/` collects the generated all-model proof, BERT case study, formalization bundle, MLIR coverage summaries, OPT deadbranch alignment, attention value-path summaries, symbolic plans, and validations into one reproducible reporting bundle.
+
+The final report separates evidence-backed claims from scope boundaries. It records the `108/108` all-model proof while explicitly stating that the repository does not yet choose pruning indices, rewrite models, measure runtime speedup, or evaluate accuracy.
