@@ -80,6 +80,31 @@ def make_attention_value_path(path: Path) -> Path:
     )
 
 
+def make_attention_value_path_with_cache_layout(path: Path) -> Path:
+    onnx = _onnx()
+    nodes = [
+        onnx.helper.make_node("MatMul", ["ValueInput", "W_value"], ["V"], name="arbitrary_value_projection"),
+        onnx.helper.make_node("Concat", ["V"], ["CachedV"], axis=2, name="cache_sequence_concat"),
+        onnx.helper.make_node("Cast", ["CachedV"], ["TypedV"], to=onnx.TensorProto.FLOAT, name="value_cast"),
+        onnx.helper.make_node("MatMul", ["P", "TypedV"], ["Context"], name="arbitrary_context_product"),
+        onnx.helper.make_node("MatMul", ["Context", "W_output"], ["Output"], name="arbitrary_output_projection"),
+    ]
+    return _save(
+        path,
+        nodes,
+        "synthetic_attention_value_path_with_cache_layout",
+        [_value("ValueInput", [1, 2, 5, 4]), _value("P", [1, 2, 5, 5])],
+        [_value("Output", [1, 2, 5, 4])],
+        value_info=[
+            _value("V", [1, 2, 5, 3]),
+            _value("CachedV", [1, 2, 5, 3]),
+            _value("TypedV", [1, 2, 5, 3]),
+            _value("Context", [1, 2, 5, 3]),
+        ],
+        initializers=[_weights("W_value", [4, 3]), _weights("W_output", [3, 4])],
+    )
+
+
 def make_residual(path: Path) -> Path:
     onnx = _onnx()
     nodes = [onnx.helper.make_node("Add", ["A", "B"], ["Y"], name="arbitrary_add")]

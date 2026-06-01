@@ -1088,3 +1088,19 @@ Added `experimental/mlir_evidence_coverage/`:
 - Markdown/JSON reports, per-case details, CLI, README, and deterministic tests
 
 This is a reporting and evaluation layer over selected subgraphs. It does not execute pruning, mutate models, lower full models, or replace production analysis.
+
+## Milestone 48: Full Attention Value-Path Subgraph Artifacts
+
+Status: complete.
+
+Added complete local attention value-path extraction:
+
+- Semantic-anchor discovery from deadbranch propagation reports
+- Source-ONNX connectivity recovery for value projection -> layout -> attention context -> layout -> output projection
+- Seedability and value-axis mapping status in JSON and Markdown reports
+- Best-effort ONNX, DOT, and SVG evidence artifact export
+- Cross-model explanation and comparison CLIs
+- Coverage-study discovery for the new artifact root
+- A curated OPT layer-0 attention value-path proof case
+
+These artifacts expose a seedable local chain to the existing experimental evidence stack. They do not execute pruning, choose channel indices, or mutate model weights.

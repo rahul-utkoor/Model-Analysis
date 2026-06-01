@@ -11,7 +11,7 @@ from experimental.onnx_axis_bridge.onnx_graph_summary import summarize_subgraph
 from experimental.onnx_axis_bridge.onnx_loader import load_onnx_subgraph
 from experimental.onnx_axis_bridge.onnx_to_loop_ir import lower_onnx_hint_to_region_spec
 from experimental.onnx_axis_bridge.pattern_hints import OnnxPatternHintKind, infer_pattern_hints
-from experimental.onnx_axis_bridge.tests.helpers import make_attention_value_path, make_context, make_qk
+from experimental.onnx_axis_bridge.tests.helpers import make_attention_value_path, make_attention_value_path_with_cache_layout, make_context, make_qk
 
 
 def test_qk_score_hint_and_blocker_detected(tmp_path) -> None:
@@ -45,3 +45,11 @@ def test_attention_value_path_hint_and_pattern_detected(tmp_path) -> None:
     patterns = recognize_patterns(region, analyze_region(region))
 
     assert any(pattern.pattern_kind == PatternKind.ATTENTION_VALUE_PATH for pattern in patterns)
+
+
+def test_attention_value_path_hint_accepts_cache_concat_and_cast(tmp_path) -> None:
+    subgraph = load_onnx_subgraph(make_attention_value_path_with_cache_layout(tmp_path / "value_path_cache.onnx"))
+    hints = infer_pattern_hints(subgraph, summarize_subgraph(subgraph))
+
+    assert any(hint.kind == OnnxPatternHintKind.ATTENTION_VALUE_PATH_LIKE for hint in hints)
+    assert not any(hint.kind == OnnxPatternHintKind.FFN_LIKE for hint in hints)

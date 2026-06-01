@@ -248,6 +248,13 @@ reports/pruning_proof_report/*
 reports/mlir_evidence_coverage/*
 !reports/mlir_evidence_coverage/.gitkeep
 reports/mlir_evidence_coverage_all_layers/
+reports/attention_value_path_subgraphs/*
+!reports/attention_value_path_subgraphs/.gitkeep
+reports/attention_value_path_subgraph_compare/*
+!reports/attention_value_path_subgraph_compare/.gitkeep
+reports/mlir_evidence_coverage_opt_value_path/
+reports/pruning_proof_report_opt_value_path/
+artifacts/attention_value_path_subgraphs/
 experimental/mlir_axis_bridge/native/build/
 viewer_data/
 

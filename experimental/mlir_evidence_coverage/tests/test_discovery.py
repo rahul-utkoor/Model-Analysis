@@ -34,3 +34,19 @@ def test_discovery_prefers_current_artifact_layout(tmp_path: Path) -> None:
     model = ModelSpec("synthetic/model", "synthetic-model", "synthetic", 1)
     cases = match_cases_for_model(model, pattern_specs("FFN_MLP_INTERMEDIATE"), artifact_root=primary, fallback_root=fallback)
     assert cases[0].onnx_path == str(current_onnx)
+
+
+def test_discovery_sees_attention_value_path_artifact_root(tmp_path: Path) -> None:
+    value_root = tmp_path / "value-paths"
+    onnx = value_root / "synthetic-model/layers/layer_0/opt_layer_0_attention_value_path/subgraph.onnx"
+    onnx.parent.mkdir(parents=True)
+    onnx.touch()
+    model = ModelSpec("synthetic/model", "synthetic-model", "synthetic", 1)
+    cases = match_cases_for_model(
+        model,
+        pattern_specs("ATTENTION_VALUE_PATH"),
+        artifact_root=tmp_path / "current",
+        fallback_root=tmp_path / "fallback",
+        value_path_root=value_root,
+    )
+    assert cases[0].onnx_path == str(onnx)

@@ -8,6 +8,7 @@ from experimental.pruning_proof_report.proof_case import ProofCase
 
 
 ARTIFACT_ROOT = Path("artifacts/model_analysis_subgraphs")
+VALUE_PATH_ROOT = Path("artifacts/attention_value_path_subgraphs")
 
 
 def _case(
@@ -34,10 +35,26 @@ def _context_path() -> str:
     return str(matches[0] if matches else preferred)
 
 
+def _value_path(model: str, layer: int, fallback_slug: str) -> str:
+    root = VALUE_PATH_ROOT / model / "layers" / f"layer_{layer}"
+    matches = sorted(root.glob("*/subgraph.onnx"))
+    return str(matches[0] if matches else root / fallback_slug / "subgraph.onnx")
+
+
 def default_proof_cases() -> list[ProofCase]:
     return [
         _case("gpt2_layer0_mlp", "gpt2", 0, "03_gpt_2_block_0_mlp_block", "FFN_INTERMEDIATE_CHAIN", "producer-output deadness"),
         _case("opt_layer0_mlp", "facebook/opt-125m", 0, "06_opt_decoder_block_0_mlp_block", "FFN_INTERMEDIATE_CHAIN", "producer-output deadness", artifact_model="facebook__opt-125m"),
+        ProofCase(
+            "opt_layer0_attention_value_path",
+            "facebook/opt-125m",
+            0,
+            "attention_value_path",
+            _value_path("facebook__opt-125m", 0, "opt_layer_0_attention_value_path"),
+            "ATTENTION_VALUE_PATH",
+            "value producer output deadness",
+            "Complete value projection -> context -> output projection chain when generated.",
+        ),
         _case("bert_layer0_attention_score", "bert-base-uncased", 0, "05_layer_0_attention_score_matmul", "QK_SCORE_BLOCKER", "blocked"),
         ProofCase(
             "bert_layer0_attention_context",

@@ -779,3 +779,9 @@ The report preserves the evidence hierarchy: native MLIR dependence facts are pr
 `experimental/mlir_evidence_coverage/` expands the curated proof report into a systematic selected-subgraph matrix across BERT, DistilBERT, OPT, GPT-2, and ViT. It measures FFN/MLP propagation, QK score blockers, context value-axis mappings, full attention value paths, residual protection, and LayerNorm protection.
 
 Coverage is reported by evidence tier: native MLIR dependence facts, Python affine/access facts, high-level MLIR dialect evidence, ONNX-local fallback, or unavailable. Missing local atlas artifacts remain visible as coverage gaps. This is an evaluation layer over local evidence artifacts, not a production pruning stage.
+
+## Attention Value-Path Subgraph Artifacts
+
+Attention value-path extraction creates a connected, seedable local evidence artifact for the structural propagation rule `out_proj` input deadness -> context value-axis deadness -> `v_proj` output deadness. The extractor starts from deadbranch semantic anchors, follows source-ONNX connectivity, and retains required reshape/transpose and metadata dependencies while leaving unrelated attention-score computation at the fragment boundary.
+
+The resulting ONNX fragments are evidence artifacts for the existing ONNX, MLIR, axis-transfer, and DFA bridges. They do not execute pruning, select indices, or mutate source models.
