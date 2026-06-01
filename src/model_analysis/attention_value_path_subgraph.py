@@ -16,6 +16,7 @@ from model_analysis.paths import ensure_dir, safe_model_name
 
 
 LAYOUT_OPS = {"reshape", "transpose", "flatten", "squeeze", "unsqueeze"}
+VALUE_SLICE_OPS = {"split", "slice", "gather"}
 METADATA_OPS = {"constant", "shape", "gather", "unsqueeze", "squeeze", "concat", "slice", "cast"}
 
 
@@ -26,6 +27,11 @@ class AttentionValuePathSubgraph:
     path_id: str
     path_name: str
     value_projection_ops: list[dict[str, Any]] = field(default_factory=list)
+    fused_qkv_projection_ops: list[dict[str, Any]] = field(default_factory=list)
+    value_slice_ops: list[dict[str, Any]] = field(default_factory=list)
+    value_slice_status: str = "not_fused"
+    value_slice_evidence: list[str] = field(default_factory=list)
+    qkv_layout: str = "separate_qkv"
     value_layout_ops: list[dict[str, Any]] = field(default_factory=list)
     attention_context_ops: list[dict[str, Any]] = field(default_factory=list)
     context_layout_ops: list[dict[str, Any]] = field(default_factory=list)
@@ -91,6 +97,13 @@ def _pair_path(pair: dict[str, Any]) -> AttentionValuePathSubgraph:
         path_id=path_id,
         path_name=f"{family.upper()} Layer {layer} Attention Value Path",
         value_projection_ops=[producer],
+        fused_qkv_projection_ops=[producer] if fused else [],
+        value_slice_status="unsupported" if fused else "not_fused",
+        value_slice_evidence=(
+            ["The semantic anchor identifies a fused QKV producer but does not independently prove its value slice."]
+            if fused else []
+        ),
+        qkv_layout="fused_qkv_unknown" if fused else "separate_qkv",
         value_layout_ops=[op for op in evidence if str(op.get("op_type", "")).lower() in LAYOUT_OPS],
         attention_context_ops=[
             op for op in evidence
@@ -118,13 +131,28 @@ def _pair_path(pair: dict[str, Any]) -> AttentionValuePathSubgraph:
     )
 
 
-def detect_attention_value_paths(model_name: str, deadbranch_report: dict[str, Any]) -> list[AttentionValuePathSubgraph]:
+def detect_attention_value_paths(
+    model_name: str,
+    deadbranch_report: dict[str, Any],
+    source_model: Any | None = None,
+) -> list[AttentionValuePathSubgraph]:
     """Create value-path records from static deadbranch semantic anchors."""
     pairs = [
         pair for pair in deadbranch_report.get("pairs", [])
         if pair.get("pair_kind") == "attention_value_deadness"
     ]
-    return [_pair_path({**pair, "model_name": pair.get("model_name") or model_name}) for pair in pairs]
+    paths = [_pair_path({**pair, "model_name": pair.get("model_name") or model_name}) for pair in pairs]
+    if source_model is None:
+        return paths
+    existing_layers = {path.layer_index for path in paths}
+    return [
+        *paths,
+        *[
+            path
+            for path in discover_source_attention_value_paths(model_name, source_model)
+            if path.layer_index not in existing_layers
+        ],
+    ]
 
 
 def _graph_maps(source_model: Any) -> tuple[dict[str, Any], dict[str, str], dict[str, list[str]], dict[str, int]]:
@@ -158,6 +186,174 @@ def _find_path(nodes: dict[str, Any], consumers: dict[str, list[str]], start: st
                 if successor not in visited:
                     pending.append((successor, [*path, successor]))
     return []
+
+
+def _find_path_to_input(
+    nodes: dict[str, Any],
+    consumers: dict[str, list[str]],
+    start: str,
+    end: str,
+    target_tensor: str,
+) -> list[str]:
+    pending: list[tuple[str, list[str]]] = [(start, [start])]
+    visited: set[str] = set()
+    while pending:
+        current, path = pending.pop(0)
+        if current in visited:
+            continue
+        visited.add(current)
+        for tensor in nodes[current].output:
+            for successor in consumers.get(tensor, []):
+                if successor == end:
+                    if tensor == target_tensor:
+                        return [*path, successor]
+                    continue
+                if successor not in visited:
+                    pending.append((successor, [*path, successor]))
+    return []
+
+
+def _reverse_path(
+    nodes: dict[str, Any],
+    producer: dict[str, str],
+    start: str,
+    predicate: Any,
+) -> list[str]:
+    pending: list[tuple[str, list[str]]] = [(start, [start])]
+    visited: set[str] = set()
+    while pending:
+        current, reverse_path = pending.pop(0)
+        if current in visited:
+            continue
+        visited.add(current)
+        if predicate(current, nodes[current]):
+            return list(reversed(reverse_path))
+        for tensor in nodes[current].input:
+            parent = producer.get(tensor)
+            if parent and parent not in visited:
+                pending.append((parent, [*reverse_path, parent]))
+    return []
+
+
+def _layer_index(name: str) -> int | None:
+    match = re.search(r"(?:layers|layer|h)[./](\d+)", name)
+    return int(match.group(1)) if match else None
+
+
+def _output_projection_candidate(model_name: str, name: str, node: Any) -> bool:
+    lower = name.lower()
+    if node.op_type.lower() not in {"matmul", "gemm"} or "/mlp/" in lower:
+        return False
+    if "gpt2" in model_name:
+        return "/attn/c_proj/" in lower
+    if "vit" in model_name:
+        return "/attention/o_proj/" in lower or "/attention/output/" in lower
+    return False
+
+
+def _value_projection_candidate(model_name: str, name: str, node: Any) -> bool:
+    lower = name.lower()
+    if node.op_type.lower() not in {"matmul", "gemm"}:
+        return False
+    if "gpt2" in model_name:
+        return "/attn/c_attn/" in lower
+    if "vit" in model_name:
+        return "/attention/v_proj/" in lower or "/attention/value/" in lower or "/attention/qkv/" in lower
+    return False
+
+
+def _slice_layout(path_names: list[str], nodes: dict[str, Any]) -> tuple[str, str, list[str]]:
+    slice_types = [nodes[name].op_type.lower() for name in path_names if nodes[name].op_type.lower() in VALUE_SLICE_OPS]
+    if "split" in slice_types:
+        return "fused_qkv_split", "recovered", ["The context value operand traces backward through an explicit Split output to the fused QKV projection."]
+    if any(op_type in {"slice", "gather"} for op_type in slice_types):
+        return "fused_qkv_concat", "recovered", ["The context value operand traces backward through an explicit Slice/Gather value branch to the fused QKV projection."]
+    return "fused_qkv_unknown", "unsupported", ["A fused QKV projection was found, but no independently recoverable value-slice operation reaches the context value operand."]
+
+
+def discover_source_attention_value_paths(model_name: str, source_model: Any) -> list[AttentionValuePathSubgraph]:
+    """Recover source-graph value paths when semantic deadbranch anchors are absent."""
+    nodes, producer, consumers, indices = _graph_maps(source_model)
+    recovered: list[AttentionValuePathSubgraph] = []
+    for output_name, output_node in nodes.items():
+        if not _output_projection_candidate(model_name, output_name, output_node):
+            continue
+        layer = _layer_index(output_name)
+        if layer is None:
+            continue
+        output_parent = producer.get(output_node.input[0], "")
+        context_path = _reverse_path(
+            nodes,
+            producer,
+            output_parent,
+            lambda name, node: node.op_type.lower() == "matmul" and name != output_name,
+        ) if output_parent else []
+        if not context_path:
+            continue
+        context_name = context_path[0]
+        context_node = nodes[context_name]
+        if len(context_node.input) < 2:
+            continue
+        value_parent = producer.get(context_node.input[-1], "")
+        value_path = _reverse_path(
+            nodes,
+            producer,
+            value_parent,
+            lambda name, node: _value_projection_candidate(model_name, name, node),
+        ) if value_parent else []
+        if not value_path:
+            continue
+        value_name = value_path[0]
+        fused = any(token in value_name.lower() for token in ("c_attn", "qkv"))
+        qkv_layout, slice_status, slice_evidence = (
+            _slice_layout(value_path, nodes) if fused else ("separate_qkv", "not_fused", [])
+        )
+        mapping_status = "proven" if not fused or slice_status == "recovered" else "unproven"
+        analysis_status = "seedable" if mapping_status == "proven" else "blocked"
+        family = "gpt2" if "gpt2" in model_name else "vit"
+        recovered.append(
+            AttentionValuePathSubgraph(
+                model_name=model_name,
+                layer_index=layer,
+                path_id=f"{family}_layer_{layer}_attention_value_path",
+                path_name=f"{family.upper()} Layer {layer} Attention Value Path",
+                value_projection_ops=[_summary(nodes[value_name], indices[value_name])],
+                fused_qkv_projection_ops=[_summary(nodes[value_name], indices[value_name])] if fused else [],
+                value_slice_ops=[
+                    _summary(nodes[name], indices[name])
+                    for name in value_path
+                    if nodes[name].op_type.lower() in VALUE_SLICE_OPS
+                ],
+                value_slice_status=slice_status,
+                value_slice_evidence=slice_evidence,
+                qkv_layout=qkv_layout,
+                attention_context_ops=[_summary(context_node, indices[context_name])],
+                output_projection_ops=[_summary(output_node, indices[output_name])],
+                axis_mapping={
+                    "fused_qkv_output_value_slice_axis": "value_slice_dim" if fused else None,
+                    "value_projection_output_axis": "value_dim",
+                    "value_slice_axis": "value_dim",
+                    "context_value_axis": "value_context_dim",
+                    "output_projection_input_axis": "value_context_dim",
+                    "mapping_status": mapping_status,
+                    "evidence": [
+                        "The attention context value operand traces backward to the recovered value branch.",
+                        "V.value_dim -> Context.value_context_dim is preserved through attention context.",
+                        "Context.value_context_dim -> output projection input value/context channel is index-aligned.",
+                        *slice_evidence,
+                    ],
+                },
+                analysis_status=analysis_status,
+                explanation=(
+                    "The source ONNX graph proves a seedable fused-QKV value-slice path from output-projection input through context to the recovered value branch."
+                    if fused and analysis_status == "seedable"
+                    else "The source ONNX graph proves a seedable value-projection -> context -> output-projection path."
+                    if analysis_status == "seedable"
+                    else "The fused QKV value branch could not be recovered conservatively."
+                ),
+            )
+        )
+    return sorted(recovered, key=lambda path: path.layer_index)
 
 
 def _metadata_dependencies(selected: set[str], nodes: dict[str, Any], producer: dict[str, str]) -> set[str]:
@@ -212,7 +408,8 @@ def bind_path_to_onnx(path: AttentionValuePathSubgraph, source_model: Any) -> At
         path.explanation = "Value projection, attention context, or output projection anchor was not found in the source ONNX graph."
         return path
     context = context_candidates[-1]
-    value_path = _find_path(nodes, consumers, value, context)
+    context_value_tensor = nodes[context].input[-1] if nodes[context].input else ""
+    value_path = _find_path_to_input(nodes, consumers, value, context, context_value_tensor)
     output_path = _find_path(nodes, consumers, context, output)
     if not value_path or not output_path:
         path.analysis_status = "partial"
@@ -225,6 +422,18 @@ def bind_path_to_onnx(path: AttentionValuePathSubgraph, source_model: Any) -> At
     output_index = ordered.index(output)
     path.source_ops = summaries
     path.value_projection_ops = [summary for summary in summaries if summary["source_name"] == value]
+    fused = any(token in value.lower() for token in ("c_attn", "qkv"))
+    path.fused_qkv_projection_ops = list(path.value_projection_ops) if fused else []
+    path.value_slice_ops = [summary for summary in summaries[:context_index] if summary["op_type"].lower() in VALUE_SLICE_OPS]
+    if fused:
+        path.qkv_layout, path.value_slice_status, path.value_slice_evidence = _slice_layout(ordered[:context_index], nodes)
+        path.axis_mapping["fused_qkv_output_value_slice_axis"] = "value_slice_dim"
+        path.axis_mapping["value_slice_axis"] = "value_dim"
+        path.axis_mapping["mapping_status"] = "proven" if path.value_slice_status == "recovered" else "unproven"
+        path.axis_mapping["evidence"] = [*path.axis_mapping.get("evidence", []), *path.value_slice_evidence]
+    else:
+        path.qkv_layout = "separate_qkv"
+        path.value_slice_status = "not_fused"
     path.value_layout_ops = [summary for summary in summaries[:context_index] if summary["op_type"].lower() in LAYOUT_OPS]
     path.attention_context_ops = [summary for summary in summaries if summary["source_name"] == context]
     path.context_layout_ops = [summary for summary in summaries[context_index + 1 : output_index] if summary["op_type"].lower() in LAYOUT_OPS]
@@ -232,6 +441,8 @@ def bind_path_to_onnx(path: AttentionValuePathSubgraph, source_model: Any) -> At
     path.boundary_inputs, path.boundary_outputs = _boundaries(selected, nodes, producer, consumers, indices)
     if path.axis_mapping.get("mapping_status") == "proven":
         path.analysis_status = "seedable"
+        if fused:
+            path.explanation = "The recovered fused-QKV value slice makes output-projection input deadness seedable backward through context to the value branch."
     return path
 
 

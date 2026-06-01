@@ -148,7 +148,7 @@ def _infer_attention_value_path_hints(
 ) -> list[OnnxPatternHint]:
     nodes = node_by_id(summary)
     projections = [nodes[node_id] for node_id in summary.parameterized_ops]
-    allowed = ELEMENTWISE_OPS | LAYOUT_OPS | {"Cast", "Concat"}
+    allowed = ELEMENTWISE_OPS | LAYOUT_OPS | {"Cast", "Concat", "Gather", "Shape", "Slice", "Split", "Squeeze", "Unsqueeze"}
     hints: list[OnnxPatternHint] = []
     for context_hint in contraction_hints:
         if context_hint.kind != OnnxPatternHintKind.ATTENTION_CONTEXT_LIKE:

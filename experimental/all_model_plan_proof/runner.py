@@ -242,7 +242,8 @@ def run_all_model_proof(selector: str = "all", options: AllModelRunOptions | Non
         models,
         aggregate,
         [
-            "Fused QKV value-slice recovery is not yet implemented for GPT-2 or ViT.",
+            "GPT-2 fused-QKV value slices are recovered only when an explicit Split/Slice/Gather branch reaches attention context.",
+            "ViT support reflects the local exported graph; this export exposes separate q_proj, k_proj, and v_proj operators.",
             "Residual and LayerNorm protection are not counted in the two-plan-per-layer propagation total.",
             "Fallback evidence remains visibly distinguished from native MLIR dependence evidence.",
             "This report evaluates static evidence only; it does not execute pruning or mutate model weights.",

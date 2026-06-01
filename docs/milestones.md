@@ -1150,3 +1150,19 @@ Added `experimental/all_model_plan_proof/`:
 - An optional all-model snapshot in the static formalization bundle
 
 This is static artifact, evidence, and proof reporting only. It does not execute pruning, choose channel indices, mutate model weights, or evaluate accuracy.
+
+## Milestone 52: Fused-QKV Value-Slice Recovery
+
+Status: complete.
+
+Extended attention value-path extraction with:
+
+- Source-ONNX graph recovery when deadbranch value-pair anchors are absent
+- Conservative GPT-2 `c_attn -> Split -> value branch -> context -> attn/c_proj` recovery
+- Explicit value-slice status, QKV layout, recovered slice operations, and evidence records
+- Value-operand-specific context binding so recovery cannot follow the Q/K score branch
+- ViT recovery through the local exported `v_proj -> context -> o_proj` path
+- Coverage and all-model proof policy updates for GPT-2 and ViT
+- Synthetic fused, separate, and ambiguous-branch tests plus all-layer artifact smoke coverage
+
+Ambiguous fused QKV paths remain blocked. This is static artifact and proof generation only.

@@ -13,3 +13,4 @@ def test_text_report_explains_seedable_value_path() -> None:
     assert "output projection" in text
     assert "Seedable: `1`" in text
     assert "V.value_dim -> Context.value_context_dim" in text
+    assert "Value slice" in text

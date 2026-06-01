@@ -31,6 +31,6 @@ Inspect:
 - `reports/all_model_plan_proof/models/facebook__opt-125m.md`
 - `reports/all_model_plan_proof/models/gpt2.md`
 
-The report counts QK score contractions as blockers rather than pruning plans. GPT-2 and ViT fused-QKV value paths remain explicit gaps until value-slice recovery is proven.
+The report counts QK score contractions as blockers rather than pruning plans. Milestone 52 adds GPT-2 fused-QKV value-slice recovery and confirms that the local ViT export exposes a recoverable separate value path.
 
 This demo performs static evidence and proof reporting only.

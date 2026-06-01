@@ -4,9 +4,9 @@ This experimental reporting layer generalizes the BERT 24-plan case study across
 
 For every transformer layer it evaluates one FFN intermediate propagation plan and one attention value-path plan. QK score contractions are reported separately as blockers because their reduced and mixed feature axis does not support simple one-to-one deadness propagation.
 
-The report reuses the existing MLIR evidence coverage runner. Native MLIR dependence, Python affine/access evidence, high-level fallback, missing artifacts, and unsupported fused-QKV paths remain explicit.
+The report reuses the existing MLIR evidence coverage runner. Native MLIR dependence, Python affine/access evidence, high-level fallback, missing artifacts, and genuinely unsupported fused-QKV paths remain explicit.
 
-GPT-2 and ViT currently expose a deliberate `fused_qkv_value_path_gap`: value-slice recovery has not yet been proven. DistilBERT can build separable `v_lin -> context -> out_lin` artifacts on demand.
+GPT-2 fused `c_attn` paths are recovered conservatively only when an explicit split/slice/gather value branch reaches attention context. The local ViT export already exposes separate `q_proj`, `k_proj`, and `v_proj` operations. DistilBERT can build separable `v_lin -> context -> out_lin` artifacts on demand.
 
 ## Run
 

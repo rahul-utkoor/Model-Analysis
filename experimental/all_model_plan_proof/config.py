@@ -75,8 +75,8 @@ SUPPORTED_MODELS = (
         12,
         12,
         24,
-        AttentionValuePolicy.FUSED_QKV_GAP,
-        notes="Attention value-path proof requires fused-QKV value-slice recovery.",
+        AttentionValuePolicy.REQUIRED_IF_SEPARABLE,
+        notes="Attention value-path proof recovers the c_attn fused-QKV value slice through its explicit split branch.",
     ),
     ModelPlanExpectation(
         "google/vit-base-patch16-224",
@@ -86,8 +86,8 @@ SUPPORTED_MODELS = (
         12,
         12,
         24,
-        AttentionValuePolicy.FUSED_QKV_GAP,
-        notes="Attention value-path proof requires fused-QKV value-slice and output-path recovery.",
+        AttentionValuePolicy.REQUIRED_IF_SEPARABLE,
+        notes="The exported ViT graph exposes a recoverable v_proj -> context -> o_proj value path.",
     ),
 )
 

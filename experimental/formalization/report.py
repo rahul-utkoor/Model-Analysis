@@ -210,13 +210,13 @@ Native MLIR evidence is the strongest tier. Fallback tiers remain useful for rep
 - BERT value-path artifacts: `{_number(value_paths, "seedable")}/12` seedable.
 - BERT native MLIR coverage cells: `{_number(coverage, "native_proven")}/24`.
 - All-model propagation plans: `{_number(all_models, "total_proven")}/{_number(all_models, "total_expected")}` proven when the generalized proof report is available.
-- Model-specific fused-QKV value-slice gaps remain explicit rather than being removed from expected-plan counts.
+- Model-specific fused-QKV value-slice recovery remains evidence-driven rather than inferred from names.
 - QK score contractions remain blockers and are intentionally excluded from pruning-plan counts.
 
 ## 10. Limitations
 
 - Native MLIR dependence evidence is not universal across every model and pattern.
-- Fused QKV projections require recovery of a separately justified value slice.
+- Fused QKV projections require recovery of a separately justified value slice; GPT-2 now recovers explicit split value branches.
 - Residual and LayerNorm protection may need stronger native evidence in some model families.
 - The current native tool is a local selected-subgraph evidence generator, not a complete MLIR dependence framework.
 - This is static legality and evidence analysis. It does not choose pruning indices, execute pruning, mutate model weights, or evaluate accuracy.
@@ -311,7 +311,7 @@ SLIDES = (
     ("Residual/LayerNorm protection", "Hidden width is protected without coordinated repair", ("Residual branches must stay aligned", "Normalization statistics couple hidden entries"), "Residual diamond and LayerNorm boundary."),
     ("Evidence hierarchy", "State the strength of every proof", ("Native MLIR dependence is strongest", "Access, high-level, and ONNX fallbacks remain explicit"), "Tiered evidence pyramid."),
     ("BERT 24-plan proof", "BERT reaches 12 FFN plus 12 attention value-path plans", ("24/24 cells native-proven", "QK blockers are excluded from plan counts"), "12-row layer grid with two green cells per layer."),
-    ("Coverage and limitations", "Important paths are proven; universality is not claimed", ("Fused QKV needs value-slice recovery", "Residual/LayerNorm native evidence can be strengthened"), "Coverage matrix with proven and future-work cells."),
+    ("Coverage and limitations", "Important paths are proven; universality is not claimed", ("Fused QKV needs explicit value-slice recovery", "Residual/LayerNorm native evidence can be strengthened"), "Coverage matrix with proven and future-work cells."),
     ("Takeaways", "Static pruning propagation is compiler-style evidence-backed dataflow analysis", ("Sparsity is not deadness", "Names are syntax", "MLIR proves local relations; DFA computes propagation"), "Four concise takeaway blocks."),
 )
 
@@ -436,12 +436,12 @@ QK score contractions remain blockers and are excluded from plan counts.
 
 ### All-model propagation proof
 
-The generalized proof report evaluates BERT, DistilBERT, OPT, GPT-2, and ViT with the same evidence hierarchy. It currently records `{_number(all_models, "total_proven")}/{_number(all_models, "total_expected")}` complete propagation plans when the report is available. Unsupported fused-QKV value paths remain explicit required gaps.
+The generalized proof report evaluates BERT, DistilBERT, OPT, GPT-2, and ViT with the same evidence hierarchy. It currently records `{_number(all_models, "total_proven")}/{_number(all_models, "total_expected")}` complete propagation plans when the report is available. Fused-QKV value paths require an explicit recoverable value branch.
 
 ## 11. Limitations
 
 - Native MLIR evidence does not yet cover every model family and pattern.
-- Fused QKV operators require value-slice recovery before a standalone value-path proof is justified.
+- Fused QKV operators require an explicit recoverable value branch before a standalone value-path proof is justified.
 - Residual and LayerNorm protection evidence can be strengthened.
 - The implementation analyzes static legality and propagation; it does not choose indices, execute pruning, mutate models, or evaluate accuracy.
 

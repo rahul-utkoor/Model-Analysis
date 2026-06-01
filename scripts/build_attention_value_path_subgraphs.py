@@ -57,7 +57,7 @@ def main() -> int:
         if source_path is None:
             raise FileNotFoundError(f"local ONNX source model missing for {model}")
         source_model = onnx.load(source_path)
-        paths = detect_attention_value_paths(model, json.loads(deadbranch_path.read_text(encoding="utf-8")))
+        paths = detect_attention_value_paths(model, json.loads(deadbranch_path.read_text(encoding="utf-8")), source_model)
         selected_layer = args.layer if args.layer is not None else None
         if selected_layer is not None:
             paths = [path for path in paths if path.layer_index == selected_layer]

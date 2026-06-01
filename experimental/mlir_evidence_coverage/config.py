@@ -69,7 +69,7 @@ PATTERN_SPECS = (
         ("attention_value_path", "value_path", "v_proj", "out_proj"),
         "ATTENTION_VALUE_PATH",
         "value producer-output deadness",
-        ("bert-base-uncased", "facebook/opt-125m"),
+        ("bert-base-uncased", "distilbert-base-uncased", "facebook/opt-125m", "gpt2", "google/vit-base-patch16-224"),
         "A full local value-path artifact must include value projection, context, and output projection.",
     ),
     PatternSpec(

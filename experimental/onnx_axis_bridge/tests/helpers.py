@@ -105,6 +105,31 @@ def make_attention_value_path_with_cache_layout(path: Path) -> Path:
     )
 
 
+def make_attention_value_path_with_fused_split(path: Path) -> Path:
+    onnx = _onnx()
+    nodes = [
+        onnx.helper.make_node("MatMul", ["ValueInput", "W_qkv"], ["QKV"], name="fused_projection"),
+        onnx.helper.make_node("Split", ["QKV"], ["Q", "K", "V"], axis=-1, name="qkv_split"),
+        onnx.helper.make_node("MatMul", ["P", "V"], ["Context"], name="arbitrary_context_product"),
+        onnx.helper.make_node("MatMul", ["Context", "W_output"], ["Output"], name="arbitrary_output_projection"),
+    ]
+    return _save(
+        path,
+        nodes,
+        "synthetic_attention_value_path_with_fused_split",
+        [_value("ValueInput", [1, 2, 5, 4]), _value("P", [1, 2, 5, 5])],
+        [_value("Output", [1, 2, 5, 4])],
+        value_info=[
+            _value("QKV", [1, 2, 5, 9]),
+            _value("Q", [1, 2, 5, 3]),
+            _value("K", [1, 2, 5, 3]),
+            _value("V", [1, 2, 5, 3]),
+            _value("Context", [1, 2, 5, 3]),
+        ],
+        initializers=[_weights("W_qkv", [4, 9]), _weights("W_output", [3, 4])],
+    )
+
+
 def make_residual(path: Path) -> Path:
     onnx = _onnx()
     nodes = [onnx.helper.make_node("Add", ["A", "B"], ["Y"], name="arbitrary_add")]

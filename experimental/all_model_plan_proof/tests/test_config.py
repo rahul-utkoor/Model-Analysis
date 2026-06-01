@@ -10,5 +10,5 @@ def test_expected_counts():
     assert models["bert"].total_expected == 24
     assert models["opt"].total_expected == 24
     assert models["distilbert"].total_expected == 12
-    assert models["gpt2"].attention_value_policy == AttentionValuePolicy.FUSED_QKV_GAP
-    assert models["vit"].attention_value_policy == AttentionValuePolicy.FUSED_QKV_GAP
+    assert models["gpt2"].attention_value_policy == AttentionValuePolicy.REQUIRED_IF_SEPARABLE
+    assert models["vit"].attention_value_policy == AttentionValuePolicy.REQUIRED_IF_SEPARABLE

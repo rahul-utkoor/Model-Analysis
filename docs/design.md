@@ -802,4 +802,10 @@ The formalization layer is documentation-only. It does not modify production ana
 
 `experimental/all_model_plan_proof/` generalizes the BERT 24-plan case study across all five supported transformer families. It evaluates one FFN intermediate plan and one attention value-path plan per layer, reusing the MLIR evidence coverage evaluator so native, access-derived, fallback, partial, missing, and unsupported results retain the same meaning.
 
-QK score contractions remain separate blocker evidence. GPT-2 and ViT retain explicit fused-QKV value-slice recovery gaps rather than silently reducing expected-plan totals. The proof layer is read-only reporting over local subgraph evidence.
+QK score contractions remain separate blocker evidence. GPT-2 recovers an explicit `c_attn -> Split -> value branch` path before attention context. The current ViT export exposes separate `q_proj`, `k_proj`, and `v_proj` operators, so its value path is recovered directly. The proof layer is read-only reporting over local subgraph evidence.
+
+## Fused-QKV Value-Slice Recovery
+
+Attention value-path extraction falls back to source-ONNX graph recovery when deadbranch semantic anchors are absent. It traces the attention context value operand backward to its producer and accepts fused QKV only when an explicit `Split`, `Slice`, or `Gather` branch justifies a separate value slice. Ambiguous fused projections remain blocked.
+
+The recovered local path is exported as static evidence: fused QKV projection, value slice/layout, context MatMul, context layout, and output projection. This does not execute pruning or mutate the source model.

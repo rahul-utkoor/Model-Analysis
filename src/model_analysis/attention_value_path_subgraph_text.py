@@ -14,7 +14,8 @@ def attention_value_path_report_to_markdown(value: dict[str, Any]) -> str:
         mapping = path.get("axis_mapping", {})
         rows.append(
             f"| {path.get('layer_index')} | {path.get('path_name')} | {path.get('analysis_status')} | "
-            f"{mapping.get('mapping_status')} | {path.get('export_status')} | {path.get('artifact_paths', {}).get('onnx', '-')} |"
+            f"{mapping.get('mapping_status')} | {path.get('qkv_layout', 'separate_qkv')} | "
+            f"{path.get('value_slice_status', 'not_fused')} | {path.get('export_status')} | {path.get('artifact_paths', {}).get('onnx', '-')} |"
         )
     return "\n".join(
         [
@@ -30,13 +31,13 @@ def attention_value_path_report_to_markdown(value: dict[str, Any]) -> str:
             "",
             "## Paths",
             "",
-            "| Layer | Path | Analysis status | Mapping | Export | ONNX |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| Layer | Path | Analysis status | Mapping | QKV layout | Value slice | Export | ONNX |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- |",
             *rows,
             "",
             "## Propagation Rule",
             "",
-            "The value projection feeds attention context and then the output projection. When the layout mapping is proven, output-projection input deadness propagates backward through `V.value_dim -> Context.value_context_dim` to the value-projection output. For BERT this is `attention.self.value -> context -> attention.output.dense`; for OPT this is `v_proj -> context -> out_proj`.",
+            "The value projection feeds attention context and then the output projection. When the layout mapping is proven, output-projection input deadness propagates backward through `V.value_dim -> Context.value_context_dim` to the value-projection output. For BERT this is `attention.self.value -> context -> attention.output.dense`; for OPT this is `v_proj -> context -> out_proj`; for GPT-2 an explicit fused `c_attn -> Split -> value branch` is recovered before `attn/c_proj`; and exported ViT graphs use an explicit `v_proj -> context -> o_proj` path.",
             "",
             "This is static artifact/evidence generation only. It does not execute pruning or modify model weights.",
             "",
