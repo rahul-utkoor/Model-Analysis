@@ -1,6 +1,9 @@
 import type {
   CaseStudiesResponse,
   CoverageResponse,
+  ArtifactBundle,
+  ArtifactTextResponse,
+  EvidenceArtifactMap,
   EvidenceTracesResponse,
   LayerSummary,
   ModelDetail,
@@ -29,6 +32,12 @@ export const api = {
   proofSummary: () => getJson<ProofSummaryResponse>('/api/proof-summary'),
   pipelineFlow: () => getJson<PipelineFlowResponse>('/api/pipeline-flow'),
   evidenceTraces: () => getJson<EvidenceTracesResponse>('/api/evidence-traces'),
+  evidenceArtifactMap: () => getJson<EvidenceArtifactMap>('/api/evidence-artifact-map'),
+  artifactBundle: (model: string, layer: number, subgraph: string) => {
+    const params = new URLSearchParams({ model, layer: String(layer), subgraph });
+    return getJson<ArtifactBundle>(`/api/artifact-bundle?${params.toString()}`);
+  },
+  artifactText: (path: string) => getJson<ArtifactTextResponse>(`/api/artifact-text?path=${encodeURIComponent(path)}`),
   caseStudies: () => getJson<CaseStudiesResponse>('/api/case-studies'),
   reportText: (path: string) => getJson<ReportTextResponse>(`/api/report-text?path=${encodeURIComponent(path)}`),
   model: (modelId: string) => getJson<ModelDetail>(`/api/models/${encodeURIComponent(modelId)}`),

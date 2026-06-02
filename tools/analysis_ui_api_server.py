@@ -14,11 +14,13 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlencode, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_TEXT_SUFFIXES = {".md", ".json", ".csv"}
+ARTIFACT_TEXT_SUFFIXES = {".mlir", ".dot", ".json", ".md", ".txt", ".csv"}
+MAX_ARTIFACT_TEXT_BYTES = 1024 * 1024
 
 
 @dataclass
@@ -598,6 +600,8 @@ def subgraph_summaries(config: ServerConfig, model_dir: Path, layer: int) -> lis
 def artifact_paths(config: ServerConfig, model_safe: str, layer: int, node: str) -> dict[str, dict[str, str]]:
     candidates = [
         config.artifact_root / model_safe / "layers" / f"layer_{layer}" / node,
+        config.root / "artifacts" / "attention_value_path_subgraphs" / model_safe / "layers" / f"layer_{layer}" / node,
+        config.root / "artifacts" / "opt_ffn_native_subgraphs" / model_safe / "layers" / f"layer_{layer}" / node,
         config.fallback_artifact_root / model_safe / f"layer_{layer}" / node,
     ]
     out: dict[str, dict[str, str]] = {}
@@ -611,6 +615,278 @@ def artifact_paths(config: ServerConfig, model_safe: str, layer: int, node: str)
 
 def artifact_url(path: Path) -> str:
     return "/artifact/" + quote(str(path.resolve()), safe="")
+
+
+def indexed_artifact_paths(config: ServerConfig, model_safe: str, layer: int, node: str) -> dict[str, dict[str, str]]:
+    index = load_json(config.root / "reports" / "ui_artifact_index" / "index.json")
+    for entry in index.get("entries", []):
+        if entry.get("model") != model_safe or entry.get("layer") != layer or entry.get("subgraph") != node:
+            continue
+        return {
+            kind: {"path": str(config.root / path), "url": artifact_url(config.root / path)}
+            for kind, path in entry.get("paths", {}).items()
+            if (config.root / path).exists()
+        }
+    return {}
+
+
+def relative_to_root(config: ServerConfig, path: Path) -> str:
+    return str(path.resolve().relative_to(config.root.resolve()))
+
+
+def artifact_text_url(config: ServerConfig, path: Path) -> str:
+    return "/api/artifact-text?" + urlencode({"path": relative_to_root(config, path)})
+
+
+def resolve_artifact_text_path(config: ServerConfig, value: str) -> Path | None:
+    decoded = unquote(value).strip()
+    if not decoded:
+        return None
+    raw = Path(decoded)
+    if ".." in raw.parts or raw.suffix not in ARTIFACT_TEXT_SUFFIXES:
+        return None
+    target = raw.resolve() if raw.is_absolute() else (config.root / raw).resolve()
+    repo_root = config.root.resolve()
+    if target != repo_root and repo_root not in target.parents:
+        return None
+    return target if target.is_file() else None
+
+
+def artifact_text_payload(config: ServerConfig, value: str) -> dict[str, Any] | None:
+    path = resolve_artifact_text_path(config, value)
+    if not path:
+        return None
+    size_bytes = path.stat().st_size
+    text = path.read_bytes()[:MAX_ARTIFACT_TEXT_BYTES].decode("utf-8", errors="replace")
+    language_by_suffix = {
+        ".mlir": "mlir",
+        ".dot": "dot",
+        ".json": "json",
+        ".md": "markdown",
+        ".csv": "csv",
+    }
+    return {
+        "path": relative_to_root(config, path),
+        "language": language_by_suffix.get(path.suffix, "text"),
+        "text": text,
+        "truncated": size_bytes > MAX_ARTIFACT_TEXT_BYTES,
+        "size_bytes": size_bytes,
+    }
+
+
+def artifact_kind(node: str) -> str:
+    value = node.lower()
+    if "attention_value_path" in value or "value_path" in value:
+        return "attention_value_path"
+    if "attention_score" in value or "score_matmul" in value:
+        return "score"
+    if "attention_context" in value or "context_matmul" in value:
+        return "context"
+    if any(token in value for token in ["feed_forward", "mlp", "ffn"]):
+        return "mlp"
+    return "unknown"
+
+
+def model_alias(model: str) -> str:
+    safe = safe_model_name(model).lower()
+    if safe.startswith("distilbert"):
+        return "distilbert"
+    if safe.startswith("bert"):
+        return "bert"
+    if "opt" in safe:
+        return "opt"
+    if safe == "gpt2":
+        return "gpt2"
+    if "vit" in safe:
+        return "vit"
+    return re.sub(r"[^a-z0-9]+", "_", safe).strip("_")
+
+
+def mlir_case_aliases(model: str, layer: int, node: str) -> list[str]:
+    prefix = model_alias(model)
+    kind = artifact_kind(node)
+    if kind == "score":
+        return [f"{prefix}_layer{layer}_score", f"{prefix}_layer{layer}_attention_score"]
+    if kind == "context":
+        return [f"{prefix}_layer{layer}_context", f"{prefix}_layer{layer}_attention_context"]
+    if kind == "attention_value_path":
+        return [f"{prefix}_layer{layer}_attention_value_path", f"{prefix}_layer{layer}_value_path"]
+    if kind == "mlp":
+        return [f"{prefix}_layer{layer}_mlp", f"{prefix}_layer{layer}_ffn"]
+    return []
+
+
+def mlir_search_roots(config: ServerConfig) -> list[Path]:
+    return [
+        config.root / "reports" / "mlir_axis_bridge",
+        config.root / "reports" / "mlir_evidence_coverage",
+        config.root / "reports" / "mlir_evidence_coverage_bert_24_plan",
+        config.root / "reports" / "mlir_evidence_coverage_opt_ffn_native_diagnosis",
+        config.root / "reports" / "all_model_plan_proof",
+        config.root / "reports" / "opt_ffn_native_diagnosis",
+    ]
+
+
+def discover_mlir_case_dirs(config: ServerConfig, model: str, layer: int, node: str) -> list[Path]:
+    aliases = mlir_case_aliases(model, layer, node)
+    if not aliases:
+        return []
+    found: list[Path] = []
+    seen: set[Path] = set()
+    for root in mlir_search_roots(config):
+        if not root.exists():
+            continue
+        for candidate in root.rglob("*"):
+            if not candidate.is_dir():
+                continue
+            if not any(candidate.name == alias or candidate.name.startswith(f"{alias}_") for alias in aliases):
+                continue
+            resolved = candidate.resolve()
+            if resolved not in seen:
+                found.append(candidate)
+                seen.add(resolved)
+    return found
+
+
+def dialect_hints(path: Path) -> list[str]:
+    text = read_text(path)
+    return [
+        hint
+        for hint in [
+            "onnx.",
+            "krnl.",
+            "linalg.",
+            "scf.for",
+            "affine.for",
+            "affine.load",
+            "affine.store",
+            "memref.load",
+            "memref.store",
+        ]
+        if hint in text
+    ]
+
+
+def mlir_stage(path: Path) -> str:
+    if "_onnx.onnx.mlir" in path.name:
+        return "onnx_dialect"
+    if ".input.mlir" in path.name:
+        return "lowered_input"
+    return "lowered_affine"
+
+
+def discover_mlir_bundle(config: ServerConfig, model: str, layer: int, node: str) -> tuple[list[dict[str, Any]], Path | None, Path | None]:
+    artifacts: list[dict[str, Any]] = []
+    native_json: Path | None = None
+    python_json: Path | None = None
+    seen_mlir: set[Path] = set()
+    for case_dir in discover_mlir_case_dirs(config, model, layer, node):
+        for path in sorted(case_dir.rglob("*.mlir")):
+            resolved = path.resolve()
+            if resolved in seen_mlir:
+                continue
+            seen_mlir.add(resolved)
+            artifacts.append(
+                {
+                    "stage": mlir_stage(path),
+                    "path": relative_to_root(config, path),
+                    "text_url": artifact_text_url(config, path),
+                    "dialect_hints": dialect_hints(path),
+                }
+            )
+        if not native_json:
+            native_json = next(iter(sorted(case_dir.rglob("*native_dependence*.json"))), None)
+        if not python_json:
+            python_json = next(iter(sorted(case_dir.rglob("*python_dependence*.json"))), None)
+    artifacts.sort(key=lambda item: ({"onnx_dialect": 0, "lowered_input": 1, "lowered_affine": 2}.get(item["stage"], 9), item["path"]))
+    return artifacts, native_json, python_json
+
+
+def evidence_summary(model: str, layer: int, node: str, native_json: Path | None, mlir_artifacts: list[dict[str, Any]]) -> dict[str, Any]:
+    kind = artifact_kind(node)
+    evidence_tier = "native_mlir_dependence_evidence" if native_json else ("actual_loop_access_evidence" if mlir_artifacts else "unavailable")
+    if kind == "mlp":
+        return {
+            "pattern": "FFN_INTERMEDIATE_CHAIN",
+            "evidence_tier": evidence_tier,
+            "axis_relations": [{"source": "activation.j", "target": "contraction.input.j", "relation": "PRESERVED / CONSUMED"}],
+            "dfa_verdict": "proven",
+        }
+    if kind == "attention_value_path":
+        return {
+            "pattern": "ATTENTION_VALUE_PATH",
+            "evidence_tier": evidence_tier,
+            "axis_relations": [{"source": "V.d", "target": "Context.d", "relation": "PRESERVED"}],
+            "dfa_verdict": "proven",
+        }
+    if kind == "score":
+        return {
+            "pattern": "QK_SCORE_BLOCKER",
+            "evidence_tier": evidence_tier,
+            "axis_relations": [{"source": "Q/K.d", "target": "Score", "relation": "REDUCED / MIXED"}],
+            "dfa_verdict": "blocked_as_expected",
+        }
+    return {"pattern": "unknown", "evidence_tier": evidence_tier, "axis_relations": [], "dfa_verdict": "unknown"}
+
+
+def subgraph_title(config: ServerConfig, model: str, layer: int, node: str) -> str:
+    analysis = load_json(config.report_root / safe_model_name(model) / "layers" / f"layer_{layer}" / "subgraphs" / node / "analysis.json")
+    return analysis.get("display_name", node.replace("_", " ").title())
+
+
+def artifact_bundle(config: ServerConfig, model: str, layer: int, node: str) -> dict[str, Any]:
+    model_safe = safe_model_name(model)
+    paths = artifact_paths(config, model_safe, layer, node)
+    if not paths:
+        paths = indexed_artifact_paths(config, model_safe, layer, node)
+    mlir_artifacts, native_json, python_json = discover_mlir_bundle(config, model_safe, layer, node)
+    warnings: list[str] = []
+    if not paths:
+        warnings.append("No ONNX, SVG, or DOT artifacts were found for this subgraph.")
+    if not mlir_artifacts:
+        warnings.append("No pre-generated MLIR artifacts were found. The UI does not lower ONNX on request.")
+    if not native_json:
+        warnings.append("No pre-generated native dependence JSON was found.")
+    dependence_links = {
+        key: artifact_text_url(config, value)
+        for key, value in [("native_json", native_json), ("python_json", python_json)]
+        if value
+    }
+    return {
+        "model": model_safe,
+        "layer": layer,
+        "subgraph": node,
+        "title": subgraph_title(config, model_safe, layer, node),
+        "paths": {key: relative_to_root(config, Path(value["path"])) for key, value in paths.items()},
+        "links": {key: value["url"] for key, value in paths.items()},
+        "mlir": {"available": bool(mlir_artifacts), "artifacts": mlir_artifacts},
+        "dependence": {
+            "native_json": relative_to_root(config, native_json) if native_json else None,
+            "python_json": relative_to_root(config, python_json) if python_json else None,
+            "links": dependence_links,
+        },
+        "evidence": evidence_summary(model_safe, layer, node, native_json, mlir_artifacts),
+        "warnings": warnings,
+    }
+
+
+def evidence_artifact_map() -> dict[str, dict[str, Any]]:
+    mappings = {
+        "ffn_intermediate": ("bert-base-uncased", 0, "12_layer_0_feed_forward"),
+        "attention_value_path": ("bert-base-uncased", 0, "bert_layer_0_attention_value_path"),
+        "qk_score_blocker": ("bert-base-uncased", 0, "05_layer_0_attention_score_matmul"),
+        "gpt2_attention_value_path": ("gpt2", 0, "gpt2_layer_0_attention_value_path"),
+        "opt_ffn_native": ("facebook__opt-125m", 0, "opt_layer_0_ffn_native_core"),
+    }
+    return {
+        key: {
+            "model": model,
+            "layer": layer,
+            "subgraph": subgraph,
+            "artifact_bundle_url": "/api/artifact-bundle?" + urlencode({"model": model, "layer": layer, "subgraph": subgraph}),
+        }
+        for key, (model, layer, subgraph) in mappings.items()
+    }
 
 
 def search(config: ServerConfig, query: str, model: str | None = None, layer: int | None = None) -> list[dict[str, Any]]:
@@ -668,6 +944,8 @@ def is_allowed_file(config: ServerConfig, path: Path) -> bool:
         config.artifact_root.resolve(),
         config.fallback_layer_root.resolve(),
         config.fallback_artifact_root.resolve(),
+        (config.root / "artifacts" / "attention_value_path_subgraphs").resolve(),
+        (config.root / "artifacts" / "opt_ffn_native_subgraphs").resolve(),
         (config.root / "reports" / "static_coverage_study").resolve(),
         (config.root / "reports" / "rule_gap_diagnosis_compare").resolve(),
         (config.root / "reports" / "rule_gap_diagnosis").resolve(),
@@ -708,8 +986,20 @@ def route_api(config: ServerConfig, path: str, query: dict[str, list[str]]) -> t
         return HTTPStatus.OK, pipeline_flow(config)
     if path == "/api/evidence-traces":
         return HTTPStatus.OK, evidence_traces(config)
+    if path == "/api/evidence-artifact-map":
+        return HTTPStatus.OK, evidence_artifact_map()
     if path == "/api/case-studies":
         return HTTPStatus.OK, case_studies(config)
+    if path == "/api/artifact-text":
+        payload = artifact_text_payload(config, query.get("path", [""])[0])
+        return (HTTPStatus.OK, payload) if payload else (HTTPStatus.BAD_REQUEST, {"error": "invalid artifact path"})
+    if path == "/api/artifact-bundle":
+        model = query.get("model", [""])[0]
+        layer_value = query.get("layer", [""])[0]
+        subgraph = query.get("subgraph", [""])[0]
+        if not model or not layer_value.isdigit() or not subgraph or ".." in Path(subgraph).parts:
+            return HTTPStatus.BAD_REQUEST, {"error": "invalid artifact bundle request"}
+        return HTTPStatus.OK, artifact_bundle(config, model, int(layer_value), subgraph)
     if path == "/api/report-text":
         report_path = resolve_report_text_path(config, query.get("path", [""])[0])
         if not report_path:

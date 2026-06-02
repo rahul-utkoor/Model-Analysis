@@ -1241,3 +1241,19 @@ Added a deeper read-only Evidence Trace workspace:
 - Deep links from Pipeline Flow transformation cards
 
 This is visualization and reporting only. It does not execute pruning, mutate model weights, or evaluate accuracy.
+
+## Milestone 58: ONNX Graph and MLIR Code Viewers in UI
+
+Status: complete.
+
+Extended the read-only UI with:
+
+- Embedded ONNX SVG graph previews and DOT source panels
+- Stage-grouped ONNX-dialect and lowered MLIR text viewers with highlighted access operations
+- Native and Python dependence JSON viewers with relation counts
+- Local evidence summaries for pattern, evidence tier, axis relation, and DFA verdict
+- Shared artifact-bundle panels in Models and Evidence Trace
+- Path-safe `/api/artifact-bundle`, `/api/artifact-text`, and `/api/evidence-artifact-map` endpoints
+- An optional offline UI artifact index generator
+
+This is visualization and reporting only. HTTP requests never lower ONNX, execute pruning, mutate weights, or evaluate accuracy.

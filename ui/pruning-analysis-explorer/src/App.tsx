@@ -21,6 +21,7 @@ import {
 import type {
   CaseStudiesResponse,
   CoverageResponse,
+  EvidenceArtifactMap,
   EvidenceTracesResponse,
   LayerSummary,
   ModelDetail,
@@ -56,6 +57,7 @@ export default function App() {
   const [proofSummary, setProofSummary] = useState<ProofSummaryResponse>();
   const [pipelineFlow, setPipelineFlow] = useState<PipelineFlowResponse>();
   const [evidenceTraces, setEvidenceTraces] = useState<EvidenceTracesResponse>();
+  const [evidenceArtifactMap, setEvidenceArtifactMap] = useState<EvidenceArtifactMap>();
   const [selectedEvidenceTrace, setSelectedEvidenceTrace] = useState(() => new URLSearchParams(window.location.search).get('example') ?? 'ffn_intermediate');
   const [caseStudies, setCaseStudies] = useState<CaseStudiesResponse>();
   const [selectedModel, setSelectedModel] = useState<string>();
@@ -76,14 +78,15 @@ export default function App() {
   const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined);
 
   useEffect(() => {
-    Promise.all([api.models(), api.coverage(), api.overview(), api.proofSummary(), api.pipelineFlow(), api.evidenceTraces(), api.caseStudies()])
-      .then(([modelRows, coverageData, overviewData, proofData, flowData, traceData, caseStudyData]) => {
+    Promise.all([api.models(), api.coverage(), api.overview(), api.proofSummary(), api.pipelineFlow(), api.evidenceTraces(), api.evidenceArtifactMap(), api.caseStudies()])
+      .then(([modelRows, coverageData, overviewData, proofData, flowData, traceData, artifactMapData, caseStudyData]) => {
         setModels(modelRows);
         setCoverage(coverageData);
         setOverview(overviewData);
         setProofSummary(proofData);
         setPipelineFlow(flowData);
         setEvidenceTraces(traceData);
+        setEvidenceArtifactMap(artifactMapData);
         setCaseStudies(caseStudyData);
         if (modelRows.length) setSelectedModel(modelRows[0].id);
       })
@@ -262,7 +265,7 @@ export default function App() {
         </>
       ) : null}
       {activeView === 'pipeline-flow' ? <PipelineFlow flow={pipelineFlow} proof={proofSummary} onOpenEvidenceTrace={handleSelectEvidenceTrace} /> : null}
-      {activeView === 'evidence-trace' ? <EvidenceTracePage data={evidenceTraces} selectedExample={selectedEvidenceTrace} onSelectExample={handleSelectEvidenceTrace} /> : null}
+      {activeView === 'evidence-trace' ? <EvidenceTracePage data={evidenceTraces} artifactMap={evidenceArtifactMap} selectedExample={selectedEvidenceTrace} onSelectExample={handleSelectEvidenceTrace} /> : null}
       {activeView === 'case-studies' ? <CaseStudies studies={caseStudies} /> : null}
       {activeView === 'reports' ? <ReportsPage /> : null}
       {activeView === 'models' ? (
@@ -281,7 +284,7 @@ export default function App() {
                   </p>
                 </section>
               ) : null}
-              <SubgraphDetail detail={subgraphDetail} />
+              <SubgraphDetail detail={subgraphDetail} model={selectedModel} layer={selectedLayer} subgraph={selectedNode} />
               <SubgraphTable subgraphs={subgraphs} selectedNode={selectedNode} onSelect={handleSelectNode} />
             </div>
           </div>

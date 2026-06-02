@@ -1,22 +1,24 @@
 import { CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AxisAnimationPanel } from './AxisAnimationPanel';
+import { ArtifactBundleViewer } from './ArtifactBundleViewer';
 import { InteractiveGraphTrace } from './InteractiveGraphTrace';
 import { MlirCodeTrace } from './MlirCodeTrace';
 import { PatternMatchView } from './PatternMatchView';
 import { TraceExampleSelector } from './TraceExampleSelector';
 import { TraceTimeline } from './TraceTimeline';
-import type { EvidenceTracesResponse } from '../types';
+import type { EvidenceArtifactMap, EvidenceTracesResponse } from '../types';
 
 interface Props {
   data?: EvidenceTracesResponse;
+  artifactMap?: EvidenceArtifactMap;
   selectedExample?: string;
   onSelectExample: (id: string) => void;
 }
 
 type EvidenceTab = 'pattern' | 'mlir' | 'axis' | 'verdict';
 
-export function EvidenceTracePage({ data, selectedExample, onSelectExample }: Props) {
+export function EvidenceTracePage({ data, artifactMap, selectedExample, onSelectExample }: Props) {
   const [activeStep, setActiveStep] = useState(0);
   const [activeTab, setActiveTab] = useState<EvidenceTab>('pattern');
   const example = useMemo(() => data?.examples.find((item) => item.id === selectedExample) ?? data?.examples[0], [data, selectedExample]);
@@ -55,6 +57,12 @@ export function EvidenceTracePage({ data, selectedExample, onSelectExample }: Pr
         </section>
       </div>
       <TraceTimeline steps={example.dfa_trace} activeIndex={activeStep} onChange={setActiveStep} />
+      {artifactMap?.[example.id] ? (
+        <section className="real-artifact-panel">
+          <div className="section-heading"><p className="eyebrow">Real artifact</p><h2>Generated ONNX and MLIR evidence</h2></div>
+          <ArtifactBundleViewer compact model={artifactMap[example.id].model} layer={artifactMap[example.id].layer} subgraph={artifactMap[example.id].subgraph} />
+        </section>
+      ) : <p className="artifact-warning">No artifact bundle mapping is available for this trace.</p>}
     </section>
   );
 }

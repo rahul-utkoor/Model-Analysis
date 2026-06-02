@@ -249,3 +249,52 @@ export interface ReportTextResponse {
   format: string;
   text: string;
 }
+
+export interface ArtifactTextResponse {
+  path: string;
+  language: string;
+  text: string;
+  truncated: boolean;
+  size_bytes: number;
+}
+
+export interface MlirArtifact {
+  stage: string;
+  path: string;
+  text_url: string;
+  dialect_hints: string[];
+}
+
+export interface ArtifactBundle {
+  model: string;
+  layer: number;
+  subgraph: string;
+  title: string;
+  paths: Record<string, string>;
+  links: Record<string, string>;
+  mlir: {
+    available: boolean;
+    artifacts: MlirArtifact[];
+  };
+  dependence: {
+    native_json?: string;
+    python_json?: string;
+    links: Record<string, string>;
+  };
+  evidence: {
+    pattern: string;
+    evidence_tier: string;
+    axis_relations: AxisRelation[];
+    dfa_verdict: string;
+  };
+  warnings: string[];
+}
+
+export interface EvidenceArtifactMapping {
+  model: string;
+  layer: number;
+  subgraph: string;
+  artifact_bundle_url: string;
+}
+
+export type EvidenceArtifactMap = Record<string, EvidenceArtifactMapping>;

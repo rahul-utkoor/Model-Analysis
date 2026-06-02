@@ -1778,6 +1778,217 @@ mark {
   margin-top: 10px;
 }
 
+.real-artifact-panel {
+  margin-top: 24px;
+}
+
+.artifact-bundle-viewer {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid #dce2e6;
+  border-radius: 6px;
+  padding: 16px;
+  background: #fff;
+}
+
+.artifact-bundle-viewer > header,
+.artifact-link-row,
+.artifact-tabs,
+.mlir-artifact-selector,
+.dialect-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.artifact-bundle-viewer > header {
+  justify-content: space-between;
+}
+
+.artifact-bundle-viewer h3,
+.artifact-bundle-viewer p {
+  margin: 0;
+}
+
+.artifact-tabs {
+  border-bottom: 1px solid #dce2e6;
+}
+
+.artifact-tabs button,
+.mlir-artifact-selector button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 10px;
+  background: transparent;
+  color: #52616b;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.artifact-tabs button.active,
+.mlir-artifact-selector button.active {
+  border-bottom-color: #16735d;
+  color: #125a49;
+  background: #edf7f3;
+}
+
+.artifact-link-row a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #146b58;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.onnx-graph-preview {
+  max-height: 520px;
+  overflow: auto;
+  border: 1px solid #dce2e6;
+  border-radius: 6px;
+  padding: 10px;
+  background: #fbfcfc;
+}
+
+.onnx-graph-preview img {
+  display: block;
+  min-width: 720px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.code-block {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #d9e0e2;
+  border-radius: 6px;
+  background: #f7f9f8;
+}
+
+.code-block-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  border-bottom: 1px solid #d9e0e2;
+  color: #52616b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+}
+
+.code-block-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: #146b58;
+  cursor: pointer;
+}
+
+.code-block pre {
+  max-height: 540px;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  color: #26363d;
+  font-size: 0.79rem;
+  line-height: 1.52;
+}
+
+.code-block code {
+  display: block;
+  min-height: 1.52em;
+}
+
+.code-line-highlight {
+  margin: 0 -12px;
+  padding: 0 12px;
+  background: #e6f3ef;
+  color: #0e5f4f;
+}
+
+.dialect-badges span,
+.evidence-value {
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #eef1f2;
+  color: #52616b;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.dependence-metrics,
+.evidence-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dependence-metrics > div,
+.evidence-summary-grid > div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #dce2e6;
+  border-radius: 6px;
+  padding: 9px;
+}
+
+.dependence-metrics strong {
+  color: #125a49;
+  font-size: 1.35rem;
+}
+
+.dependence-metrics span,
+.evidence-summary-grid span {
+  color: #63717b;
+  font-size: 0.76rem;
+}
+
+.evidence-value {
+  width: fit-content;
+}
+
+.evidence-value.native {
+  background: #daf1e8;
+  color: #0e5f4f;
+}
+
+.evidence-value.blocker {
+  background: #fde8e6;
+  color: #a33b32;
+}
+
+.axis-relation-list {
+  display: grid;
+  gap: 7px;
+}
+
+.axis-relation-list code {
+  width: fit-content;
+  border-radius: 4px;
+  padding: 5px 7px;
+  background: #edf7f3;
+  color: #125a49;
+}
+
+.artifact-warning {
+  margin: 0;
+  border-left: 3px solid #d89b42;
+  padding: 8px 10px;
+  background: #fff7e9;
+  color: #7c571a;
+  font-size: 0.84rem;
+}
+
+.muted-note {
+  color: #63717b;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1180px) {
   .shell {
     grid-template-columns: 1fr;
@@ -1810,6 +2021,10 @@ mark {
   .trace-layout {
     grid-template-columns: 1fr;
   }
+  .dependence-metrics,
+  .evidence-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1841,5 +2056,9 @@ mark {
   }
   .trace-controls {
     flex-wrap: wrap;
+  }
+  .dependence-metrics,
+  .evidence-summary-grid {
+    grid-template-columns: 1fr;
   }
 }

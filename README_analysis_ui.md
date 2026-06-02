@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The pruning analysis web UI is a browser interface for navigating generated static pruning-analysis reports. It presents a compiler-style pipeline flow alongside models, layers/blocks, abstract subgraphs, ONNX/SVG evidence artifacts, op semantics, rankings, symbolic plans, and validation checks.
+The pruning analysis web UI is a browser interface for navigating generated static pruning-analysis reports. It presents a compiler-style pipeline flow alongside models, layers/blocks, abstract subgraphs, embedded ONNX/SVG graph previews, DOT source, generated MLIR text, dependence JSON, op semantics, rankings, symbolic plans, and validation checks.
 
 This is read-only visualization. It does not execute pruning, choose pruning indices, modify model weights, rewrite ONNX, download models, or evaluate accuracy.
 
@@ -50,6 +50,7 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 
 - Pipeline flow from dead axes to DFA fixed-point proofs
 - Evidence Trace laboratory with graph transitions, affine equations, axis states, and DFA timeline controls
+- Real artifact bundles joining ONNX graph previews, DOT text, generated MLIR stages, native dependence JSON, and local proof summaries
 - All-model `108 / 108` proof summary
 - BERT, fused-QKV, OPT diagnosis, attention value-path, and QK blocker case studies
 - Read-only final, formalization, methodology, and claims reports
@@ -72,8 +73,21 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 2. Open `Evidence Trace` and step through FFN, attention value-path, and QK blocker examples.
 3. Switch the trace panels between pattern matching, MLIR evidence, axis state, and verdict.
 4. Use `Case Studies` for the BERT `24 / 24`, all-model `108 / 108`, fused-QKV, and OPT diagnosis stories.
-5. Open `Models`, choose `bert-base-uncased`, select `Layer 0`, and inspect the existing detailed subgraph evidence.
-6. Use `Reports` to preview the final report, claims, and formalization outlines.
+5. In `Evidence Trace`, open the real artifact panel to connect the explanatory trace to generated ONNX and MLIR files.
+6. Open `Models`, choose `bert-base-uncased`, select `Layer 0`, and use the `Artifacts` tab to inspect the embedded graph, DOT, MLIR, dependence, and evidence panels.
+7. Use `Reports` to preview the final report, claims, and formalization outlines.
+
+## Optional Artifact Index
+
+The backend discovers artifact bundles directly from existing generated files. For a compact offline inventory, run:
+
+```bash
+./conda-env/bin/python scripts/build_ui_mlir_artifact_index.py \
+  --output reports/ui_artifact_index/index.json \
+  --verbose
+```
+
+The indexer only reads generated artifacts. UI requests never invoke ONNX-MLIR.
 
 ## Read-only Teaching API
 
@@ -84,7 +98,12 @@ The server exposes:
 - `/api/teaching-flow`
 - `/api/pipeline-flow`
 - `/api/evidence-traces`
+- `/api/evidence-artifact-map`
+- `/api/artifact-bundle?model=<model>&layer=<layer>&subgraph=<slug>`
+- `/api/artifact-text?path=<repo-relative-text-path>`
 - `/api/case-studies`
 - `/api/report-text?path=<relative-report-path>`
 
 `/api/report-text` accepts only `.md`, `.json`, and `.csv` files beneath `reports/`.
+
+`/api/artifact-text` accepts repository-confined `.mlir`, `.dot`, `.json`, `.md`, `.txt`, and `.csv` files and caps returned content at 1 MiB.

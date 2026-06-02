@@ -59,6 +59,25 @@ def make_tree(tmp_path: Path) -> object:
     onnx = artifact_root / "bert-base-uncased/layers/layer_0/01_ffn/subgraph.onnx"
     onnx.parent.mkdir(parents=True)
     onnx.write_bytes(b"onnx")
+    (onnx.parent / "subgraph.dot").write_text("digraph ffn {}\n", encoding="utf-8")
+    (onnx.parent / "subgraph.svg").write_text("<svg></svg>\n", encoding="utf-8")
+    mlir_root = root / "reports/mlir_evidence_coverage_bert_24_plan/artifacts/bert_layer0_mlp"
+    (mlir_root / "mlir_artifacts").mkdir(parents=True)
+    (mlir_root / "mlir_artifacts/subgraph_onnx.onnx.mlir").write_text('%0 = "onnx.MatMul"() : () -> tensor<1xf32>\n', encoding="utf-8")
+    (mlir_root / "mlir_artifacts/subgraph_lowered.onnx.mlir").write_text("affine.for %j = 0 to 4 {\n  %0 = affine.load %X[%j] : memref<4xf32>\n  affine.store %0, %Y[%j] : memref<4xf32>\n}\n", encoding="utf-8")
+    write_json(
+        mlir_root / "native/subgraph_lowered.onnx.native_dependence.json",
+        {
+            "analysis_tool": "native_mlir_pass",
+            "relations": [
+                {
+                    "relation_kind": "preserved",
+                    "source_tensor": "X",
+                    "target_tensor": "Y",
+                }
+            ],
+        },
+    )
     write_json(root / "reports/static_coverage_study/index.json", {"models": [{"model_name": "bert-base-uncased", "final_status": "complete", "artifacts": {"ranking": {"safe": 1}, "plans": {"plans": 1}, "validation": {"valid_plans": 1}, "full_model_report": {"layers": 1, "subgraphs": 1}}}]})
     write_json(root / "reports/deadbranch_propagation/bert-base-uncased.json", {"model_name": "bert-base-uncased", "summary": {"total_pairs": 1}})
     write_json(
@@ -259,3 +278,52 @@ def test_report_text_reads_safe_markdown_and_rejects_traversal(tmp_path: Path) -
     status, report = module.route_api(config, "/api/report-text", {"path": ["../secret.md"]})
     assert status == module.HTTPStatus.BAD_REQUEST
     assert report["error"] == "invalid report path"
+
+
+def test_artifact_text_reads_safe_mlir_and_rejects_traversal(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+    mlir_path = "reports/mlir_evidence_coverage_bert_24_plan/artifacts/bert_layer0_mlp/mlir_artifacts/subgraph_lowered.onnx.mlir"
+
+    status, payload = module.route_api(config, "/api/artifact-text", {"path": [mlir_path]})
+
+    assert status == module.HTTPStatus.OK
+    assert payload["language"] == "mlir"
+    assert "affine.load" in payload["text"]
+    assert payload["truncated"] is False
+
+    status, payload = module.route_api(config, "/api/artifact-text", {"path": ["../secret.mlir"]})
+    assert status == module.HTTPStatus.BAD_REQUEST
+    assert payload["error"] == "invalid artifact path"
+
+
+def test_artifact_bundle_discovers_graph_mlir_and_dependence_files(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, payload = module.route_api(
+        config,
+        "/api/artifact-bundle",
+        {"model": ["bert-base-uncased"], "layer": ["0"], "subgraph": ["01_ffn"]},
+    )
+
+    assert status == module.HTTPStatus.OK
+    assert payload["paths"]["svg"].endswith("subgraph.svg")
+    assert payload["paths"]["dot"].endswith("subgraph.dot")
+    assert payload["mlir"]["available"]
+    assert any(artifact["stage"] == "lowered_affine" for artifact in payload["mlir"]["artifacts"])
+    assert payload["dependence"]["native_json"].endswith("native_dependence.json")
+    assert payload["evidence"]["pattern"] == "FFN_INTERMEDIATE_CHAIN"
+    assert payload["evidence"]["evidence_tier"] == "native_mlir_dependence_evidence"
+
+
+def test_evidence_artifact_map_has_canonical_examples(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+
+    status, payload = module.route_api(config, "/api/evidence-artifact-map", {})
+
+    assert status == module.HTTPStatus.OK
+    assert payload["ffn_intermediate"]["subgraph"] == "12_layer_0_feed_forward"
+    assert payload["attention_value_path"]["model"] == "bert-base-uncased"
+    assert payload["qk_score_blocker"]["subgraph"] == "05_layer_0_attention_score_matmul"

@@ -1,6 +1,6 @@
-import { Download, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import type { SubgraphDetailResponse } from '../types';
+import { ArtifactBundleViewer } from './ArtifactBundleViewer';
 import { EvidencePanel } from './EvidencePanel';
 import { MarkdownBlock } from './MarkdownBlock';
 import { PlanPanel } from './PlanPanel';
@@ -9,7 +9,14 @@ import { ValidationPanel } from './ValidationPanel';
 
 const tabs = ['Summary', 'Explanation', 'Primitive Ops', 'Op Semantics', 'Region Semantics', 'Ranking', 'Plan', 'Validation', 'Artifacts'];
 
-export function SubgraphDetail({ detail }: { detail?: SubgraphDetailResponse }) {
+interface Props {
+  detail?: SubgraphDetailResponse;
+  model?: string;
+  layer?: number;
+  subgraph?: string;
+}
+
+export function SubgraphDetail({ detail, model, layer, subgraph }: Props) {
   const [tab, setTab] = useState('Summary');
   if (!detail) {
     return (
@@ -41,12 +48,12 @@ export function SubgraphDetail({ detail }: { detail?: SubgraphDetailResponse }) 
           </button>
         ))}
       </div>
-      <div className="tab-body">{renderTab(tab, detail)}</div>
+      <div className="tab-body">{renderTab(tab, detail, model, layer, subgraph)}</div>
     </section>
   );
 }
 
-function renderTab(tab: string, detail: SubgraphDetailResponse) {
+function renderTab(tab: string, detail: SubgraphDetailResponse, model?: string, layer?: number, subgraph?: string) {
   const analysis = detail.analysis ?? {};
   if (tab === 'Summary') {
     return (
@@ -69,30 +76,8 @@ function renderTab(tab: string, detail: SubgraphDetailResponse) {
   if (tab === 'Ranking') return <EvidencePanel title="Ranking evidence" rows={analysis.local_ranking ?? []} columns={['candidate_kind', 'pruning_class', 'rank_score', 'confidence', 'target_dimension', 'reason']} />;
   if (tab === 'Plan') return <PlanPanel plans={analysis.local_plans ?? []} />;
   if (tab === 'Validation') return <ValidationPanel validations={analysis.local_validations ?? []} />;
-  return <Artifacts artifacts={detail.artifact_paths ?? {}} />;
-}
-
-function Artifacts({ artifacts }: { artifacts: Record<string, { path: string; url: string }> }) {
-  return (
-    <div className="stack">
-      {artifacts.svg ? (
-        <div className="svg-preview">
-          <img src={artifacts.svg.url} alt="Subgraph SVG" />
-        </div>
-      ) : (
-        <p className="muted">No SVG preview available.</p>
-      )}
-      {Object.entries(artifacts).map(([kind, artifact]) => (
-        <div className="artifact-row" key={kind}>
-          <strong>{kind.toUpperCase()}</strong>
-          <code>{artifact.path}</code>
-          <a href={artifact.url} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Open</a>
-          <a href={artifact.url} download><Download size={16} /> Download</a>
-        </div>
-      ))}
-      {artifacts.onnx ? <p className="muted">Netron command: <code>netron {artifacts.onnx.path}</code></p> : null}
-    </div>
-  );
+  if (!model || layer === undefined || !subgraph) return <p className="muted">Select a subgraph to inspect its artifact bundle.</p>;
+  return <ArtifactBundleViewer model={model} layer={layer} subgraph={subgraph} fallbackArtifacts={detail.artifact_paths ?? {}} />;
 }
 
 function Small({ label, value }: { label: string; value: number }) {

@@ -268,6 +268,8 @@ reports/final/*
 reports/opt_ffn_native_diagnosis/*
 !reports/opt_ffn_native_diagnosis/.gitkeep
 reports/mlir_evidence_coverage_opt_ffn_native_diagnosis/
+reports/ui_artifact_index/*
+!reports/ui_artifact_index/.gitkeep
 artifacts/attention_value_path_subgraphs/
 artifacts/opt_ffn_native_subgraphs/
 experimental/mlir_axis_bridge/native/build/

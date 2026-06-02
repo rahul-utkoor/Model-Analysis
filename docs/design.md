@@ -837,3 +837,9 @@ The `Evidence Trace` workspace adds a concrete pattern laboratory beneath the co
 - QK score-contraction blocking
 
 Each timeline step updates graph node and edge state without executing a model. The visualization is an explanatory projection of static analysis facts, not a pruning runtime.
+
+## ONNX Graph and MLIR Code Viewers
+
+The React explorer now joins each selected local subgraph with its generated artifact bundle. The Models workspace and Evidence Trace workspace can embed the ONNX graph SVG, show DOT source, load emitted ONNX-dialect and lowered MLIR text, inspect native or Python dependence JSON, and display the local pattern, axis relation, evidence tier, and DFA verdict.
+
+The backend remains read-only. It discovers already-generated artifacts through path-safe APIs and never invokes ONNX-MLIR from an HTTP request. `scripts/build_ui_mlir_artifact_index.py` can generate an optional offline inventory for inspection.

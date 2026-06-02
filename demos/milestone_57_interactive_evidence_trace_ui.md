@@ -24,7 +24,8 @@ Recommended walkthrough:
 3. FFN intermediate propagation
 4. Attention value-path propagation
 5. QK score blocker
-6. Models
-7. Reports
+6. Real Artifact panel
+7. Models
+8. Reports
 
 This demo visualizes generated static evidence only. It does not execute pruning, mutate model weights, or evaluate accuracy.
