@@ -20,7 +20,17 @@ from urllib.parse import parse_qs, quote, unquote, urlencode, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_TEXT_SUFFIXES = {".md", ".json", ".csv"}
 ARTIFACT_TEXT_SUFFIXES = {".mlir", ".dot", ".json", ".md", ".txt", ".csv"}
-MAX_ARTIFACT_TEXT_BYTES = 1024 * 1024
+MAX_ARTIFACT_TEXT_BYTES = 3 * 1024 * 1024
+MAX_FOCUSED_CONTEXT_LINE_CHARS = 4000
+FOCUS_TERMS = {
+    "affine": ["affine.for", "affine.load", "affine.store"],
+    "loops": ["affine.for", "scf.for"],
+    "loads": ["affine.load", "memref.load"],
+    "stores": ["affine.store", "memref.store"],
+    "matmul": ["linalg.matmul", "krnl.matmul", "onnx.MatMul", "onnx.Gemm"],
+    "all": ["affine.for", "affine.load", "affine.store", "scf.for", "memref.load", "memref.store", "linalg.matmul", "krnl.matmul", "onnx.MatMul", "onnx.Gemm"],
+}
+FALLBACK_FOCUS_TERMS = ["krnl.", "scf.for", "linalg.", "onnx.MatMul", "onnx.Gemm"]
 
 
 @dataclass
@@ -634,8 +644,13 @@ def relative_to_root(config: ServerConfig, path: Path) -> str:
     return str(path.resolve().relative_to(config.root.resolve()))
 
 
-def artifact_text_url(config: ServerConfig, path: Path) -> str:
-    return "/api/artifact-text?" + urlencode({"path": relative_to_root(config, path)})
+def artifact_text_url(config: ServerConfig, path: Path, focus: str | None = None, context: int | None = None) -> str:
+    params: dict[str, Any] = {"path": relative_to_root(config, path)}
+    if focus:
+        params["focus"] = focus
+    if context is not None:
+        params["context"] = context
+    return "/api/artifact-text?" + urlencode(params)
 
 
 def resolve_artifact_text_path(config: ServerConfig, value: str) -> Path | None:
@@ -652,25 +667,123 @@ def resolve_artifact_text_path(config: ServerConfig, value: str) -> Path | None:
     return target if target.is_file() else None
 
 
-def artifact_text_payload(config: ServerConfig, value: str) -> dict[str, Any] | None:
-    path = resolve_artifact_text_path(config, value)
-    if not path:
-        return None
-    size_bytes = path.stat().st_size
-    text = path.read_bytes()[:MAX_ARTIFACT_TEXT_BYTES].decode("utf-8", errors="replace")
-    language_by_suffix = {
+def _detect_code_language(path: Path) -> str:
+    return {
         ".mlir": "mlir",
         ".dot": "dot",
         ".json": "json",
         ".md": "markdown",
         ".csv": "csv",
-    }
+    }.get(path.suffix, "text")
+
+
+def _read_text_artifact_safe(path: Path, max_bytes: int) -> tuple[str, bool, int, list[str]]:
+    size_bytes = path.stat().st_size
+    truncated = size_bytes > max_bytes
+    text = path.read_bytes()[:max_bytes].decode("utf-8", errors="replace")
+    warnings = [f"Artifact exceeds {max_bytes} bytes; focused search covers the returned prefix only."] if truncated else []
+    return text, truncated, size_bytes, warnings
+
+
+def _read_focused_lines_safe(path: Path) -> tuple[list[str], bool, int, list[str]]:
+    lines: list[str] = []
+    abbreviated = False
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for raw_line in handle:
+            line = raw_line.rstrip("\n")
+            if len(line) > MAX_FOCUSED_CONTEXT_LINE_CHARS:
+                abbreviated = True
+                line = f"{line[:MAX_FOCUSED_CONTEXT_LINE_CHARS]} ... [oversized line abbreviated]"
+            lines.append(line)
+    warnings = ["Oversized MLIR constant lines were abbreviated so loop/access regions remain visible."] if abbreviated else []
+    return lines, abbreviated, path.stat().st_size, warnings
+
+
+def _find_focus_matches(text: str, focus: str) -> list[dict[str, Any]]:
+    terms = FOCUS_TERMS.get(focus, FOCUS_TERMS["all"])
+    matches: list[dict[str, Any]] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        for kind in terms:
+            if kind in line:
+                matches.append({"line_no": line_no, "kind": kind, "text": line})
+                break
+    return matches
+
+
+def _extract_context_sections(lines: list[str], matches: list[dict[str, Any]], context: int) -> list[dict[str, Any]]:
+    ranges: list[tuple[int, int]] = []
+    for match in matches:
+        start = max(1, match["line_no"] - context)
+        end = min(len(lines), match["line_no"] + context)
+        if ranges and start <= ranges[-1][1] + 1:
+            ranges[-1] = (ranges[-1][0], max(ranges[-1][1], end))
+        else:
+            ranges.append((start, end))
+    sections: list[dict[str, Any]] = []
+    for start, end in ranges:
+        section_matches = [match for match in matches if start <= match["line_no"] <= end]
+        first = section_matches[0]
+        sections.append(
+            {
+                "title": f"{first['kind']} around line {first['line_no']}",
+                "start_line": start,
+                "end_line": end,
+                "text": "\n".join(lines[start - 1 : end]),
+                "match_lines": [match["line_no"] for match in section_matches],
+            }
+        )
+    return sections
+
+
+def _bounded_int(value: str | None, default: int, minimum: int, maximum: int) -> int:
+    try:
+        return min(maximum, max(minimum, int(value or default)))
+    except ValueError:
+        return default
+
+
+def artifact_text_payload(config: ServerConfig, value: str, focus: str | None = None, context: int = 20, max_bytes: int = MAX_ARTIFACT_TEXT_BYTES) -> dict[str, Any] | None:
+    path = resolve_artifact_text_path(config, value)
+    if not path:
+        return None
+    requested_focus = focus if focus in FOCUS_TERMS else None
+    if requested_focus:
+        lines, truncated, size_bytes, warnings = _read_focused_lines_safe(path)
+        text = "\n".join(lines)
+    else:
+        text, truncated, size_bytes, warnings = _read_text_artifact_safe(path, max_bytes)
+        lines = text.splitlines()
+        if truncated:
+            with path.open("r", encoding="utf-8", errors="replace") as handle:
+                line_count = sum(1 for _ in handle)
+        else:
+            line_count = len(lines)
+    matches: list[dict[str, Any]] = []
+    sections: list[dict[str, Any]] = []
+    if requested_focus:
+        matches = _find_focus_matches(text, requested_focus)
+        if requested_focus == "affine" and not matches:
+            warnings.append("No affine.for/affine.load/affine.store found in this artifact.")
+            matches = [
+                {"line_no": line_no, "kind": kind, "text": line}
+                for line_no, line in enumerate(lines, start=1)
+                for kind in FALLBACK_FOCUS_TERMS
+                if kind in line
+            ]
+            if matches:
+                warnings.append("Showing fallback high-level or alternate loop operations.")
+        sections = _extract_context_sections(lines, matches, context)
     return {
         "path": relative_to_root(config, path),
-        "language": language_by_suffix.get(path.suffix, "text"),
-        "text": text,
-        "truncated": size_bytes > MAX_ARTIFACT_TEXT_BYTES,
+        "language": _detect_code_language(path),
+        "text": "\n\n".join(section["text"] for section in sections) if requested_focus else text,
+        "truncated": truncated,
         "size_bytes": size_bytes,
+        "line_count": len(lines) if requested_focus else line_count,
+        "focus": requested_focus or "all",
+        "matches": matches,
+        "sections": sections,
+        "warnings": warnings,
     }
 
 
@@ -749,10 +862,7 @@ def discover_mlir_case_dirs(config: ServerConfig, model: str, layer: int, node: 
 
 
 def dialect_hints(path: Path) -> list[str]:
-    text = read_text(path)
-    return [
-        hint
-        for hint in [
+    hints = [
             "onnx.",
             "krnl.",
             "linalg.",
@@ -762,9 +872,36 @@ def dialect_hints(path: Path) -> list[str]:
             "affine.store",
             "memref.load",
             "memref.store",
-        ]
-        if hint in text
     ]
+    found: set[str] = set()
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            found.update(hint for hint in hints if hint in line)
+    return [hint for hint in hints if hint in found]
+
+
+def mlir_interesting_summary(path: Path) -> dict[str, Any]:
+    counts = {term: 0 for term in FOCUS_TERMS["all"]}
+    line_count = 0
+    first_structural_line: int | None = None
+    first_fallback_line: int | None = None
+    structural_terms = ["affine.for", "affine.load", "affine.store", "scf.for", "memref.load", "memref.store", "linalg.matmul", "krnl.matmul"]
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line_count, line in enumerate(handle, start=1):
+            matched = False
+            for term in FOCUS_TERMS["all"]:
+                occurrences = line.count(term)
+                counts[term] += occurrences
+                matched = matched or bool(occurrences)
+            if matched and first_fallback_line is None:
+                first_fallback_line = line_count
+            if first_structural_line is None and any(term in line for term in structural_terms):
+                first_structural_line = line_count
+    return {
+        "line_count": line_count,
+        "interesting_counts": counts,
+        "first_interesting_line": first_structural_line or first_fallback_line,
+    }
 
 
 def mlir_stage(path: Path) -> str:
@@ -786,14 +923,14 @@ def discover_mlir_bundle(config: ServerConfig, model: str, layer: int, node: str
             if resolved in seen_mlir:
                 continue
             seen_mlir.add(resolved)
-            artifacts.append(
-                {
-                    "stage": mlir_stage(path),
-                    "path": relative_to_root(config, path),
-                    "text_url": artifact_text_url(config, path),
-                    "dialect_hints": dialect_hints(path),
-                }
-            )
+            artifacts.append({
+                "stage": mlir_stage(path),
+                "path": relative_to_root(config, path),
+                "text_url": artifact_text_url(config, path),
+                "focused_text_url": artifact_text_url(config, path, focus="affine", context=30),
+                "dialect_hints": dialect_hints(path),
+                **mlir_interesting_summary(path),
+            })
         if not native_json:
             native_json = next(iter(sorted(case_dir.rglob("*native_dependence*.json"))), None)
         if not python_json:
@@ -991,7 +1128,13 @@ def route_api(config: ServerConfig, path: str, query: dict[str, list[str]]) -> t
     if path == "/api/case-studies":
         return HTTPStatus.OK, case_studies(config)
     if path == "/api/artifact-text":
-        payload = artifact_text_payload(config, query.get("path", [""])[0])
+        payload = artifact_text_payload(
+            config,
+            query.get("path", [""])[0],
+            focus=query.get("focus", [None])[0],
+            context=_bounded_int(query.get("context", [None])[0], default=20, minimum=0, maximum=200),
+            max_bytes=_bounded_int(query.get("max_bytes", [None])[0], default=MAX_ARTIFACT_TEXT_BYTES, minimum=1024, maximum=MAX_ARTIFACT_TEXT_BYTES),
+        )
         return (HTTPStatus.OK, payload) if payload else (HTTPStatus.BAD_REQUEST, {"error": "invalid artifact path"})
     if path == "/api/artifact-bundle":
         model = query.get("model", [""])[0]

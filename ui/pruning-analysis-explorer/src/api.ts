@@ -37,7 +37,13 @@ export const api = {
     const params = new URLSearchParams({ model, layer: String(layer), subgraph });
     return getJson<ArtifactBundle>(`/api/artifact-bundle?${params.toString()}`);
   },
-  artifactText: (path: string) => getJson<ArtifactTextResponse>(`/api/artifact-text?path=${encodeURIComponent(path)}`),
+  artifactText: (path: string, options?: { focus?: string; context?: number; maxBytes?: number }) => {
+    const params = new URLSearchParams({ path });
+    if (options?.focus) params.set('focus', options.focus);
+    if (options?.context !== undefined) params.set('context', String(options.context));
+    if (options?.maxBytes !== undefined) params.set('max_bytes', String(options.maxBytes));
+    return getJson<ArtifactTextResponse>(`/api/artifact-text?${params.toString()}`);
+  },
   caseStudies: () => getJson<CaseStudiesResponse>('/api/case-studies'),
   reportText: (path: string) => getJson<ReportTextResponse>(`/api/report-text?path=${encodeURIComponent(path)}`),
   model: (modelId: string) => getJson<ModelDetail>(`/api/models/${encodeURIComponent(modelId)}`),

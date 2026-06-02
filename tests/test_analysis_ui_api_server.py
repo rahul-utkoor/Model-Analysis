@@ -297,6 +297,41 @@ def test_artifact_text_reads_safe_mlir_and_rejects_traversal(tmp_path: Path) -> 
     assert payload["error"] == "invalid artifact path"
 
 
+def test_artifact_text_focus_extracts_affine_section(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+    mlir_path = "reports/mlir_evidence_coverage_bert_24_plan/artifacts/bert_layer0_mlp/mlir_artifacts/subgraph_lowered.onnx.mlir"
+
+    status, payload = module.route_api(
+        config,
+        "/api/artifact-text",
+        {"path": [mlir_path], "focus": ["affine"], "context": ["2"]},
+    )
+
+    assert status == module.HTTPStatus.OK
+    assert payload["sections"]
+    assert {match["kind"] for match in payload["matches"]} >= {"affine.for", "affine.load", "affine.store"}
+    assert "affine.for" in payload["text"]
+    assert payload["sections"][0]["start_line"] <= payload["matches"][0]["line_no"]
+
+
+def test_artifact_text_focus_falls_back_to_onnx_gemm(tmp_path: Path) -> None:
+    module = load_server_module()
+    config = make_tree(tmp_path)
+    mlir_path = "reports/mlir_evidence_coverage_bert_24_plan/artifacts/bert_layer0_mlp/mlir_artifacts/subgraph_onnx.onnx.mlir"
+
+    status, payload = module.route_api(
+        config,
+        "/api/artifact-text",
+        {"path": [mlir_path], "focus": ["affine"], "context": ["1"]},
+    )
+
+    assert status == module.HTTPStatus.OK
+    assert payload["sections"]
+    assert payload["matches"][0]["kind"] == "onnx.MatMul"
+    assert any("No affine.for" in warning for warning in payload["warnings"])
+
+
 def test_artifact_bundle_discovers_graph_mlir_and_dependence_files(tmp_path: Path) -> None:
     module = load_server_module()
     config = make_tree(tmp_path)
@@ -315,6 +350,12 @@ def test_artifact_bundle_discovers_graph_mlir_and_dependence_files(tmp_path: Pat
     assert payload["dependence"]["native_json"].endswith("native_dependence.json")
     assert payload["evidence"]["pattern"] == "FFN_INTERMEDIATE_CHAIN"
     assert payload["evidence"]["evidence_tier"] == "native_mlir_dependence_evidence"
+    lowered = next(artifact for artifact in payload["mlir"]["artifacts"] if artifact["stage"] == "lowered_affine")
+    assert lowered["interesting_counts"]["affine.for"] == 1
+    assert lowered["interesting_counts"]["affine.load"] == 1
+    assert lowered["interesting_counts"]["affine.store"] == 1
+    assert lowered["first_interesting_line"] == 1
+    assert "focus=affine" in lowered["focused_text_url"]
 
 
 def test_evidence_artifact_map_has_canonical_examples(tmp_path: Path) -> None:

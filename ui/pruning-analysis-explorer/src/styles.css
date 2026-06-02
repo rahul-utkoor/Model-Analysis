@@ -1899,15 +1899,135 @@ mark {
 }
 
 .code-block code {
-  display: block;
+  display: grid;
+  grid-template-columns: 52px minmax(max-content, 1fr);
   min-height: 1.52em;
 }
 
 .code-line-highlight {
-  margin: 0 -12px;
-  padding: 0 12px;
   background: #e6f3ef;
   color: #0e5f4f;
+}
+
+.code-line-search-hit {
+  box-shadow: inset 3px 0 #d89b42;
+  background: #fff2ce;
+}
+
+.code-line-number {
+  padding-right: 12px;
+  color: #87939a;
+  text-align: right;
+  user-select: none;
+}
+
+.code-line-text {
+  white-space: pre;
+}
+
+.mlir-view-banner {
+  border-left: 3px solid #4d9c82;
+  padding: 8px 10px;
+  background: #edf7f3;
+  color: #125a49;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.mlir-artifact-selector small {
+  display: block;
+  margin-top: 2px;
+  color: #7c8a91;
+  font-size: 0.68rem;
+}
+
+.mlir-summary-badges,
+.mlir-jump-row,
+.mlir-toolbar,
+.segmented-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.mlir-summary-badges span {
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #edf7f3;
+  color: #146b58;
+  font-size: 0.75rem;
+}
+
+.mlir-toolbar {
+  justify-content: space-between;
+}
+
+.segmented-control {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #d3dddf;
+  border-radius: 5px;
+}
+
+.segmented-control button,
+.mlir-jump-row button {
+  border: 0;
+  padding: 7px 9px;
+  background: #f7f9f8;
+  color: #52616b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.segmented-control button.active {
+  background: #16735d;
+  color: #fff;
+}
+
+.mlir-jump-row button {
+  border: 1px solid #d3dddf;
+  border-radius: 5px;
+}
+
+.mlir-jump-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.mlir-toolbar input {
+  min-width: min(100%, 270px);
+  border: 1px solid #d3dddf;
+  border-radius: 5px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #26363d;
+}
+
+.mlir-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.mlir-section {
+  display: grid;
+  gap: 7px;
+}
+
+.mlir-section-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: #32444d;
+  font-size: 0.88rem;
+}
+
+.mlir-section-title span {
+  color: #7c8a91;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .dialect-badges span,

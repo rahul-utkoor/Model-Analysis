@@ -1257,3 +1257,18 @@ Extended the read-only UI with:
 - An optional offline UI artifact index generator
 
 This is visualization and reporting only. HTTP requests never lower ONNX, execute pruning, mutate weights, or evaluate accuracy.
+
+## Milestone 59: Smart MLIR Loopnest Viewer
+
+Status: complete.
+
+Improved generated MLIR inspection with:
+
+- Focused `/api/artifact-text` extraction for affine, loop, load, store, and MatMul regions
+- Line-numbered context sections plus explicit high-level fallback warnings
+- Per-artifact loop/access counts and first-interesting-line metadata
+- Richest-artifact selection and focused-loop default mode in React
+- Jump controls, search highlighting, full-file toggle, and numbered code lines
+- A focused FFN walkthrough demo
+
+The UI remains read-only visualization. It does not invoke ONNX-MLIR from HTTP, execute pruning, mutate weights, or evaluate accuracy.

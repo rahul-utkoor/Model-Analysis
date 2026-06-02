@@ -256,13 +256,32 @@ export interface ArtifactTextResponse {
   text: string;
   truncated: boolean;
   size_bytes: number;
+  line_count: number;
+  focus: string;
+  matches: Array<{
+    line_no: number;
+    kind: string;
+    text: string;
+  }>;
+  sections: Array<{
+    title: string;
+    start_line: number;
+    end_line: number;
+    text: string;
+    match_lines: number[];
+  }>;
+  warnings: string[];
 }
 
 export interface MlirArtifact {
   stage: string;
   path: string;
   text_url: string;
+  focused_text_url: string;
   dialect_hints: string[];
+  line_count: number;
+  interesting_counts: Record<string, number>;
+  first_interesting_line?: number;
 }
 
 export interface ArtifactBundle {

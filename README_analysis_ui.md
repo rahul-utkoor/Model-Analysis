@@ -51,6 +51,7 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 - Pipeline flow from dead axes to DFA fixed-point proofs
 - Evidence Trace laboratory with graph transitions, affine equations, axis states, and DFA timeline controls
 - Real artifact bundles joining ONNX graph previews, DOT text, generated MLIR stages, native dependence JSON, and local proof summaries
+- Smart MLIR loopnest views that default to affine/load/store context regions with original line numbers, operation counts, search, and full-file fallback
 - All-model `108 / 108` proof summary
 - BERT, fused-QKV, OPT diagnosis, attention value-path, and QK blocker case studies
 - Read-only final, formalization, methodology, and claims reports
@@ -74,7 +75,7 @@ The Vite dev server proxies `/api` and `/artifact` requests to `http://127.0.0.1
 3. Switch the trace panels between pattern matching, MLIR evidence, axis state, and verdict.
 4. Use `Case Studies` for the BERT `24 / 24`, all-model `108 / 108`, fused-QKV, and OPT diagnosis stories.
 5. In `Evidence Trace`, open the real artifact panel to connect the explanatory trace to generated ONNX and MLIR files.
-6. Open `Models`, choose `bert-base-uncased`, select `Layer 0`, and use the `Artifacts` tab to inspect the embedded graph, DOT, MLIR, dependence, and evidence panels.
+6. Open `Models`, choose `bert-base-uncased`, select `Layer 0`, and use the `Artifacts` tab to inspect the embedded graph, DOT, MLIR, dependence, and evidence panels. In `MLIR`, select `lowered affine`; the focused view jumps to loop/access regions instead of the file header.
 7. Use `Reports` to preview the final report, claims, and formalization outlines.
 
 ## Optional Artifact Index
@@ -106,4 +107,4 @@ The server exposes:
 
 `/api/report-text` accepts only `.md`, `.json`, and `.csv` files beneath `reports/`.
 
-`/api/artifact-text` accepts repository-confined `.mlir`, `.dot`, `.json`, `.md`, `.txt`, and `.csv` files and caps returned content at 1 MiB.
+`/api/artifact-text` accepts repository-confined `.mlir`, `.dot`, `.json`, `.md`, `.txt`, and `.csv` files and caps returned content at 3 MiB. For MLIR, add `focus=affine|loops|loads|stores|matmul|all` and `context=<lines>` to receive matched operations and merged context sections.

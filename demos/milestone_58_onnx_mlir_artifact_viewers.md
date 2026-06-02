@@ -24,6 +24,9 @@ Recommended walkthrough:
 3. Real Artifact
 4. ONNX Graph
 5. MLIR
+   - Select `lowered affine`.
+   - The default focused view jumps to affine loop/access regions instead of showing only the file header.
+   - Toggle `Full file` when raw generated context is needed.
 6. Dependence
 7. Models -> BERT layer 0 -> Feed Forward -> Artifacts
 8. Reports -> Final report

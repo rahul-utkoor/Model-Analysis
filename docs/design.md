@@ -843,3 +843,9 @@ Each timeline step updates graph node and edge state without executing a model. 
 The React explorer now joins each selected local subgraph with its generated artifact bundle. The Models workspace and Evidence Trace workspace can embed the ONNX graph SVG, show DOT source, load emitted ONNX-dialect and lowered MLIR text, inspect native or Python dependence JSON, and display the local pattern, axis relation, evidence tier, and DFA verdict.
 
 The backend remains read-only. It discovers already-generated artifacts through path-safe APIs and never invokes ONNX-MLIR from an HTTP request. `scripts/build_ui_mlir_artifact_index.py` can generate an optional offline inventory for inspection.
+
+## Smart MLIR Loopnest Viewer
+
+The MLIR viewer defaults to focused compiler regions rather than the start of a generated file. The backend extracts affine, SCF, memref, Krnl, Linalg, and ONNX MatMul/Gemm matches with line-numbered context windows. Artifact bundles summarize operation counts and the first interesting line so the React UI can choose the richest lowered artifact and jump directly to loop/access evidence.
+
+If affine constructs are absent, the viewer states that explicitly and surfaces high-level fallback operations. The full generated file remains available through a toggle. This is a presentation improvement over existing read-only artifacts, not a compiler invocation path.
