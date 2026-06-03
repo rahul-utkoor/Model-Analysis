@@ -849,3 +849,11 @@ The backend remains read-only. It discovers already-generated artifacts through 
 The MLIR viewer defaults to focused compiler regions rather than the start of a generated file. The backend extracts affine, SCF, memref, Krnl, Linalg, and ONNX MatMul/Gemm matches with line-numbered context windows. Artifact bundles summarize operation counts and the first interesting line so the React UI can choose the richest lowered artifact and jump directly to loop/access evidence.
 
 If affine constructs are absent, the viewer states that explicitly and surfaces high-level fallback operations. The full generated file remains available through a toggle. This is a presentation improvement over existing read-only artifacts, not a compiler invocation path.
+
+## Strict MLIR-Derived ONNX Axis-Semantics Exporter
+
+`scripts/annotate_onnx_axis_semantics.py` emits debug-only ONNX annotations, DOT/SVG graph views, MLIR evidence artifacts, and a sidecar JSON for selected local ONNX evidence units. The sidecar is the source of truth.
+
+Semantic classes are derived only from MLIR access/dependence evidence. ONNX op types, node names, and graph-local motifs may be recorded for display or used to form an evidence unit, but they do not prove semantics. If ONNX-MLIR is unavailable, lowering fails, or emitted MLIR lacks access/dependence relations, the exporter records `UNKNOWN`, `MLIR_LOWERING_FAILED`, `MLIR_HIGH_LEVEL_INSUFFICIENT`, or `NO_ACCESS_EVIDENCE` with an explicit blocker.
+
+The original ONNX file is never modified. The annotated ONNX is a separate visualization artifact and does not change graph computation.

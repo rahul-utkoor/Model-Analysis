@@ -270,8 +270,12 @@ reports/opt_ffn_native_diagnosis/*
 reports/mlir_evidence_coverage_opt_ffn_native_diagnosis/
 reports/ui_artifact_index/*
 !reports/ui_artifact_index/.gitkeep
+reports/onnx_axis_semantics/*
+!reports/onnx_axis_semantics/.gitkeep
 artifacts/attention_value_path_subgraphs/
 artifacts/opt_ffn_native_subgraphs/
+artifacts/annotated_onnx/*
+!artifacts/annotated_onnx/.gitkeep
 experimental/mlir_axis_bridge/native/build/
 viewer_data/
 

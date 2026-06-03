@@ -623,6 +623,50 @@ def artifact_paths(config: ServerConfig, model_safe: str, layer: int, node: str)
     return out
 
 
+def annotated_artifact_paths(config: ServerConfig, model_safe: str, layer: int, node: str) -> dict[str, dict[str, str]]:
+    """Discover optional strict axis-semantics annotation artifacts."""
+    layer_root = config.root / "artifacts" / "annotated_onnx" / model_safe / f"layer_{layer}"
+    out: dict[str, dict[str, str]] = {}
+    if layer_root.exists():
+        tokens = _artifact_match_tokens(node)
+        for ext, key in [
+            (".onnx", "annotated_onnx"),
+            (".svg", "annotated_svg"),
+            (".dot", "annotated_dot"),
+        ]:
+            matches = sorted(path for path in layer_root.glob(f"*axis_annotated{ext}") if _matches_any_token(path.name, tokens))
+            if not matches:
+                matches = sorted(layer_root.glob(f"*axis_annotated{ext}"))
+            if matches:
+                out[key] = {"path": str(matches[0]), "url": artifact_url(matches[0])}
+    semantics_root = config.root / "reports" / "onnx_axis_semantics"
+    if semantics_root.exists():
+        tokens = _artifact_match_tokens(node)
+        matches = sorted(path for path in semantics_root.glob(f"{model_safe}*layer{layer}*.json") if _matches_any_token(path.name, tokens))
+        if not matches:
+            matches = sorted(semantics_root.glob(f"{model_safe}*layer{layer}*.json"))
+        if matches:
+            out["axis_semantics_json"] = {"path": str(matches[0]), "url": artifact_url(matches[0])}
+    return out
+
+
+def _artifact_match_tokens(node: str) -> list[str]:
+    normalized = node.lower()
+    tokens = [item for item in normalized.replace("-", "_").split("_") if item]
+    if "feed" in normalized or "ffn" in normalized or "mlp" in normalized:
+        tokens.extend(["feed_forward", "ffn", "mlp"])
+    if "value" in normalized:
+        tokens.extend(["attention_value_path", "value_path"])
+    if "score" in normalized or "qk" in normalized:
+        tokens.extend(["attention_score", "qk", "score"])
+    return list(dict.fromkeys(tokens))
+
+
+def _matches_any_token(name: str, tokens: list[str]) -> bool:
+    lowered = name.lower()
+    return any(token and token in lowered for token in tokens)
+
+
 def artifact_url(path: Path) -> str:
     return "/artifact/" + quote(str(path.resolve()), safe="")
 
@@ -976,6 +1020,7 @@ def artifact_bundle(config: ServerConfig, model: str, layer: int, node: str) -> 
     paths = artifact_paths(config, model_safe, layer, node)
     if not paths:
         paths = indexed_artifact_paths(config, model_safe, layer, node)
+    paths.update({key: value for key, value in annotated_artifact_paths(config, model_safe, layer, node).items() if key not in paths})
     mlir_artifacts, native_json, python_json = discover_mlir_bundle(config, model_safe, layer, node)
     warnings: list[str] = []
     if not paths:
@@ -1083,9 +1128,11 @@ def is_allowed_file(config: ServerConfig, path: Path) -> bool:
         config.fallback_artifact_root.resolve(),
         (config.root / "artifacts" / "attention_value_path_subgraphs").resolve(),
         (config.root / "artifacts" / "opt_ffn_native_subgraphs").resolve(),
+        (config.root / "artifacts" / "annotated_onnx").resolve(),
         (config.root / "reports" / "static_coverage_study").resolve(),
         (config.root / "reports" / "rule_gap_diagnosis_compare").resolve(),
         (config.root / "reports" / "rule_gap_diagnosis").resolve(),
+        (config.root / "reports" / "onnx_axis_semantics").resolve(),
     ]
     if resolved.suffix not in {".onnx", ".svg", ".dot", ".md", ".json"}:
         return False

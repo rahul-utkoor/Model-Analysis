@@ -61,6 +61,15 @@ def make_tree(tmp_path: Path) -> object:
     onnx.write_bytes(b"onnx")
     (onnx.parent / "subgraph.dot").write_text("digraph ffn {}\n", encoding="utf-8")
     (onnx.parent / "subgraph.svg").write_text("<svg></svg>\n", encoding="utf-8")
+    annotated = root / "artifacts/annotated_onnx/bert-base-uncased/layer_0/feed_forward.axis_annotated.onnx"
+    annotated.parent.mkdir(parents=True)
+    annotated.write_bytes(b"annotated")
+    (annotated.parent / "feed_forward.axis_annotated.dot").write_text("digraph annotated {}\n", encoding="utf-8")
+    (annotated.parent / "feed_forward.axis_annotated.svg").write_text("<svg></svg>\n", encoding="utf-8")
+    write_json(
+        root / "reports/onnx_axis_semantics/bert-base-uncased_layer0_feed_forward.json",
+        {"strict_mlir_semantics": True, "semantic_counts": {"UNKNOWN": 1}},
+    )
     mlir_root = root / "reports/mlir_evidence_coverage_bert_24_plan/artifacts/bert_layer0_mlp"
     (mlir_root / "mlir_artifacts").mkdir(parents=True)
     (mlir_root / "mlir_artifacts/subgraph_onnx.onnx.mlir").write_text('%0 = "onnx.MatMul"() : () -> tensor<1xf32>\n', encoding="utf-8")
@@ -345,6 +354,9 @@ def test_artifact_bundle_discovers_graph_mlir_and_dependence_files(tmp_path: Pat
     assert status == module.HTTPStatus.OK
     assert payload["paths"]["svg"].endswith("subgraph.svg")
     assert payload["paths"]["dot"].endswith("subgraph.dot")
+    assert payload["paths"]["annotated_onnx"].endswith("feed_forward.axis_annotated.onnx")
+    assert payload["paths"]["annotated_svg"].endswith("feed_forward.axis_annotated.svg")
+    assert payload["paths"]["axis_semantics_json"].endswith("bert-base-uncased_layer0_feed_forward.json")
     assert payload["mlir"]["available"]
     assert any(artifact["stage"] == "lowered_affine" for artifact in payload["mlir"]["artifacts"])
     assert payload["dependence"]["native_json"].endswith("native_dependence.json")

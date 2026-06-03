@@ -1272,3 +1272,19 @@ Improved generated MLIR inspection with:
 - A focused FFN walkthrough demo
 
 The UI remains read-only visualization. It does not invoke ONNX-MLIR from HTTP, execute pruning, mutate weights, or evaluate accuracy.
+
+## Milestone 60: Strict MLIR-Derived Annotated ONNX Axis Semantics
+
+Status: complete.
+
+Added a debug/export pipeline for ONNX axis-semantics annotations:
+
+- `scripts/annotate_onnx_axis_semantics.py`
+- strict sidecar JSON with semantic, evidence-tier, and blocker counts
+- separate annotated ONNX output using doc-string metadata by default
+- DOT/SVG visualization for annotated evidence units
+- MLIR evidence artifact collection through the existing ONNX-MLIR bridge
+- explicit blockers for missing toolchain, lowering failure, high-level-only MLIR, or absent access/dependence relations
+- artifact-bundle awareness for annotated ONNX, annotated SVG/DOT, and axis-semantics JSON
+
+The exporter does not infer semantic classes from ONNX op type, node name, or ONNX schema fallback. Semantic claims are MLIR-derived only. The annotated ONNX is analysis metadata for visualization; graph computation is unchanged.

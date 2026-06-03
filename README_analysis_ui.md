@@ -108,3 +108,11 @@ The server exposes:
 `/api/report-text` accepts only `.md`, `.json`, and `.csv` files beneath `reports/`.
 
 `/api/artifact-text` accepts repository-confined `.mlir`, `.dot`, `.json`, `.md`, `.txt`, and `.csv` files and caps returned content at 3 MiB. For MLIR, add `focus=affine|loops|loads|stores|matmul|all` and `context=<lines>` to receive matched operations and merged context sections.
+
+If strict ONNX axis-semantics annotations have been generated, artifact bundles also expose:
+
+- annotated ONNX
+- annotated SVG/DOT
+- axis-semantics sidecar JSON
+
+These annotations are read-only visualization metadata. Semantic classes are MLIR-derived only; missing or insufficient MLIR evidence is shown as an explicit blocker instead of an ONNX-schema fallback claim.
