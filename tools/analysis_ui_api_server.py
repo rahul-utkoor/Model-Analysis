@@ -647,6 +647,9 @@ def annotated_artifact_paths(config: ServerConfig, model_safe: str, layer: int, 
             matches = sorted(semantics_root.glob(f"{model_safe}*layer{layer}*.json"))
         if matches:
             out["axis_semantics_json"] = {"path": str(matches[0]), "url": artifact_url(matches[0])}
+            leader = matches[0].with_suffix(".leaders.md")
+            if leader.exists():
+                out["axis_leader_report"] = {"path": str(leader), "url": artifact_url(leader)}
     return out
 
 
@@ -1010,6 +1013,20 @@ def evidence_summary(model: str, layer: int, node: str, native_json: Path | None
     return {"pattern": "unknown", "evidence_tier": evidence_tier, "axis_relations": [], "dfa_verdict": "unknown"}
 
 
+def axis_semantics_summary(config: ServerConfig, paths: dict[str, dict[str, str]]) -> dict[str, Any]:
+    entry = paths.get("axis_semantics_json")
+    if not entry:
+        return {}
+    path = Path(entry["path"])
+    payload = load_json(path)
+    return {
+        "semantic_counts": payload.get("semantic_counts", {}),
+        "evidence_tier_counts": payload.get("evidence_tier_counts", {}),
+        "leader_candidate_counts": payload.get("leader_candidate_counts", {}),
+        "blocker_counts": payload.get("blocker_counts", {}),
+    }
+
+
 def subgraph_title(config: ServerConfig, model: str, layer: int, node: str) -> str:
     analysis = load_json(config.report_root / safe_model_name(model) / "layers" / f"layer_{layer}" / "subgraphs" / node / "analysis.json")
     return analysis.get("display_name", node.replace("_", " ").title())
@@ -1034,6 +1051,8 @@ def artifact_bundle(config: ServerConfig, model: str, layer: int, node: str) -> 
         for key, value in [("native_json", native_json), ("python_json", python_json)]
         if value
     }
+    evidence = evidence_summary(model_safe, layer, node, native_json, mlir_artifacts)
+    evidence.update(axis_semantics_summary(config, paths))
     return {
         "model": model_safe,
         "layer": layer,
@@ -1047,7 +1066,7 @@ def artifact_bundle(config: ServerConfig, model: str, layer: int, node: str) -> 
             "python_json": relative_to_root(config, python_json) if python_json else None,
             "links": dependence_links,
         },
-        "evidence": evidence_summary(model_safe, layer, node, native_json, mlir_artifacts),
+        "evidence": evidence,
         "warnings": warnings,
     }
 

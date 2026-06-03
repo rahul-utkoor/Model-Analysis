@@ -32,6 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-native-pass", action="store_true", help="Run native MLIR dependence extraction when available.")
     parser.add_argument("--allow-no-mlir", action="store_true", help="Permit output with UNKNOWN semantics if MLIR is unavailable.")
     parser.add_argument("--annotation-mode", choices=["attributes", "doc_string", "both"], default="doc_string")
+    parser.add_argument("--doc-string-format", choices=["compact", "verbose", "minimal"], default="compact")
+    parser.add_argument("--include-verbose-onnx-attributes", action="store_true", help="Include full relations/evidence JSON as ONNX attributes.")
+    parser.add_argument("--leader-report", help="Optional Markdown report for MLIR-derived leader candidates.")
     parser.add_argument("--fallback-doc-string", action="store_true", help="Fallback to doc_string annotations if custom attributes fail ONNX checker.")
     parser.add_argument("--check-onnx", action="store_true", help="Run onnx.checker on the annotated ONNX output.")
     parser.add_argument("--model-name", help="Optional display model name for the sidecar.")
@@ -56,6 +59,9 @@ def main(argv: list[str] | None = None) -> int:
             run_native_pass=args.run_native_pass,
             allow_no_mlir=args.allow_no_mlir,
             annotation_mode=args.annotation_mode,
+            doc_string_format=args.doc_string_format,
+            include_verbose_onnx_attributes=args.include_verbose_onnx_attributes,
+            leader_report=args.leader_report,
             fallback_doc_string=args.fallback_doc_string,
             check_onnx=args.check_onnx,
             model_name=args.model_name,
@@ -72,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             "semantic_counts": payload["semantic_counts"],
             "evidence_tier_counts": payload["evidence_tier_counts"],
             "blocker_counts": payload["blocker_counts"],
+            "leader_candidate_counts": payload["leader_candidate_counts"],
             "checker": payload["checker"],
         }, indent=2))
     return 0

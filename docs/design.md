@@ -857,3 +857,9 @@ If affine constructs are absent, the viewer states that explicitly and surfaces 
 Semantic classes are derived only from MLIR access/dependence evidence. ONNX op types, node names, and graph-local motifs may be recorded for display or used to form an evidence unit, but they do not prove semantics. If ONNX-MLIR is unavailable, lowering fails, or emitted MLIR lacks access/dependence relations, the exporter records `UNKNOWN`, `MLIR_LOWERING_FAILED`, `MLIR_HIGH_LEVEL_INSUFFICIENT`, or `NO_ACCESS_EVIDENCE` with an explicit blocker.
 
 The original ONNX file is never modified. The annotated ONNX is a separate visualization artifact and does not change graph computation.
+
+## Compact ONNX Annotations and Leader Candidates
+
+Annotated ONNX node `doc_string` metadata is compact by default so graph viewers remain readable. The node-level text records only the semantic class, evidence tier, confidence, leader candidate kind, relation counts, and blocker. Full MLIR evidence, relation lists, file paths, and access summaries remain in the sidecar JSON.
+
+`src/model_analysis/onnx_axis_leaders.py` adds a first MLIR-derived leader-candidate pass. It labels nodes as positive, blocker, protected, unknown, or none based on strict relation summaries and evidence availability. This is candidate discovery only; it does not synthesize final pruning plans or infer model roles from ONNX names.

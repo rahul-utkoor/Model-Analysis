@@ -1288,3 +1288,19 @@ Added a debug/export pipeline for ONNX axis-semantics annotations:
 - artifact-bundle awareness for annotated ONNX, annotated SVG/DOT, and axis-semantics JSON
 
 The exporter does not infer semantic classes from ONNX op type, node name, or ONNX schema fallback. Semantic claims are MLIR-derived only. The annotated ONNX is analysis metadata for visualization; graph computation is unchanged.
+
+## Milestone 61: Compact ONNX Annotations and MLIR-Derived Leader Discovery
+
+Status: complete.
+
+Refined the strict annotation exporter with:
+
+- compact ONNX node `doc_string` summaries by default
+- optional `minimal` and explicitly requested `verbose` doc-string formats
+- compact ONNX attributes by default, with verbose relation/evidence attributes only behind `--include-verbose-onnx-attributes`
+- readable DOT/SVG labels with short semantic and evidence names
+- MLIR-derived leader candidates based on relation summaries, evidence tier, and blocker state
+- optional Markdown leader reports
+- artifact-bundle discovery for leader reports and sidecar count summaries
+
+The sidecar JSON remains the full source of truth. Leader candidates do not synthesize pruning plans and do not infer semantics from ONNX op type or node names.

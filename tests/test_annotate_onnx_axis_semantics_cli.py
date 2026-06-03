@@ -32,6 +32,8 @@ def test_cli_help() -> None:
     )
     assert completed.returncode == 0
     assert "--allow-no-mlir" in completed.stdout
+    assert "--doc-string-format" in completed.stdout
+    assert "--leader-report" in completed.stdout
 
 
 def test_cli_doc_string_mode_without_mlir_is_unknown(tmp_path: Path) -> None:
@@ -68,3 +70,40 @@ def test_cli_doc_string_mode_without_mlir_is_unknown(tmp_path: Path) -> None:
     assert payload["strict_mlir_semantics"] is True
     assert payload["nodes"][0]["semantic_class"] in {"UNKNOWN", "NO_ACCESS_EVIDENCE"}
     assert payload["nodes"][0]["evidence_tier"] == "NONE"
+
+
+def test_cli_leader_report_is_emitted(tmp_path: Path) -> None:
+    source = _make_relu(tmp_path / "relu.onnx")
+    output = tmp_path / "relu.axis_annotated.onnx"
+    sidecar = tmp_path / "relu.json"
+    leader_report = tmp_path / "relu.leaders.md"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/annotate_onnx_axis_semantics.py",
+            "--input",
+            str(source),
+            "--output",
+            str(output),
+            "--sidecar-json",
+            str(sidecar),
+            "--leader-report",
+            str(leader_report),
+            "--mlir-output-dir",
+            str(tmp_path / "mlir"),
+            "--onnx-mlir",
+            str(tmp_path / "missing-onnx-mlir"),
+            "--allow-no-mlir",
+            "--annotation-mode",
+            "doc_string",
+            "--doc-string-format",
+            "minimal",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert leader_report.is_file()
+    assert "MLIR-Derived Leader Candidates" in leader_report.read_text(encoding="utf-8")

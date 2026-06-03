@@ -15,6 +15,7 @@ COLOR_BY_CLASS = {
     AxisSemanticClass.MLIR_DERIVED_ELEMENTWISE_PRESERVE: "palegreen",
     AxisSemanticClass.MLIR_DERIVED_PROJECTION_EXPAND: "lightskyblue",
     AxisSemanticClass.MLIR_DERIVED_PROJECTION_CONTRACT: "plum",
+    AxisSemanticClass.MLIR_DERIVED_MATMUL_GENERIC: "lightskyblue",
     AxisSemanticClass.MLIR_DERIVED_MATMUL_ATTENTION_CONTEXT: "paleturquoise",
     AxisSemanticClass.MLIR_DERIVED_MATMUL_QK_SCORE: "lightcoral",
     AxisSemanticClass.MLIR_DERIVED_BLOCKER: "lightcoral",
@@ -25,6 +26,32 @@ COLOR_BY_CLASS = {
     AxisSemanticClass.MLIR_LOWERING_FAILED: "firebrick1",
     AxisSemanticClass.UNKNOWN: "gray92",
 }
+
+
+def short_semantic_class_name(cls: AxisSemanticClass | str) -> str:
+    value = cls.value if isinstance(cls, AxisSemanticClass) else str(cls)
+    return {
+        AxisSemanticClass.MLIR_DERIVED_MATMUL_GENERIC.value: "MatMul",
+        AxisSemanticClass.MLIR_DERIVED_ELEMENTWISE_PRESERVE.value: "Preserve",
+        AxisSemanticClass.MLIR_DERIVED_INDEX_PRESERVING.value: "Preserve",
+        AxisSemanticClass.MLIR_DERIVED_REDUCTION.value: "Reduce",
+        AxisSemanticClass.MLIR_DERIVED_BLOCKER.value: "Blocker",
+        AxisSemanticClass.MLIR_DERIVED_MATMUL_QK_SCORE.value: "QK blocker",
+        AxisSemanticClass.MLIR_HIGH_LEVEL_INSUFFICIENT.value: "MLIR insufficient",
+        AxisSemanticClass.MLIR_LOWERING_FAILED.value: "Lowering failed",
+        AxisSemanticClass.NO_ACCESS_EVIDENCE.value: "No access evidence",
+        AxisSemanticClass.UNKNOWN.value: "Unknown",
+    }.get(value, value.removeprefix("MLIR_DERIVED_").replace("_", " ").title())
+
+
+def short_evidence_tier_name(value: str) -> str:
+    return {
+        "NATIVE_MLIR_DEPENDENCE": "native",
+        "PYTHON_MLIR_ACCESS": "python-access",
+        "HIGH_LEVEL_MLIR_ONLY": "high-level",
+        "MLIR_LOWERING_FAILED": "lowering-failed",
+        "NONE": "none",
+    }.get(value, value.lower().replace("_", "-"))
 
 
 def write_annotated_dot(model: Any, nodes: list[NodeAxisSemantics], output_path: str | Path) -> Path:
@@ -48,12 +75,11 @@ def write_annotated_dot(model: Any, nodes: list[NodeAxisSemantics], output_path:
         color = COLOR_BY_CLASS.get(semantic.semantic_class if semantic else AxisSemanticClass.UNKNOWN, "gray92")
         label = "\\n".join(
             [
-                _escape_dot(node_name),
+                _escape_dot(_short_node_name(node_name)),
                 _escape_dot(node.op_type),
-                _escape_dot(semantic.semantic_class.value if semantic else AxisSemanticClass.UNKNOWN.value),
-                _escape_dot(semantic.evidence_tier.value if semantic else "NONE"),
-                _escape_dot(semantic.mlir_evidence.blocker_kind.value if semantic else "unknown"),
-                _escape_dot(semantic.leader_candidate_kind if semantic else "unknown"),
+                _escape_dot(short_semantic_class_name(semantic.semantic_class if semantic else AxisSemanticClass.UNKNOWN)),
+                _escape_dot(short_evidence_tier_name(semantic.evidence_tier.value if semantic else "NONE")),
+                _escape_dot(f"leader={semantic.leader_candidate_kind if semantic else 'unknown'}"),
             ]
         )
         lines.append(f'  "{_escape_dot(node_name)}" [label="{label}" fillcolor="{color}"];')
@@ -83,3 +109,9 @@ def render_svg_from_dot(dot_path: str | Path, svg_path: str | Path) -> tuple[Pat
 
 def _escape_dot(value: str) -> str:
     return str(value).replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _short_node_name(value: str, limit: int = 42) -> str:
+    if len(value) <= limit:
+        return value
+    return "..." + value[-(limit - 3) :]

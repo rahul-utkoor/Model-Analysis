@@ -68,8 +68,15 @@ def make_tree(tmp_path: Path) -> object:
     (annotated.parent / "feed_forward.axis_annotated.svg").write_text("<svg></svg>\n", encoding="utf-8")
     write_json(
         root / "reports/onnx_axis_semantics/bert-base-uncased_layer0_feed_forward.json",
-        {"strict_mlir_semantics": True, "semantic_counts": {"UNKNOWN": 1}},
+        {
+            "strict_mlir_semantics": True,
+            "semantic_counts": {"UNKNOWN": 1},
+            "leader_candidate_counts": {"unknown": 1},
+            "evidence_tier_counts": {"NONE": 1},
+            "blocker_counts": {"mlir_toolchain_missing": 1},
+        },
     )
+    (root / "reports/onnx_axis_semantics/bert-base-uncased_layer0_feed_forward.leaders.md").write_text("# Leaders\n", encoding="utf-8")
     mlir_root = root / "reports/mlir_evidence_coverage_bert_24_plan/artifacts/bert_layer0_mlp"
     (mlir_root / "mlir_artifacts").mkdir(parents=True)
     (mlir_root / "mlir_artifacts/subgraph_onnx.onnx.mlir").write_text('%0 = "onnx.MatMul"() : () -> tensor<1xf32>\n', encoding="utf-8")
@@ -357,11 +364,14 @@ def test_artifact_bundle_discovers_graph_mlir_and_dependence_files(tmp_path: Pat
     assert payload["paths"]["annotated_onnx"].endswith("feed_forward.axis_annotated.onnx")
     assert payload["paths"]["annotated_svg"].endswith("feed_forward.axis_annotated.svg")
     assert payload["paths"]["axis_semantics_json"].endswith("bert-base-uncased_layer0_feed_forward.json")
+    assert payload["paths"]["axis_leader_report"].endswith("bert-base-uncased_layer0_feed_forward.leaders.md")
     assert payload["mlir"]["available"]
     assert any(artifact["stage"] == "lowered_affine" for artifact in payload["mlir"]["artifacts"])
     assert payload["dependence"]["native_json"].endswith("native_dependence.json")
     assert payload["evidence"]["pattern"] == "FFN_INTERMEDIATE_CHAIN"
     assert payload["evidence"]["evidence_tier"] == "native_mlir_dependence_evidence"
+    assert payload["evidence"]["semantic_counts"] == {"UNKNOWN": 1}
+    assert payload["evidence"]["leader_candidate_counts"] == {"unknown": 1}
     lowered = next(artifact for artifact in payload["mlir"]["artifacts"] if artifact["stage"] == "lowered_affine")
     assert lowered["interesting_counts"]["affine.for"] == 1
     assert lowered["interesting_counts"]["affine.load"] == 1

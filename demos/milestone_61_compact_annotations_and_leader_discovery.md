@@ -1,8 +1,8 @@
-# Milestone 60: Strict MLIR-Derived ONNX Axis Semantics
+# Milestone 61: Compact ONNX Annotations and Leader Discovery
 
-This demo generates debug-only ONNX axis-semantics annotations for selected local evidence units.
+This demo reruns strict MLIR-derived ONNX axis-semantics annotation with compact node metadata and a leader-candidate report.
 
-Key rule: semantic classes are derived only from MLIR access/dependence evidence. If ONNX-MLIR is missing, lowering fails, or no access relation is recovered, the sidecar records an explicit blocker rather than an ONNX op-schema fallback.
+The ONNX node `doc_string` is visualization-friendly by default. Full MLIR relation/evidence details remain in the sidecar JSON.
 
 Run:
 
@@ -13,6 +13,7 @@ Run:
   --sidecar-json reports/onnx_axis_semantics/bert-base-uncased_layer0_attention_value_path.json \
   --dot artifacts/annotated_onnx/bert-base-uncased/layer_0/attention_value_path.axis_annotated.dot \
   --svg artifacts/annotated_onnx/bert-base-uncased/layer_0/attention_value_path.axis_annotated.svg \
+  --leader-report reports/onnx_axis_semantics/bert-base-uncased_layer0_attention_value_path.leaders.md \
   --mlir-output-dir reports/onnx_axis_semantics/bert-base-uncased_layer0_attention_value_path_mlir \
   --annotation-mode doc_string \
   --doc-string-format compact \
@@ -22,11 +23,11 @@ Run:
   --verbose
 ```
 
-Outputs:
+Expected outputs:
 
-- annotated ONNX: `artifacts/annotated_onnx/.../*.axis_annotated.onnx`
-- sidecar JSON: `reports/onnx_axis_semantics/*.json`
-- DOT/SVG graph: `artifacts/annotated_onnx/.../*.dot` and `.svg`
-- MLIR evidence artifacts: `reports/onnx_axis_semantics/*_mlir/`
+- compact annotated ONNX
+- full sidecar JSON
+- readable DOT/SVG labels
+- MLIR-derived leader report
 
-The original ONNX is not modified, and no pruning is executed.
+This is annotation, visualization, and leader-candidate discovery only. It does not execute pruning.

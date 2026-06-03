@@ -9,14 +9,14 @@ from typing import Any
 
 from model_analysis.onnx_axis_semantics import (
     BlockerKind,
-    EvidenceTier,
     MlirEvidence,
     NodeAxisSemantics,
     derive_semantics_from_mlir_evidence,
 )
+from model_analysis.onnx_axis_leaders import discover_leader_candidates, write_leader_report
 from model_analysis.onnx_axis_semantics_mlir import collect_mlir_evidence_for_unit
 from model_analysis.onnx_axis_semantics_subgraphs import create_evidence_units
-from model_analysis.onnx_axis_semantics_text import render_svg_from_dot, write_annotated_dot
+from model_analysis.onnx_axis_semantics_text import render_svg_from_dot, short_evidence_tier_name, short_semantic_class_name, write_annotated_dot
 
 
 METADATA_FIELDS = (
@@ -46,6 +46,9 @@ def annotate_onnx_axis_semantics(
     run_native_pass: bool = False,
     allow_no_mlir: bool = False,
     annotation_mode: str = "doc_string",
+    doc_string_format: str = "compact",
+    include_verbose_onnx_attributes: bool = False,
+    leader_report: str | Path | None = None,
     fallback_doc_string: bool = False,
     check_onnx: bool = False,
     model_name: str | None = None,
@@ -58,6 +61,8 @@ def annotate_onnx_axis_semantics(
     sidecar = Path(sidecar_json)
     if annotation_mode not in {"attributes", "doc_string", "both"}:
         raise ValueError(f"unsupported annotation mode: {annotation_mode}")
+    if doc_string_format not in {"compact", "verbose", "minimal"}:
+        raise ValueError(f"unsupported doc string format: {doc_string_format}")
     if not input_onnx.is_file():
         raise FileNotFoundError(f"input ONNX does not exist: {input_onnx}")
 
@@ -112,8 +117,17 @@ def annotate_onnx_axis_semantics(
                 mlir_evidence=mlir_evidence,
                 axis_relations=axis_relations,
             )
-        _annotate_node(node, node_semantics, annotation_mode, helper)
         nodes.append(node_semantics)
+    leader_candidates = discover_leader_candidates(nodes)
+    for index, node in enumerate(model.graph.node):
+        _annotate_node(
+            node,
+            nodes[index],
+            annotation_mode,
+            helper,
+            doc_string_format=doc_string_format,
+            include_verbose_onnx_attributes=include_verbose_onnx_attributes,
+        )
 
     output_onnx.parent.mkdir(parents=True, exist_ok=True)
     onnx.save(model, str(output_onnx))
@@ -128,7 +142,14 @@ def annotate_onnx_axis_semantics(
             if fallback_doc_string and annotation_mode in {"attributes", "both"}:
                 model = onnx.load(str(input_onnx))
                 for index, node in enumerate(model.graph.node):
-                    _annotate_node(node, nodes[index], "doc_string", helper)
+                    _annotate_node(
+                        node,
+                        nodes[index],
+                        "doc_string",
+                        helper,
+                        doc_string_format=doc_string_format,
+                        include_verbose_onnx_attributes=False,
+                    )
                 onnx.save(model, str(output_onnx))
                 onnx.checker.check_model(str(output_onnx))
                 checker["passed"] = True
@@ -142,12 +163,16 @@ def annotate_onnx_axis_semantics(
         _, dot_warning = render_svg_from_dot(dot_path, svg_path)
         if dot_warning:
             warnings.append(dot_warning)
+    if leader_report:
+        write_leader_report(leader_candidates, str(leader_report))
 
     output_model = onnx.load(str(output_onnx))
     sidecar_payload = _sidecar_payload(
         input_onnx=input_onnx,
         output_onnx=output_onnx,
         annotation_mode=annotation_mode,
+        doc_string_format=doc_string_format,
+        include_verbose_onnx_attributes=include_verbose_onnx_attributes,
         model_name=model_name,
         mlir_output_dir=case_root,
         nodes=nodes,
@@ -157,16 +182,33 @@ def annotate_onnx_axis_semantics(
         evidence_unit_index=case_root / "evidence_units" / "evidence_unit_index.json",
         dot_path=Path(dot_path) if dot_path else None,
         svg_path=Path(svg_path) if svg_path and Path(svg_path).is_file() else None,
+        leader_report=Path(leader_report) if leader_report else None,
+        leader_candidates=leader_candidates,
     )
     sidecar.parent.mkdir(parents=True, exist_ok=True)
     sidecar.write_text(json.dumps(sidecar_payload, indent=2) + "\n", encoding="utf-8")
     return sidecar_payload
 
 
-def _annotate_node(node: Any, semantics: NodeAxisSemantics, annotation_mode: str, helper: Any) -> None:
+def _annotate_node(
+    node: Any,
+    semantics: NodeAxisSemantics,
+    annotation_mode: str,
+    helper: Any,
+    *,
+    doc_string_format: str,
+    include_verbose_onnx_attributes: bool,
+) -> None:
+    summary = compact_annotation_summary(semantics, doc_string_format)
+    compact_payload = {
+        "axis_semantics.summary": summary,
+        "axis_semantics.class": semantics.semantic_class.value,
+        "axis_semantics.evidence_tier": semantics.evidence_tier.value,
+        "axis_semantics.leader_candidate_kind": semantics.leader_candidate_kind,
+    }
     relations_json = json.dumps([relation.to_dict() for relation in semantics.axis_relations], sort_keys=True)
     mlir_json = json.dumps(semantics.mlir_evidence.to_dict(), sort_keys=True)
-    payload = {
+    verbose_payload = {
         "axis_semantics.class": semantics.semantic_class.value,
         "axis_semantics.confidence": semantics.confidence,
         "axis_semantics.evidence_tier": semantics.evidence_tier.value,
@@ -177,11 +219,13 @@ def _annotate_node(node: Any, semantics: NodeAxisSemantics, annotation_mode: str
         "axis_semantics.blocker_kind": semantics.mlir_evidence.blocker_kind.value,
         "axis_semantics.blocker_explanation": semantics.mlir_evidence.blocker_explanation,
     }
+    payload = verbose_payload if doc_string_format == "verbose" else compact_payload
     semantics.attributes_added = list(payload)
     if annotation_mode in {"doc_string", "both"}:
-        node.doc_string = "axis_semantics=" + json.dumps(payload, sort_keys=True)
+        node.doc_string = summary if doc_string_format != "verbose" else "axis_semantics=" + json.dumps(verbose_payload, sort_keys=True)
     if annotation_mode in {"attributes", "both"}:
-        for key, value in payload.items():
+        attrs = verbose_payload if include_verbose_onnx_attributes else compact_payload
+        for key, value in attrs.items():
             node.attribute.append(helper.make_attribute(key, str(value)))
 
 
@@ -190,6 +234,8 @@ def _sidecar_payload(
     input_onnx: Path,
     output_onnx: Path,
     annotation_mode: str,
+    doc_string_format: str,
+    include_verbose_onnx_attributes: bool,
     model_name: str | None,
     mlir_output_dir: Path,
     nodes: list[NodeAxisSemantics],
@@ -199,6 +245,8 @@ def _sidecar_payload(
     evidence_unit_index: Path,
     dot_path: Path | None,
     svg_path: Path | None,
+    leader_report: Path | None,
+    leader_candidates: list[Any],
 ) -> dict[str, Any]:
     semantic_counts = Counter(node.semantic_class.value for node in nodes)
     leader_counts = Counter(node.leader_candidate_kind for node in nodes)
@@ -208,21 +256,80 @@ def _sidecar_payload(
         "input_onnx": str(input_onnx),
         "output_onnx": str(output_onnx),
         "annotation_mode": annotation_mode,
+        "doc_string_format": doc_string_format,
+        "include_verbose_onnx_attributes": include_verbose_onnx_attributes,
         "strict_mlir_semantics": True,
         "model_name": model_name,
         "mlir_output_dir": str(mlir_output_dir),
         "dot": str(dot_path) if dot_path else None,
         "svg": str(svg_path) if svg_path else None,
+        "leader_report": str(leader_report) if leader_report else None,
         "evidence_unit_index": str(evidence_unit_index),
         "node_count": len(nodes),
         "semantic_counts": dict(sorted(semantic_counts.items())),
         "leader_candidate_counts": dict(sorted(leader_counts.items())),
+        "leader_candidates": [candidate.to_dict() for candidate in leader_candidates],
         "evidence_tier_counts": dict(sorted(evidence_counts.items())),
         "blocker_counts": dict(sorted(blocker_counts.items())),
         "nodes": [node.to_dict() for node in nodes],
         "checker": checker,
         "original_graph_unchanged": original_graph_unchanged,
         "warnings": warnings,
+    }
+
+
+def compact_annotation_summary(semantics: NodeAxisSemantics, doc_string_format: str = "compact") -> str:
+    counts = _relation_counts(semantics)
+    if doc_string_format == "minimal":
+        return (
+            f"MLIR: {short_semantic_class_name(semantics.semantic_class)} | "
+            f"{short_evidence_tier_name(semantics.evidence_tier.value)} | "
+            f"leader={semantics.leader_candidate_kind} | "
+            f"rel=P{counts['PRESERVED']}/R{counts['REDUCED']}/M{counts['MIXED']}/B{counts['BLOCKED']}"
+        )
+    if doc_string_format == "verbose":
+        relations_json = json.dumps([relation.to_dict() for relation in semantics.axis_relations], sort_keys=True)
+        mlir_json = json.dumps(semantics.mlir_evidence.to_dict(), sort_keys=True)
+        return "axis_semantics=" + json.dumps(
+            {
+                "axis_semantics.class": semantics.semantic_class.value,
+                "axis_semantics.confidence": semantics.confidence,
+                "axis_semantics.evidence_tier": semantics.evidence_tier.value,
+                "axis_semantics.reason": semantics.reason,
+                "axis_semantics.leader_candidate_kind": semantics.leader_candidate_kind,
+                "axis_semantics.relations_json": relations_json,
+                "axis_semantics.mlir_evidence_json": mlir_json,
+                "axis_semantics.blocker_kind": semantics.mlir_evidence.blocker_kind.value,
+                "axis_semantics.blocker_explanation": semantics.mlir_evidence.blocker_explanation,
+            },
+            sort_keys=True,
+        )
+    return "\n".join(
+        [
+            "AxisSemantics:",
+            f"  class={semantics.semantic_class.value}",
+            f"  evidence={semantics.evidence_tier.value}",
+            f"  confidence={semantics.confidence}",
+            f"  leader={semantics.leader_candidate_kind}",
+            (
+                "  relations="
+                f"PRESERVED:{counts['PRESERVED']}, "
+                f"REDUCED:{counts['REDUCED']}, "
+                f"MIXED:{counts['MIXED']}, "
+                f"BLOCKED:{counts['BLOCKED']}"
+            ),
+            f"  blocker={semantics.mlir_evidence.blocker_kind.value}",
+        ]
+    )
+
+
+def _relation_counts(semantics: NodeAxisSemantics) -> dict[str, int]:
+    counts = Counter(relation.relation.value for relation in semantics.axis_relations)
+    return {
+        "PRESERVED": counts.get("PRESERVED", 0),
+        "REDUCED": counts.get("REDUCED", 0),
+        "MIXED": counts.get("MIXED", 0),
+        "BLOCKED": counts.get("BLOCKED", 0),
     }
 
 
